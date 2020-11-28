@@ -4,7 +4,7 @@ git checkout master
 git pull upstream
 git push zaphodbe master
 
-branches=( "asciiwheel" )
+branches=( "asciiwheel" "dev" )
 for x in "${branches[@]}"
 do
   echo Rebasing branch $x
