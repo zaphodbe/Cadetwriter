@@ -895,14 +895,14 @@
 //**********************************************************************************************************************
 
 // Wheelwriter 1000
-#define FEATURE_20CPS           FALSE
-#define FEATURE_WIDE_CARRIAGE   FALSE
-#define FEATURE_VERSION_SUFFIX  ""
+// #define FEATURE_20CPS           FALSE
+// #define FEATURE_WIDE_CARRIAGE   FALSE
+// #define FEATURE_VERSION_SUFFIX  ""
 
 // Wheelwriter 1500
-// #define FEATURE_20CPS           TRUE
-// #define FEATURE_WIDE_CARRIAGE   TRUE
-// #define FEATURE_VERSION_SUFFIX  "_1500"
+#define FEATURE_20CPS           TRUE
+#define FEATURE_WIDE_CARRIAGE   TRUE
+#define FEATURE_VERSION_SUFFIX  "_1500-CAL"
 
 // Wheelwriter 5
 // #define FEATURE_20CPS           TRUE
@@ -1346,11 +1346,11 @@
 
 #define TIMING_NONE       0                               // Residual time for non-printing character.
 #define TIMING_UNKNOWN    0                               // Unknown timing, treat as none.
-#define TIMING_NOSHIFT    (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE)))
+#define TIMING_NOSHIFT    (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE) - (2 * TIME_ADJUST)))
                                                           // Residual time for unshifted print character.
-#define TIMING_SHIFT      (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES)))
+#define TIMING_SHIFT      (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES) - (1 * TIME_ADJUST)))
                                                           // Residual time for shifted print character.
-#define TIMING_CODE       (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES)))
+#define TIMING_CODE       (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES) - (1 * TIME_ADJUST)))
                                                           // Residual time for coded print character.
 #define TIMING_HMOVE      (POSITIVE(TIME_HMOVEMENT - (2 * FSCAN_1_CHANGE)))
                                                           // Residual time for single horizontal movement.
@@ -2500,52 +2500,52 @@ volatile byte tabs[200] = {SETTING_UNDEFINED};          // Tab settings.        
 
 #define TIMING_IBM_SLASH_0        (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
                                             (4 * FSCAN_1_CHANGE + 1 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (17 * TIME_ADJUST)))
+                                            (32 * TIME_ADJUST)))
                                     // Residual time for slashed zero print character.
 
 #define TIMING_IBM_FLAG_SLASH_0   (POSITIVE((3 * TIME_CHARACTER + 2 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
                                             (6 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (54 * TIME_ADJUST)))
+                                            (91 * TIME_ADJUST)))
                                     // Residual time for flagged slashed zero print character.
 
 #define TIMING_IBM_FLAG_DIGIT     (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
                                             (4 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (19 * TIME_ADJUST)))
+                                            (41 * TIME_ADJUST)))
                                     // Residual time for flagged digit print character.
 
 #define TIMING_IBM_FLAG_NUMBLANK  (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
                                             (4 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-4 * TIME_ADJUST)))
+                                            (6 * TIME_ADJUST)))
                                     // Residual time for flagged numeric blank print character.
 
 #define TIMING_IBM_RMARK          (POSITIVE((3 * TIME_CHARACTER + 2 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
                                             (6 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-10 * TIME_ADJUST)))
+                                            (0 * TIME_ADJUST)))
                                     // Residual time for record mark print character.
 
 #define TIMING_IBM_FLAG_RMARK     (POSITIVE((4 * TIME_CHARACTER + 3 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
                                             (8 * FSCAN_1_CHANGE + 6 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-4 * TIME_ADJUST)))
+                                            (15 * TIME_ADJUST)))
                                     // Residual time for flagged record mark print character.
 
 #define TIMING_IBM_GMARK          (POSITIVE((4 * TIME_CHARACTER + 3 * TIME_HMOVEMENT + 6 * TIME_VMOVEMENT) - \
                                             (18 * FSCAN_1_CHANGE + 5 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
-                                            (12 * TIME_ADJUST)))
+                                            (72 * TIME_ADJUST)))
                                     // Residual time for group mark print character.
 
 #define TIMING_IBM_FLAG_GMARK     (POSITIVE((5 * TIME_CHARACTER + 4 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
                                             (20 * FSCAN_1_CHANGE + 8 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
-                                            (26 * TIME_ADJUST)))
+                                            (72 * TIME_ADJUST)))
                                     // Residual time for flagged group mark print character.
 
 #define TIMING_IBM_RELEASESTART   (POSITIVE((2 * TIME_CHARACTER + 4 * TIME_HMOVEMENT + 5 * TIME_VMOVEMENT) - \
                                             (20 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 1 * FSCAN_3_CHANGES) + \
-                                            (-33 * TIME_ADJUST)))
+                                            (-9 * TIME_ADJUST)))
                                     // Residual time for release start print character.
 
 #define TIMING_IBM_INVALID        (POSITIVE((3 * TIME_CHARACTER + 2 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
                                             (6 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-5 * TIME_ADJUST)))
+                                            (1 * TIME_ADJUST)))
                                      // Residual time for invalid print character.
 
 // IBM 1620 Jr. command characters.
@@ -4604,6 +4604,18 @@ const byte ASCII_STR_SPACE3[]               = {WW_SPACE_REQSPACE, WW_NULL_4, WW_
 const struct print_info ASCII_PRINT_SPACE3  = {SPACING_FORWARD, TIMING_ASCII_SPACE3, &ASCII_STR_SPACE3};
 
 // <, >, \, ^, `, {, |, }, ~ print strings.
+#if 1
+#define ASCII_PRINT_LESS        WW_PRINT_SECTION
+#define ASCII_PRINT_GREATER     WW_PRINT_PARAGRAPH
+#define ASCII_PRINT_BSLASH      WW_PRINT_SUPER3
+#define ASCII_PRINT_CARET       WW_PRINT_CENT
+#define ASCII_PRINT_BAPOSTROPHE WW_PRINT_PLUSMINUS
+#define ASCII_PRINT_LBRACE      WW_PRINT_QUARTER
+#define ASCII_PRINT_BAR         WW_PRINT_SUPER2
+#define ASCII_PRINT_RBRACE      WW_PRINT_HALF
+#define ASCII_PRINT_TILDE       WW_PRINT_DEGREE
+
+#else
 const byte ASCII_STR_LESS[]                     = {WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
                                                    WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
                                                    WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
@@ -4711,6 +4723,7 @@ const byte ASCII_STR_TILDE[]                    = {WW_MarRel_RePrt, WW_NULL_14, 
                                                    WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
                                                    WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
 const struct print_info ASCII_PRINT_TILDE       = {SPACING_FORWARD, TIMING_ASCII_TILDE, &ASCII_STR_TILDE};
+#endif
 
 // CR, LF print strings.
 const byte ASCII_STR_CR[]              = {WW_CRtn_IndClr, WW_NULL_13, WW_UARROW_Line, WW_NULL_13, WW_NULL_14, WW_NULL};
