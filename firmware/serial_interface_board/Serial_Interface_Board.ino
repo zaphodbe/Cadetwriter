@@ -19,16 +19,16 @@
 //                      SlowSoftSerial library (https://github.com/MustBeArt/SlowSoftSerial).
 //                      Compile options - Teensy 3.5, USB Serial, 120 MHz, Fastest with LTO.
 //
-//  Memory:             98240 bytes (18%) of program storage space.
-//                      108652 bytes (41%) of dynamic memory for global variables.
+//  Memory:             99164 bytes (18%) of program storage space.
+//                      109732 bytes (41%) of dynamic memory for global variables.
 //
 //  Documentation:      IBM 1620 Jr. Console Typewriter Protocol, version 1.10, 5/24/2019.
 //                      IBM 1620 Jr. Console Typewriter Test Program, version 1.10, 5/24/2019.
 //                      IBM Wheelwriter 1000 by Lexmark User's Guide, P/N 1419147, 7/1994.
 //
-//  Authors:            Dave Babcock, Joe Fredrick, Paul Williamson
+//  Authors:            Dave Babcock, Joe Fredrick, Paul Williamson (SlowSoftSerial library)
 //
-//  Copyright:          Copyright(C) 2019-2021 Dave Babcock, Joe Fredrick, Paul Williamson
+//  Copyright:          Copyright(C) 2019-2021 Dave Babcock, Joe Fredrick, Paul Williamson (SlowSoftSerial)
 //
 //  License:            This program is free software: you can redistribute it and/or modify it under the terms of the
 //                      GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -63,7 +63,7 @@
 //                                       Added reset all settings to factory defaults operation.
 //                                       Expanded end-of-line handling on input and output.
 //                                       Added option to ignore escape sequences.
-//                                       Made MarRel, LMar, RMar, TSet, TClr control functions only.
+//                                       Made Mar Rel, L Mar, R Mar, T Set, T Clr control functions only.
 //                                       Disabled unusable baud rates.
 //                                       Cleaned up the printing of some special ASCII characters.
 //                                       Added developer function to calibrate print string timings.
@@ -93,7 +93,7 @@
 //                                           Warning:  The 20cps timing isn't calibrated yet.  No characters are lost,
 //                                                     but the firmware drives the print mechanism too fast and there is
 //                                                     lots of beeping.
-//                      6R0    2/4/2021  Developed new Spin-Hit-Move (SHM) printer timing model.
+//                      6R0   3/19/2021  Developed new Spin-Hit-Move (SHM) printer timing model.
 //                                       Added developer column scan timing measurements and rewrote printer timing.
 //                                       Added configuration setting for ASCII printwheel (#1353909).
 //                                       Updated timings for 20cps print mechanism from Chris Coley.
@@ -270,7 +270,7 @@
 //                    ----+---------------+---------------+----------+-------------+------+--------------+-------+ ...
 //                      2 | <right shift> | \          /  |    z     |<load paper> |      |      x       |   c   |
 //                        |               |   [X33_022]   |    Z     |             |      |      X       |   C   |
-//                        |               | /          \  |          |             |      | <power wise> |  Ctr  |
+//                        |               | /          \  |          |<set toform> |      | <power wise> |  Ctr  |
 //                    ----+---------------+---------------+----------+-------------+------+--------------+-------+ ...
 //                      3 |               |  \         /  |          | \         / |      |              |       |
 //                        |               |   [X32_023]   |          |  [X13_043]  |      |              |       |
@@ -294,7 +294,7 @@
 //                    ----+---------------+---------------+----------+-------------+------+--------------+-------+ ...
 //                      8 |               | <down arrow>  |          |    T Clr    |      |              |       |
 //                        |               |               |          |             |      |              |       |
-//                        |               |     Line      |          |             |      |              |       |
+//                        |               |     Line      |          | <clear all> |      |              |       |
 //                    ----+---------------+---------------+----------+-------------+------+--------------+-------+ ...
 //
 //
@@ -315,7 +315,7 @@
 //                    ----+-------+------------+-----------+--------+-------------+--------------+-----------+
 //                      4 |   r   |     u      |     i     |   o    |      p      | \         /  |    Tab    |
 //                        |   R   |     U      |     I     |   O    |      P      |  [X22_134]   |           |
-//                        | A Rtn |    Cont    |   Word    | R Flsh |             | /         \  |   IndL    |
+//                        | A Rtn |    Cont    |   Word    | R Flsh |             | /         \  |   Ind L   |
 //                    ----+-------+------------+-----------+--------+-------------+--------------+-----------+
 //                      5 |   4   |     7      |     8     |   9    |      0      | \         /  |           |
 //                        |   $   |     &      |     *     |   (    |      )      |  [X21_135]   |           |
@@ -323,7 +323,7 @@
 //                    ----+-------+------------+-----------+--------+-------------+--------------+-----------+
 //                      6 |   5   |     6      |     =     |        |      -      |  Backspace   |  Mar Rel  |
 //                        |   %   |   <cent>   |     +     |        |      _      |              |           |
-//                        |       |            |           |        |             |    Bksp 1    |   RePrt   |
+//                        |       |            |           |        |             |    Bksp 1    |  Re Prt   |
 //                    ----+-------+------------+-----------+--------+-------------+--------------+-----------+
 //                      7 |   f   |     j      |     k     |   l    |      ;      | \         /  |   T Set   |
 //                        |   F   |     J      |     K     |   L    |      :      |  [X23_137]   |           |
@@ -453,15 +453,15 @@
 //                                                                               NULL10                   NULL14  NULL
 //
 //             Here are the print codes, timing, and scan schedule for printing the ASCII Terminal's '<' character:
-//               Print codes:  WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-//                             WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code,
-//                             WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Backspace_Bksp1,
-//                             WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code,
-//                             WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
-//                             WW_PaperUp_Micro, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+//               Print codes:  WW_Code, WW_PaperDown_DownMicro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
+//                             WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperDown_DownMicro, WW_Code, WW_Code,
+//                             WW_PaperDown_DownMicro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
+//                             WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+//                             WW_PaperUp_UpMicro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
+//                             WW_PaperUp_UpMicro, WW_Code, WW_Code, WW_PaperUp_UpMicro, WW_Code, WW_Code,
 //                             WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-//                             WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5,
-//                             WW_SPACE_REQSPACE, WW_NULL_4, WW_NULL_14, WW_NULL
+//                             WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+//                             WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_SPACE_REQSPACE, WW_NULL_4, WW_NULL_14, WW_NULL
 //               Timing:  ((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 6 * TIME_VMOVEMENT + 10 * TIME_ADJUST) -
 //                         (29 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 3 * FSCAN_3_CHANGES))
 //               Scan schedule:
@@ -935,7 +935,7 @@
 
 // Firmware version values.
 #define VERSION       61
-#define VERSION_TEXT  "6R0beta2" FEATURE_VERSION_SUFFIX
+#define VERSION_TEXT  "6R0beta3" FEATURE_VERSION_SUFFIX
 
 #define VERSION_ESCAPEOFFSET_CHANGED  60  // Version when escape sequences and line offset changed.
 
@@ -1055,7 +1055,7 @@
 #define WW_COLUMN_12    0x0c  // /, ?, <half>, <quarter>, <superscript 2>, p, P, 0, ), -, _, ;, :, <section>, ', ",
                               // <paragraph>
 #define WW_COLUMN_13    0x0d  // <left arrow>, <left word>, <up arrow>, <up line>, Backspace, Bksp 1, C Rtn, Ind Clr
-#define WW_COLUMN_14    0x0e  // <back X>, <back word>, Lock, R Mar, Tab, IndL, Mar Rel, RePrt, T Set
+#define WW_COLUMN_14    0x0e  // <back X>, <back word>, Lock, R Mar, Tab, Ind L, Mar Rel, Re Prt, T Set
 
 // Wheelwriter row values.
 #define WW_ROW_NULL  0x00  // Null row.
@@ -1065,38 +1065,39 @@
                            // <up arrow>, <up line>, Lock
 #define WW_ROW_3     0x03  // t, T, y, Y, <1/2 up>, ], [, <superscript 3>, <half>, <quarter>, <superscript 2>, R Mar
 #define WW_ROW_4     0x04  // Paper Down, <down micro>, q, Q, Impr, L Mar, w, W, e, E, r, R, A Rtn, u, U, Cont, i, I,
-                           // Word, o, O, R Flsh, p, P, Tab, IndL
+                           // Word, o, O, R Flsh, p, P, Tab, Ind L
 #define WW_ROW_5     0x05  // 1, !, Spell, 2, @, Add, 3, #, Del, 4, $, Vol, 7, &, 8, *, 9, (, Stop, 0, )
 #define WW_ROW_6     0x06  // Paper Up, <up micro>, +/-, <degree>, 5, %, 6, <cent>, =, +, -, _, Backspace, Bksp 1, Mar
-                           // Rel, RePrt
+                           // Rel, Re Prt
 #define WW_ROW_7     0x07  // Reloc, Line Space, a, A, s, S, d, D, Dec T, f, F, j, J, k, K, l, L, Lang, ;, :, <section>,
                            // T Set
-#define WW_ROW_8     0x08  // <down arrow>, <down line>, TClr, g, G, h, H, <1/2 down>, ', ", <paragraph>, C Rtn, Ind Clr
+#define WW_ROW_8     0x08  // <down arrow>, <down line>, T Clr, g, G, h, H, <1/2 down>, ', ", <paragraph>, C Rtn,
+                           // Ind Clr
 
 // Wheelwriter key values.
 #define WW_KEY_LShift                       0  // <left shift> key code.
 #define WW_KEY_RShift                       1  // <right shift> key code.
-#define WW_KEY_RARROW_Word                  2  // <right arrow>, <right word> key code.
+#define WW_KEY_RIGHTARROW_RightWord         2  // <right arrow>, <right word> key code.
 #define WW_KEY_X33_22                       3  // *** not available on Wheelwriter 1000.
 #define WW_KEY_X32_23                       4  // *** not available on Wheelwriter 1000.
-#define WW_KEY_PaperDown_Micro              5  // Paper Down, <down micro> key code.
+#define WW_KEY_PaperDown_DownMicro          5  // Paper Down, <down micro> key code.
 #define WW_KEY_X31_25                       6  // *** not available on Wheelwriter 1000.
-#define WW_KEY_PaperUp_Micro                7  // Paper Up, <up micro> key code.
+#define WW_KEY_PaperUp_UpMicro              7  // Paper Up, <up micro> key code.
 #define WW_KEY_Reloc_LineSpace              8  // Reloc, Line Space key code.
-#define WW_KEY_DARROW_Line                  9  // <down arrow>, <down line> key code.
+#define WW_KEY_DOWNARROW_DownLine           9  // <down arrow>, <down line> key code.
 #define WW_KEY_z_Z                         10  // z, Z key code.
 #define WW_KEY_q_Q_Impr                    11  // q, Q, Impr key code.
 #define WW_KEY_1_EXCLAMATION_Spell         12  // 1, !, Spell key code.
 #define WW_KEY_PLUSMINUS_DEGREE            13  // +/-, <degree> key code.
 #define WW_KEY_a_A                         14  // a, A key code.
 #define WW_KEY_SPACE_REQSPACE              15  // <space>, <required space> key code.
-#define WW_KEY_LOADPAPER                   16  // <load paper> key code.
+#define WW_KEY_LOADPAPER_SETTOPOFFORM      16  // <load paper>, <set top of form> key code.
 #define WW_KEY_X13_43                      17  // *** not available on Wheelwriter 1000.
 #define WW_KEY_LMar                        18  // L Mar key code.
 #define WW_KEY_X12_45                      19  // *** not available on Wheelwriter 1000.
 #define WW_KEY_X11_46                      20  // *** not available on Wheelwriter 1000.
 #define WW_KEY_X14_47                      21  // *** not available on Wheelwriter 1000.
-#define WW_KEY_TClr                        22  // T Clr key code.
+#define WW_KEY_TClr_TClrAll                22  // T Clr, T Clr All key code.
 #define WW_KEY_Code                        23  // <code> key code.
 #define WW_KEY_x_X_POWERWISE               24  // x, X, <power wise> key code.
 #define WW_KEY_w_W                         25  // w, W key code.
@@ -1139,8 +1140,8 @@
 #define WW_KEY_HYPHEN_UNDERSCORE           62  // -, _ key code.
 #define WW_KEY_SEMICOLON_COLON_SECTION     63  // ;, :, <section> key code.
 #define WW_KEY_APOSTROPHE_QUOTE_PARAGRAPH  64  // ', ", <paragraph> key code.
-#define WW_KEY_LARROW_Word                 65  // <left arrow>, <left word> key code.
-#define WW_KEY_UARROW_Line                 66  // <up arrow>, <up line> key code.
+#define WW_KEY_LEFTARROW_LeftWord          65  // <left arrow>, <left word> key code.
+#define WW_KEY_UPARROW_UpLine              66  // <up arrow>, <up line> key code.
 #define WW_KEY_X22_134                     67  // *** not available on Wheelwriter 1000.
 #define WW_KEY_X21_135                     68  // *** not available on Wheelwriter 1000.
 #define WW_KEY_Backspace_Bksp1             69  // Backspace, Bksp 1 key code.
@@ -1150,7 +1151,7 @@
 #define WW_KEY_Lock                        73  // Lock key code.
 #define WW_KEY_RMar                        74  // R Mar key code.
 #define WW_KEY_Tab_IndL                    75  // Tab key code.
-#define WW_KEY_MarRel_RePrt                76  // Mar Rel, RePrt key code.
+#define WW_KEY_MarRel_RePrt                76  // Mar Rel, Re Prt key code.
 #define WW_KEY_TSet                        77  // T Set key code.
 #define WW_KEY_X15_148                     78  // *** not available on Wheelwriter 1000.
 
@@ -1179,11 +1180,11 @@
 // Wheelwriter print codes.
 #define WW_LShift                      (WW_NULL_1 | WW_ROW_1)   // <left shift> print code.
 #define WW_RShift                      (WW_NULL_1 | WW_ROW_2)   // <right shift> print code.
-#define WW_RARROW_Word                 (WW_NULL_2 | WW_ROW_1)   // <right arrow>, <right word> print code.
-#define WW_PaperDown_Micro             (WW_NULL_2 | WW_ROW_4)   // Paper Down, <down micro> print code.
-#define WW_PaperUp_Micro               (WW_NULL_2 | WW_ROW_6)   // Paper Up, <up micro> print code.
+#define WW_RIGHTARROW_RightWord        (WW_NULL_2 | WW_ROW_1)   // <right arrow>, <right word> print code.
+#define WW_PaperDown_DownMicro         (WW_NULL_2 | WW_ROW_4)   // Paper Down, <down micro> print code.
+#define WW_PaperUp_UpMicro             (WW_NULL_2 | WW_ROW_6)   // Paper Up, <up micro> print code.
 #define WW_Reloc_LineSpace             (WW_NULL_2 | WW_ROW_7)   // Reloc, Line Space print code.
-#define WW_DARROW_Line                 (WW_NULL_2 | WW_ROW_8)   // <down arrow>, <down line> print code.
+#define WW_DOWNARROW_DownLine          (WW_NULL_2 | WW_ROW_8)   // <down arrow>, <down line> print code.
 #define WW_z_Z                         (WW_NULL_3 | WW_ROW_2)   // z, Z print code.
 #define WW_q_Q_Impr                    (WW_NULL_3 | WW_ROW_4)   // q, Q, Impr print code.
 #define WW_1_EXCLAMATION_Spell         (WW_NULL_3 | WW_ROW_5)   // 1, !, Spell print code.
@@ -1192,9 +1193,9 @@
 #define WW_TILDE_APW                   (WW_NULL_3 | WW_ROW_6)   // ~ print code (ASCII PrintWheel).
 #define WW_a_A                         (WW_NULL_3 | WW_ROW_7)   // a, A print code.
 #define WW_SPACE_REQSPACE              (WW_NULL_4 | WW_ROW_1)   // <space>, <required space> print code.
-#define WW_LOADPAPER                   (WW_NULL_4 | WW_ROW_2)   // <load paper> print code.
+#define WW_LOADPAPER_SETTOPOFFORM      (WW_NULL_4 | WW_ROW_2)   // <load paper>, <set top of form> print code.
 #define WW_LMar                        (WW_NULL_4 | WW_ROW_4)   // L Mar print code.
-#define WW_TClr                        (WW_NULL_4 | WW_ROW_8)   // T Clr print code.
+#define WW_TClr_TClrAll                (WW_NULL_4 | WW_ROW_8)   // T Clr, T Clr All print code.
 #define WW_Code                        (WW_NULL_5 | WW_ROW_1)   // Code print code.
 #define WW_x_X_POWERWISE               (WW_NULL_6 | WW_ROW_2)   // x, X, <power wise> print code.
 #define WW_w_W                         (WW_NULL_6 | WW_ROW_4)   // w, W print code.
@@ -1244,15 +1245,15 @@
 #define WW_LESS_APW                    (WW_NULL_12 | WW_ROW_7)  // < print code (ASCII PrintWheel).
 #define WW_APOSTROPHE_QUOTE_PARAGRAPH  (WW_NULL_12 | WW_ROW_8)  // ', ", <paragraph> print code.
 #define WW_GREATER_APW                 (WW_NULL_12 | WW_ROW_8)  // > print code (ASCII PrintWheel).
-#define WW_LARROW_Word                 (WW_NULL_13 | WW_ROW_1)  // <left arrow>, <left word> print code.
-#define WW_UARROW_Line                 (WW_NULL_13 | WW_ROW_2)  // <up arrow>, <up line> print code.
+#define WW_LEFTARROW_LeftWord          (WW_NULL_13 | WW_ROW_1)  // <left arrow>, <left word> print code.
+#define WW_UPARROW_UpLine              (WW_NULL_13 | WW_ROW_2)  // <up arrow>, <up line> print code.
 #define WW_Backspace_Bksp1             (WW_NULL_13 | WW_ROW_6)  // Backspace, Bksp 1 print code.
 #define WW_CRtn_IndClr                 (WW_NULL_13 | WW_ROW_8)  // C Rtn, Ind Clr print code.
 #define WW_BACKX_Word                  (WW_NULL_14 | WW_ROW_1)  // <back X>, <back word> print code.
 #define WW_Lock                        (WW_NULL_14 | WW_ROW_2)  // Lock print code.
 #define WW_RMar                        (WW_NULL_14 | WW_ROW_3)  // R Mar print code.
 #define WW_Tab_IndL                    (WW_NULL_14 | WW_ROW_4)  // Tab print code.
-#define WW_MarRel_RePrt                (WW_NULL_14 | WW_ROW_6)  // Mar Rel, RePrt print code.
+#define WW_MarRel_RePrt                (WW_NULL_14 | WW_ROW_6)  // Mar Rel, Re Prt print code.
 #define WW_TSet                        (WW_NULL_14 | WW_ROW_7)  // T Set print code.
 
 // Keyboard key offset values.
@@ -1265,13 +1266,13 @@
 #define LONG_SCAN_DURATION   25UL  // Threshold time for Wheelwriter long scans.
 
 // Keyboard scan timing values (in usec).
-#define CSCAN_MINIMUM     100                                       // Minimum time for column scan to be counted.
-#define CSCAN_NO_CHANGE   820                                       // Time for column scan with no key change.
-#define CSCAN_CHANGE     3680                                       // Time for column scan with a key change.
-#define FSCAN_0_CHANGES  (14 * CSCAN_NO_CHANGE)                     // Time for full scan with 0 key changes.
-#define FSCAN_1_CHANGE   (13 * CSCAN_NO_CHANGE +     CSCAN_CHANGE)  // Time for full scan with 1 key change.
-#define FSCAN_2_CHANGES  (12 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)  // Time for full scan with 2 key changes.
-#define FSCAN_3_CHANGES  (11 * CSCAN_NO_CHANGE + 3 * CSCAN_CHANGE)  // Time for full scan with 3 key changes.
+#define CSCAN_MINIMUM     100                                      // Minimum time for column scan to be counted.
+#define CSCAN_NOCHANGE    820                                      // Time for column scan with no key change.
+#define CSCAN_CHANGE     3680                                      // Time for column scan with a key change.
+#define FSCAN_0_CHANGES  (14 * CSCAN_NOCHANGE)                     // Time for full scan with 0 key changes.
+#define FSCAN_1_CHANGE   (13 * CSCAN_NOCHANGE +     CSCAN_CHANGE)  // Time for full scan with 1 key change.
+#define FSCAN_2_CHANGES  (12 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)  // Time for full scan with 2 key changes.
+#define FSCAN_3_CHANGES  (11 * CSCAN_NOCHANGE + 3 * CSCAN_CHANGE)  // Time for full scan with 3 key changes.
 
 // Keyboard read timing values (in msec).
 #define KEY_PRESS_DEBOUNCE     85UL  // Shadow time for debouncing key presses.
@@ -1284,8 +1285,7 @@
 #define ACTION_NONE          0x00      // No action.
 #define ACTION_SEND          0x01      // Send a character action.
 #define ACTION_PRINT         0x02      // Print a character action.
-#define ACTION_PRINT_SPECIAL 0x04      // Print a special character action.
-#define ACTION_COMMAND       0x08      // Process a command character action.
+#define ACTION_COMMAND       0x04      // Process a command character action.
 #define ACTION_MASK          0xf0      // Action mask.
 
 #define ACTION_IBM_MODE_0    (1 << 4)  // IBM 1620 Jr. Mode 0 action.
@@ -1303,45 +1303,59 @@
 // Serial input actions.
 #define CMD_NONE           0  // No action.
 #define CMD_PRINT          1  // Print character action.
-#define CMD_PRINT_SPECIAL  2  // Print special character action.
 
-#define CMD_IBM_MODE_0     3  // Set mode 0 IBM 1620 Jr. action.
-#define CMD_IBM_MODE_1     4  // Set mode 1 IBM 1620 Jr. action.
-#define CMD_IBM_MODE_2     5  // Set mode 2 IBM 1620 Jr. action.
-#define CMD_IBM_MODE_3     6  // Set mode 3 IBM 1620 Jr. action.
-#define CMD_IBM_PING       7  // Ping IBM 1620 Jr. action.
-#define CMD_IBM_ACK        8  // Ack IBM 1620 Jr. action.
-#define CMD_IBM_SLASH      9  // Slash zeroes IBM 1620 Jr. action.
-#define CMD_IBM_UNSLASH   10  // Unslash zeroes IBM 1620 Jr. action.
-#define CMD_IBM_RESET     11  // Reset IBM 1620 Jr. action.
-#define CMD_IBM_PAUSE     12  // Pause IBM 1620 Jr. action.
-#define CMD_IBM_RESUME    13  // Resume IBM 1620 Jr. action.
+#define CMD_IBM_MODE_0    10  // Set mode 0 IBM 1620 Jr. action.
+#define CMD_IBM_MODE_1    11  // Set mode 1 IBM 1620 Jr. action.
+#define CMD_IBM_MODE_2    12  // Set mode 2 IBM 1620 Jr. action.
+#define CMD_IBM_MODE_3    13  // Set mode 3 IBM 1620 Jr. action.
+#define CMD_IBM_PING      14  // Ping IBM 1620 Jr. action.
+#define CMD_IBM_ACK       15  // Ack IBM 1620 Jr. action.
+#define CMD_IBM_SLASH     16  // Slash zeroes IBM 1620 Jr. action.
+#define CMD_IBM_UNSLASH   17  // Unslash zeroes IBM 1620 Jr. action.
+#define CMD_IBM_RESET     18  // Reset IBM 1620 Jr. action.
+#define CMD_IBM_PAUSE     19  // Pause IBM 1620 Jr. action.
+#define CMD_IBM_RESUME    20  // Resume IBM 1620 Jr. action.
 
-#define CMD_ASCII_CR      14  // CR action.
-#define CMD_ASCII_LF      15  // LF action.
-#define CMD_ASCII_XON     16  // XON ASCII Terminal action.
-#define CMD_ASCII_XOFF    17  // XOFF ASCII Terminal action.
+#define CMD_ASCII_CR      30  // CR action.
+#define CMD_ASCII_LF      31  // LF action.
+#define CMD_ASCII_XON     32  // XON ASCII Terminal action.
+#define CMD_ASCII_XOFF    33  // XOFF ASCII Terminal action.
 
-// Type run modes.
+// Run mode types.
 #define MODE_INITIALIZING        0  // Typewriter is initializing.
 #define MODE_RUNNING             1  // Typewriter is running.
 #define MODE_IBM_BEING_SETUP     2  // IBM 1620 Jr. is being setup.
 #define MODE_ASCII_BEING_SETUP   3  // ASCII Terminal is being setup.
 #define MODE_FUTURE_BEING_SETUP  4  // Future is being setup.
 
-// Print string spacing types.
-#define SPACING_NONE       0  // No horizontal movement.
-#define SPACING_UNKNOWN    0  // Unknown horizontal movement, treat as none.
-#define SPACING_FORWARD    1  // Forward horizontal movement.
-#define SPACING_BACKWARD   2  // Backward horizontal movement.
-#define SPACING_TAB        3  // Tab horizontal movement.
-#define SPACING_RETURN     4  // Return horizontal movement.
-#define SPACING_LMAR       5  // No horizontal movement, set left margin.
-#define SPACING_RMAR       6  // No horizontal movement, set right margin.
-#define SPACING_MARREL     7  // No horizontal movement, margin release.
-#define SPACING_TSET       8  // No horizontal movement, set tab.
-#define SPACING_TCLR       9  // No horizontal movement, clear tab.
-#define SPACING_CLRALL    10  // No horizontal movement, clear all tabs.
+// Print element types.
+#define ELEMENT_SIMPLE     0  // Simple print element.
+#define ELEMENT_COMPOSITE  1  // Composite print element.
+#define ELEMENT_DYNAMIC    2  // Dynamic print element.
+
+// Print element spacing values.
+#define SPACING_NONE        0  // No horizontal movement.
+#define SPACING_UNKNOWN     1  // Unknown horizontal movement, treat as none.
+#define SPACING_FORWARD     2  // Forward horizontal movement.
+#define SPACING_BACKWARD    3  // Backward horizontal movement.
+#define SPACING_TAB         4  // Tab horizontal movement.
+#define SPACING_TABX        5  // Tab horizontal movement, no residual_time adjustment.
+#define SPACING_RETURN      6  // Return horizontal movement.
+#define SPACING_RETURNX     7  // Return horizontal movement, no residual_time adjustment.
+#define SPACING_LOADPAPER   8  // Load paper horizontal movement, treat as return.
+#define SPACING_LMAR        9  // No horizontal movement, set left margin.
+#define SPACING_RMAR       10  // No horizontal movement, set right margin.
+#define SPACING_MARREL     11  // No horizontal movement, margin release.
+#define SPACING_TSET       12  // No horizontal movement, set tab.
+#define SPACING_TCLR       13  // No horizontal movement, clear tab.
+#define SPACING_TCLRALL    14  // No horizontal movement, clear all tabs.
+
+// Print element position values.
+#define POSITION_INITIAL      0  // Initial printwheel rotational position.
+#define POSITION_COUNT       96  // Number of positions on printwheel.
+#define POSITION_NOCHANGE   253  // Printwheel rotational position not changed.
+#define POSITION_RESET      254  // Printwheel rotational position reset to 0.
+#define POSITION_UNDEFINED  255  // Rotational position undefined.
 
 // Printer timing values for Spin-Hit-Move model (in usec).
 #define TIME_PRESS_MIN    FSCAN_1_CHANGE
@@ -1349,174 +1363,129 @@
 #define TIME_RELEASE_MIN  FSCAN_1_CHANGE
 #define TIME_RELEASE_MAX  (FSCAN_1_CHANGE + FSCAN_2_CHANGES)
 
-/* DJB
 #if FEATURE_20CPS
-  #define TIME_NULL                ??
-  #define TIME_SPIN_MIN            ??
-  #define TIME_SPIN_MAX            ??
-  #define TIME_SPIN_FACTOR         ??
-  #define TIME_HIT                 ??
-  #define TIME_MOVE                ??
-  #define TIME_TAB_OFFSET          ??
-  #define TIME_TAB_FACTOR          ??
-  #define TIME_RETURN_OFFSET       ??
-  #define TIME_RETURN_FACTOR       ??
-  #define TIME_HMOVE               ??
-  #define TIME_HMOVE_MICRO         ??
-  #define TIME_VMOVE               ??
-  #define TIME_VMOVE_MICRO         ??
-  #define TIME_JIGGLE              ??
-  #define TIME_LOADPAPER           ??
+  #define TIME_NULL             29000  // ??
+  #define TIME_SPIN_MIN             0  // ??
+  #define TIME_SPIN_MAX         45000  // ??
+  #define TIME_SPIN_FACTOR        940  // ??
+  #define TIME_HIT               2500  // ??
+  #define TIME_MOVE             59000  // ??
+  #define TIME_TAB_OFFSET      205000  // ??
+  #define TIME_TAB_FACTOR        5500  // ??
+  #define TIME_RETURN_OFFSET   205000  // ??
+  #define TIME_RETURN_FACTOR     5500  // ??
+  #define TIME_HMOVE            59000  // ??
+  #define TIME_HMOVE_MICRO      58000  // ??
+  #define TIME_VMOVE           147000  // ??
+  #define TIME_VMOVE_HALF      106000  // ??
+  #define TIME_VMOVE_MICRO      63000  // ??
+  #define TIME_BEEP            180000  // ??
+  #define TIME_JIGGLE          230000  // ??
+  #define TIME_LOADPAPER      3000000  // ??
+  #define TIME_UNKNOWN        1000000  // ??
 #else
   #define TIME_NULL             29000
   #define TIME_SPIN_MIN             0
   #define TIME_SPIN_MAX         45000
-  #define TIME_SPIN_FACTOR        250
+  #define TIME_SPIN_FACTOR        940
   #define TIME_HIT               2500
   #define TIME_MOVE             59000
-  #define TIME_TAB_OFFSET      195000
+  #define TIME_TAB_OFFSET      205000
   #define TIME_TAB_FACTOR        5500
-  #define TIME_RETURN_OFFSET   195000
+  #define TIME_RETURN_OFFSET   205000
   #define TIME_RETURN_FACTOR     5500
   #define TIME_HMOVE            59000
   #define TIME_HMOVE_MICRO      58000
   #define TIME_VMOVE           147000
+  #define TIME_VMOVE_HALF      106000
   #define TIME_VMOVE_MICRO      63000
+  #define TIME_BEEP            180000
   #define TIME_JIGGLE          230000
   #define TIME_LOADPAPER      3000000
-#endif
-DJB */
-
-#define TIME_PRESS_NOSHIFT_1   (                       CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_2   (     CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_3   ( 2 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_4   ( 3 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_6   ( 5 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_7   ( 6 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_8   ( 7 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_9   ( 8 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_10  ( 9 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_11  (10 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_12  (11 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_13  (12 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-#define TIME_PRESS_NOSHIFT_14  (13 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
-
-#define TIME_RELEASE_NOSHIFT_1   (13 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_2   (12 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_3   (11 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_4   (10 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_6   ( 8 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_7   ( 7 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_8   ( 6 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_9   ( 5 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_10  ( 4 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_11  ( 3 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_12  ( 2 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_13  (     CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
-#define TIME_RELEASE_NOSHIFT_14  (                       FSCAN_1_CHANGE)
-
-#define TIME_PRESS_SHIFT_2   (                     + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_3   (     CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_4   ( 2 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_6   ( 4 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_7   ( 5 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_8   ( 6 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_9   ( 7 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_10  ( 8 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_11  ( 9 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_12  (10 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_13  (11 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_SHIFT_14  (12 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-
-#define TIME_RELEASE_SHIFT_2   (12 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_3   (11 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_4   (10 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_6   ( 8 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_7   ( 7 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_8   ( 6 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_9   ( 5 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_10  ( 4 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_11  ( 3 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_12  ( 2 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_13  (     CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_SHIFT_14  (                       2 * FSCAN_1_CHANGE)
-
-#define TIME_PRESS_CODE_2   (14 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_3   (15 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_4   (16 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_6   ( 4 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_7   ( 5 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_8   ( 6 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_9   ( 7 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_10  ( 8 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_11  ( 9 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_12  (10 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_13  (11 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-#define TIME_PRESS_CODE_14  (12 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
-
-#define TIME_RELEASE_CODE_2   (12 * CSCAN_NO_CHANGE +     FSCAN_2_CHANGES)
-#define TIME_RELEASE_CODE_3   (11 * CSCAN_NO_CHANGE +     FSCAN_2_CHANGES)
-#define TIME_RELEASE_CODE_4   (10 * CSCAN_NO_CHANGE +     FSCAN_2_CHANGES)
-#define TIME_RELEASE_CODE_6   ( 8 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_7   ( 7 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_8   ( 6 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_9   ( 5 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_10  ( 4 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_11  ( 3 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_12  ( 2 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_13  (     CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
-#define TIME_RELEASE_CODE_14  (                       2 * FSCAN_1_CHANGE)
-
-// Print string timing values (in usec).
-#if FEATURE_20CPS
-  #define TIME_CHARACTER    52000  // Time of one average print character.
-  #define TIME_HMOVEMENT   100000  // Time of one horizontal movement character.
-  #define TIME_VMOVEMENT   100000  // Time of one vertical movement character.
-  #if FEATURE_WIDE_CARRIAGE
-    #define TIME_RETURN    720000  // Time of one full carriage return.
-  #else
-    #define TIME_RETURN    600000  // Time of one full carriage return.
-  #endif
-  #define TIME_LOADPAPER  2400000  // Time of one load paper.
-  #define TIME_ADJUST        8000  // Time adjustment for special cases.
-#else
-  #define TIME_CHARACTER    65000  // Time of one average print character.
-  #define TIME_HMOVEMENT   125000  // Time of one horizontal movement character.
-  #define TIME_VMOVEMENT   125000  // Time of one vertical movement character.
-  #if FEATURE_WIDE_CARRIAGE
-    #define TIME_RETURN    900000  // Time of one full carriage return.
-  #else
-    #define TIME_RETURN    750000  // Time of one full carriage return.
-  #endif
-  #define TIME_LOADPAPER  3000000  // Time of one load paper.
-  #define TIME_ADJUST       10000  // Time adjustment for special cases.
+  #define TIME_UNKNOWN        1000000
 #endif
 
-#define POSITIVE(v)  ((v) >= 0 ? (v) : 0)
+#define TIME_PRESS_NOSHIFT_1   (                      CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_2   (     CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_3   ( 2 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_4   ( 3 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_5   ( 4 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_6   ( 5 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_7   ( 6 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_8   ( 7 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_9   ( 8 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_10  ( 9 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_11  (10 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_12  (11 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_13  (12 * CSCAN_NOCHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_14  (13 * CSCAN_NOCHANGE + CSCAN_CHANGE)
 
-#define TIMING_NONE       0                               // Residual time for non-printing character.
-#define TIMING_UNKNOWN    0                               // Unknown timing, treat as none.
-#define TIMING_NOSHIFT    (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE)))
-                                                          // Residual time for unshifted print character.
-#define TIMING_SHIFT      (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES)))
-                                                          // Residual time for shifted print character.
-#define TIMING_CODE       (POSITIVE(TIME_CHARACTER - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES)))
-                                                          // Residual time for coded print character.
-#define TIMING_HMOVE      (POSITIVE(TIME_HMOVEMENT - (2 * FSCAN_1_CHANGE)))
-                                                          // Residual time for single horizontal movement.
-#define TIMING_HMOVE2     (POSITIVE(TIME_HMOVEMENT - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES)))
-                                                          // Residual time for single coded horizontal movement.
-#define TIMING_VMOVE      (POSITIVE(TIME_VMOVEMENT - (2 * FSCAN_1_CHANGE)))
-                                                          // Residual time for single vertical movement.
-#define TIMING_VMOVE2     (POSITIVE(TIME_VMOVEMENT - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES)))
-                                                          // Residual time for single coded vertical movement.
-#define TIMING_TAB        (POSITIVE(2 * TIME_HMOVEMENT))  // Residual time for tab print character, 8 spaces.
-#define TIMING_RETURN     (- TIME_RETURN)                 // Residual time for return print character, full line.
-#define TIMING_LOADPAPER  (POSITIVE(TIME_LOADPAPER - (2 * FSCAN_1_CHANGE)))
-                                                          // Residual time for a load paper.
+#define TIME_RELEASE_NOSHIFT_1   (13 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_2   (12 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_3   (11 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_4   (10 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_5   ( 9 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_6   ( 8 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_7   ( 7 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_8   ( 6 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_9   ( 5 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_10  ( 4 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_11  ( 3 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_12  ( 2 * CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_13  (     CSCAN_NOCHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_14  (                      FSCAN_1_CHANGE)
 
-// Printer timing measurement values.
-#define PRINTER_TIMING_MAX_PAD      40000  // Maximum pad value.
+#define TIME_PRESS_SHIFT_2   (                      2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_3   (     CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_4   ( 2 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_6   ( 4 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_7   ( 5 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_8   ( 6 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_9   ( 7 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_10  ( 8 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_11  ( 9 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_12  (10 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_13  (11 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_14  (12 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+
+#define TIME_RELEASE_SHIFT_2   (12 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_3   (11 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_4   (10 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_6   ( 8 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_7   ( 7 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_8   ( 6 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_9   ( 5 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_10  ( 4 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_11  ( 3 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_12  ( 2 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_13  (     CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_14  (                      2 * FSCAN_1_CHANGE)
+
+#define TIME_PRESS_CODE_2   (14 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_3   (15 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_4   (16 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_6   ( 4 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_7   ( 5 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_8   ( 6 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_9   ( 7 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_10  ( 8 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_11  ( 9 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_12  (10 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_13  (11 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_14  (12 * CSCAN_NOCHANGE + 2 * CSCAN_CHANGE)
+
+#define TIME_RELEASE_CODE_2   (12 * CSCAN_NOCHANGE +     FSCAN_2_CHANGES)
+#define TIME_RELEASE_CODE_3   (11 * CSCAN_NOCHANGE +     FSCAN_2_CHANGES)
+#define TIME_RELEASE_CODE_4   (10 * CSCAN_NOCHANGE +     FSCAN_2_CHANGES)
+#define TIME_RELEASE_CODE_6   ( 8 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_7   ( 7 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_8   ( 6 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_9   ( 5 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_10  ( 4 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_11  ( 3 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_12  ( 2 * CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_13  (     CSCAN_NOCHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_14  (                      2 * FSCAN_1_CHANGE)
 
 // ISR values.
 #define ISR_DELAY  20  // ISR delay (in usec) before reading column lines.
@@ -1587,13 +1556,14 @@ DJB */
 // EEPROM data locations.
 #define EEPROM_FINGERPRINT     0  // EEPROM location of fingerprint byte.                        Used by all emulations.
 #define EEPROM_VERSION         1  // EEPROM location of firmware version byte.                   Used by all emulations.
+#define EEPROM_EMULATION       7  // EEPROM location of emulation byte.                          Used by all emulations.
 #define EEPROM_ERRORS          2  // EEPROM location of errors setting byte.                     Used by all emulations.
 #define EEPROM_WARNINGS        3  // EEPROM location of warnings setting byte.                   Used by all emulations.
 #define EEPROM_BATTERY         4  // EEPROM location of battery setting byte.                    Used by all emulations.
 #define EEPROM_LMARGIN         5  // EEPROM location of left margin setting byte.                Used by all emulations.
 #define EEPROM_RMARGIN         6  // EEPROM location of right margin setting byte.               Used by all emulations.
-#define EEPROM_EMULATION       7  // EEPROM location of emulation.                               Used by all emulations.
 #define EEPROM_OFFSET         30  // EEPROM location of line offset byte.                        Used by all emulations.
+#define EEPROM_ASCIIWHEEL     34  // EEPROM location of ASCII printwheel setting byte.           Used by all emulations.
 
 #define EEPROM_SLASH          10  // EEPROM location of slash zero setting byte.                 Used by IBM 1620 Jr.
 #define EEPROM_BOLD           11  // EEPROM location of bold setting byte.                       Used by IBM 1620 Jr.
@@ -1611,7 +1581,6 @@ DJB */
 #define EEPROM_RECEIVEEOL     31  // EEPROM location of receive end-of-line setting byte.        Used by ASCII Terminal.
 #define EEPROM_ESCAPESEQUENCE 32  // EEPROM location of escape sequence setting byte.            Used by ASCII Terminal.
 #define EEPROM_UPPERCASE      33  // EEPROM location of uppercase only setting byte.             Used by ASCII Terminal.
-#define EEPROM_ASCIIWHEEL     34  // EEPROM location of ASCII printwheel setting byte.           Used by ASCII Terminal.
 
 #define EEPROM_TABS          100  // EEPROM location of tab table bytes [200].                   Used by all emulations.
 
@@ -1630,7 +1599,7 @@ DJB */
 #define ERROR_BAD_CODE    6  // Bad print code error.
 #define ERROR_BAD_ESCAPE  7  // Bad escape sequence error.
 
-#define NUM_ERRORS              8  // Number of error codes.
+#define NUM_ERRORS        8  // Number of error codes.
 
 // Warning codes.
 #define WARNING_NULL             0  // Null warning.
@@ -1748,12 +1717,14 @@ DJB */
 #endif
 
 // Configuration parameters initial values.
+#define INITIAL_EMULATION       EMULATION_NULL   // Current emulation.
 #define INITIAL_ERRORS          SETTING_TRUE     // Report errors.
 #define INITIAL_WARNINGS        SETTING_FALSE    // Report warnings.
 #define INITIAL_BATTERY         SETTING_FALSE    // Battery installed.
 #define INITIAL_LMARGIN         1                // Left margin.
 #define INITIAL_RMARGIN         LENGTH_DEFAULT   // Right margin.
-#define INITIAL_EMULATION       EMULATION_NULL   // Current emulation.
+#define INITIAL_OFFSET          0                // Column offset.
+#define INITIAL_ASCIIWHEEL      SETTING_FALSE    // ASCII printwheel.
 #define INITIAL_SLASH           SETTING_TRUE     // Print slashed zeroes.
 #define INITIAL_BOLD            SETTING_FALSE    // Print bold input.
 #define INITIAL_SERIAL          SERIAL_USB       // Serial type.
@@ -1763,14 +1734,12 @@ DJB */
 #define INITIAL_DPS             DPS_8N1          // Databits, parity, stopbits.
 #define INITIAL_SWFLOW          SWFLOW_XON_XOFF  // Software flow control.
 #define INITIAL_HWFLOW          HWFLOW_NONE      // Hardware flow control.
-#define INITIAL_ASCIIWHEEL      SETTING_FALSE    // ASCII printwheel.
 #define INITIAL_UPPERCASE       SETTING_FALSE    // Uppercase only.
 #define INITIAL_AUTORETURN      SETTING_TRUE     // Auto return.
 #define INITIAL_TRANSMITEOL     EOL_CR           // Send end-of-line.
 #define INITIAL_RECEIVEEOL      EOL_CRLF         // Receive end-of-line.
 #define INITIAL_ESCAPESEQUENCE  ESCAPE_IGNORE    // Escape sequences.
 #define INITIAL_LENGTH          LENGTH_DEFAULT   // Line length.
-#define INITIAL_OFFSET          0                // Column offset.
 #define INITIAL_IBM_OFFSET      0                // Column offset for IBM 1620 Jr.
 #define INITIAL_ASCII_OFFSET    1                // Column offset for ASCII Terminal.
 #define INITIAL_FUTURE_OFFSET   1                // Column offset for future emulation.
@@ -1786,33 +1755,38 @@ DJB */
 struct key_action {
   byte                     action;     // Action to take.
   char                     send;       // Character to send or process as setup command.
+  short                    _pad_;      // Structure alignment padding.
   union {                              // Print info.
     const void              *init;     //   Used for static initialization.
-    const struct print_info *print;    //   Character to print.
-    const struct print_info **prints;  //   Special character to print.
+    const struct print_info *element;  //   Element to print.
   };
 };
+#define NULL_KEY_ACTION  (const struct key_action*)NULL
 
 // Serial input action structure.
 struct serial_action {
   int                      action;     // Action to take.
   union {                              // Print info.
     const void              *init;     //   Used for static initialization.
-    const struct print_info *print;    //   Character to print.
-    const struct print_info **prints;  //   Special character to print.
+    const struct print_info *element;  //   Element to print.
   };
 };
+#define NULL_SERIAL_ACTION  (const struct serial_action*)NULL
 
-// Print string information structure.
+// Print element information structure.
 struct print_info {
-  int                    spacing;  // Spacing type;
-  int                    timing;   // Timing value (in usec).
-  union {                          // Print codes string.
-    const void          *init;     //   Used for static initialization.
-    const byte (*string)[1000];    //   Used for referencing.
+  byte                   type;               // Element type.
+  byte                   spacing;            // Spacing type.
+  byte                   position;           // Printwheel rotational position.
+  byte                   _pad_;              // Structure alignment padding.
+  int                    timing;             // Timing value (in usec).
+  union {                                    // Print codes.
+    const void          *init;               //   Used for static initialization.
+    const byte (*element)[1000];             //   Used for simple elements.
+    const struct print_info **pelement;      //   Used for complex and dynamic elements.
   };
 };
-
+#define NULL_PRINT_INFO  (const struct print_info*)NULL
 
 //**********************************************************************************************************************
 //
@@ -1820,484 +1794,797 @@ struct print_info {
 //
 //**********************************************************************************************************************
 
-// <load paper> print string.
-const byte WW_STR_LOADPAPER[]              = {WW_CATCH_UP, WW_LOADPAPER, WW_NULL_4, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_LOADPAPER = {SPACING_RETURN, TIMING_LOADPAPER, &WW_STR_LOADPAPER};
+// <load paper>, <set top of form> print strings.
+const byte WW_STR_LOADPAPER[]                 = {WW_CATCH_UP, WW_LOADPAPER_SETTOPOFFORM, WW_NULL_4, WW_NULL_14,
+                                                 WW_NULL};
+const struct print_info WW_PRINT_LOADPAPER    = {ELEMENT_SIMPLE, SPACING_LOADPAPER, 0, 0,
+                                                 TIME_LOADPAPER - (TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4),
+                                                 &WW_STR_LOADPAPER};
+const byte WW_STR_SETTOPOFFORM[]              = {WW_CATCH_UP, WW_Code, WW_LOADPAPER_SETTOPOFFORM, WW_Code, WW_NULL_4,
+                                                 WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_SETTOPOFFORM = {ELEMENT_SIMPLE, SPACING_LOADPAPER, 0, 0,
+                                                 TIME_LOADPAPER - (TIME_PRESS_CODE_4 + TIME_RELEASE_CODE_4),
+                                                 &WW_STR_SETTOPOFFORM};
 
 // <space>, <required space>, Tab, C Rtn print strings.
-const byte WW_STR_SPACE[]                 = {WW_SPACE_REQSPACE, WW_NULL_4, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_SPACE    = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_SPACE};
+const byte WW_STR_SPACE[]              = {WW_SPACE_REQSPACE, WW_NULL_4, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_SPACE = {ELEMENT_SIMPLE, SPACING_FORWARD, POSITION_NOCHANGE, 0,
+                                          TIME_MOVE - (TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4),
+                                          &WW_STR_SPACE};
 
 const byte WW_STR_REQSPACE[]              = {WW_Code, WW_SPACE_REQSPACE, WW_Code, WW_NULL_4, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_REQSPACE = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_REQSPACE};
+const struct print_info WW_PRINT_REQSPACE = {ELEMENT_SIMPLE, SPACING_FORWARD, POSITION_NOCHANGE, 0,
+                                             TIME_MOVE - (TIME_PRESS_CODE_4 + TIME_RELEASE_CODE_4),
+                                             &WW_STR_REQSPACE};
 
-const byte WW_STR_Tab[]                   = {WW_Tab_IndL, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Tab      = {SPACING_TAB, TIMING_TAB, &WW_STR_Tab};
+const byte WW_STR_Tab[]              = {WW_Tab_IndL, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Tab = {ELEMENT_SIMPLE, SPACING_TAB, POSITION_NOCHANGE, 0,
+                                        TIME_TAB_OFFSET - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                        &WW_STR_Tab};
 
-const byte WW_STR_CRtn[]                  = {WW_CRtn_IndClr, WW_NULL_13, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_CRtn     = {SPACING_RETURN, TIMING_RETURN, &WW_STR_CRtn};
+const byte WW_STR_CRtn[]              = {WW_CRtn_IndClr, WW_NULL_13, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_CRtn = {ELEMENT_SIMPLE, SPACING_RETURN, POSITION_NOCHANGE, 0,
+                                         TIME_RETURN_OFFSET - (TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13),
+                                         &WW_STR_CRtn};
 
-// <left shift>, <right shift>, Lock print strings.
+// <left shift>, <right shift>, Lock, <code> print strings.
 const byte WW_STR_LShift[]              = {WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_LShift = {SPACING_NONE, TIMING_NONE, &WW_STR_LShift};
+const struct print_info WW_PRINT_LShift = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                           TIME_NULL - (TIME_PRESS_NOSHIFT_1 + TIME_RELEASE_NOSHIFT_1),
+                                           &WW_STR_LShift};
 
 const byte WW_STR_RShift[]              = {WW_RShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RShift = {SPACING_NONE, TIMING_NONE, &WW_STR_RShift};
+const struct print_info WW_PRINT_RShift = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                           TIME_NULL - (TIME_PRESS_NOSHIFT_1 + TIME_RELEASE_NOSHIFT_1),
+                                           &WW_STR_RShift};
 
-const byte WW_STR_Lock[]                = {WW_Lock, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Lock   = {SPACING_NONE, TIMING_NONE, &WW_STR_Lock};
+const byte WW_STR_Lock[]              = {WW_Lock, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Lock = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                         &WW_STR_Lock};
+
+const byte WW_STR_Code[]              = {WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Code = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_NOSHIFT_5 + TIME_RELEASE_NOSHIFT_5),
+                                         &WW_STR_Code};
 
 // A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z print strings.
 const byte WW_STR_A[]              = {WW_LShift, WW_a_A, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_A = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_A};
+const struct print_info WW_PRINT_A = {ELEMENT_SIMPLE, SPACING_FORWARD, 31, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_3 + TIME_RELEASE_SHIFT_3),
+                                      &WW_STR_A};
 
 const byte WW_STR_B[]              = {WW_RShift, WW_b_B_Bold, WW_RShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_B = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_B};
+const struct print_info WW_PRINT_B = {ELEMENT_SIMPLE, SPACING_FORWARD, 17, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                      &WW_STR_B};
 
 const byte WW_STR_C[]              = {WW_LShift, WW_c_C_Ctr, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_C = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_C};
+const struct print_info WW_PRINT_C = {ELEMENT_SIMPLE, SPACING_FORWARD, 26, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_7 + TIME_RELEASE_SHIFT_7),
+                                      &WW_STR_C};
 
 const byte WW_STR_D[]              = {WW_LShift, WW_d_D_DecT, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_D = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_D};
+const struct print_info WW_PRINT_D = {ELEMENT_SIMPLE, SPACING_FORWARD, 28, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_7 + TIME_RELEASE_SHIFT_7),
+                                      &WW_STR_D};
 
 const byte WW_STR_E[]              = {WW_LShift, WW_e_E, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_E = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_E};
+const struct print_info WW_PRINT_E = {ELEMENT_SIMPLE, SPACING_FORWARD, 29, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_7 + TIME_RELEASE_SHIFT_7),
+                                      &WW_STR_E};
 
 const byte WW_STR_F[]              = {WW_LShift, WW_f_F, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_F = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_F};
+const struct print_info WW_PRINT_F = {ELEMENT_SIMPLE, SPACING_FORWARD, 16, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                      &WW_STR_F};
 
 const byte WW_STR_G[]              = {WW_LShift, WW_g_G, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_G = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_G};
+const struct print_info WW_PRINT_G = {ELEMENT_SIMPLE, SPACING_FORWARD, 14, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                      &WW_STR_G};
 
 const byte WW_STR_H[]              = {WW_LShift, WW_h_H_12DOWN, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_H = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_H};
+const struct print_info WW_PRINT_H = {ELEMENT_SIMPLE, SPACING_FORWARD, 19, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                      &WW_STR_H};
 
 const byte WW_STR_I[]              = {WW_LShift, WW_i_I_Word, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_I = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_I};
+const struct print_info WW_PRINT_I = {ELEMENT_SIMPLE, SPACING_FORWARD, 30, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_10 + TIME_RELEASE_SHIFT_10),
+                                      &WW_STR_I};
 
 const byte WW_STR_J[]              = {WW_LShift, WW_j_J, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_J = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_J};
+const struct print_info WW_PRINT_J = {ELEMENT_SIMPLE, SPACING_FORWARD, 32, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                      &WW_STR_J};
 
 const byte WW_STR_K[]              = {WW_LShift, WW_k_K, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_K = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_K};
+const struct print_info WW_PRINT_K = {ELEMENT_SIMPLE, SPACING_FORWARD, 42, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_10 + TIME_RELEASE_SHIFT_10),
+                                      &WW_STR_K};
 
 const byte WW_STR_L[]              = {WW_LShift, WW_l_L_Lang, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_L = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_L};
+const struct print_info WW_PRINT_L = {ELEMENT_SIMPLE, SPACING_FORWARD, 23, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_11 + TIME_RELEASE_SHIFT_11),
+                                      &WW_STR_L};
 
 const byte WW_STR_M[]              = {WW_LShift, WW_m_M, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_M = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_M};
+const struct print_info WW_PRINT_M = {ELEMENT_SIMPLE, SPACING_FORWARD, 35, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                      &WW_STR_M};
 
 const byte WW_STR_N[]              = {WW_RShift, WW_n_N_Caps, WW_RShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_N = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_N};
+const struct print_info WW_PRINT_N = {ELEMENT_SIMPLE, SPACING_FORWARD, 25, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                      &WW_STR_N};
 
 const byte WW_STR_O[]              = {WW_LShift, WW_o_O_RFlsh, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_O = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_O};
+const struct print_info WW_PRINT_O = {ELEMENT_SIMPLE, SPACING_FORWARD, 33, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_11 + TIME_RELEASE_SHIFT_11),
+                                      &WW_STR_O};
 
 const byte WW_STR_P[]              = {WW_LShift, WW_p_P, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_P = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_P};
+const struct print_info WW_PRINT_P = {ELEMENT_SIMPLE, SPACING_FORWARD, 20, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                      &WW_STR_P};
 
 const byte WW_STR_Q[]              = {WW_LShift, WW_q_Q_Impr, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Q = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_Q};
+const struct print_info WW_PRINT_Q = {ELEMENT_SIMPLE, SPACING_FORWARD, 61, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_3 + TIME_RELEASE_SHIFT_3),
+                                      &WW_STR_Q};
 
 const byte WW_STR_R[]              = {WW_LShift, WW_r_R_ARtn, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_R = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_R};
+const struct print_info WW_PRINT_R = {ELEMENT_SIMPLE, SPACING_FORWARD, 22, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                      &WW_STR_R};
 
 const byte WW_STR_S[]              = {WW_LShift, WW_s_S, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_S = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_S};
+const struct print_info WW_PRINT_S = {ELEMENT_SIMPLE, SPACING_FORWARD, 24, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_6 + TIME_RELEASE_SHIFT_6),
+                                      &WW_STR_S};
 
 const byte WW_STR_T[]              = {WW_LShift, WW_t_T, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_T = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_T};
+const struct print_info WW_PRINT_T = {ELEMENT_SIMPLE, SPACING_FORWARD, 27, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                      &WW_STR_T};
 
 const byte WW_STR_U[]              = {WW_LShift, WW_u_U_Cont, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_U = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_U};
+const struct print_info WW_PRINT_U = {ELEMENT_SIMPLE, SPACING_FORWARD, 15, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                      &WW_STR_U};
 
 const byte WW_STR_V[]              = {WW_LShift, WW_v_V, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_V = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_V};
+const struct print_info WW_PRINT_V = {ELEMENT_SIMPLE, SPACING_FORWARD, 12, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                      &WW_STR_V};
 
 const byte WW_STR_W[]              = {WW_LShift, WW_w_W, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_W = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_W};
+const struct print_info WW_PRINT_W = {ELEMENT_SIMPLE, SPACING_FORWARD, 40, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_6 + TIME_RELEASE_SHIFT_6),
+                                      &WW_STR_W};
 
 const byte WW_STR_X[]              = {WW_LShift, WW_x_X_POWERWISE, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_X = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_X};
+const struct print_info WW_PRINT_X = {ELEMENT_SIMPLE, SPACING_FORWARD, 44, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_6 + TIME_RELEASE_SHIFT_6),
+                                      &WW_STR_X};
 
 const byte WW_STR_Y[]              = {WW_LShift, WW_y_Y_12UP, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Y = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_Y};
+const struct print_info WW_PRINT_Y = {ELEMENT_SIMPLE, SPACING_FORWARD, 37, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                      &WW_STR_Y};
 
 const byte WW_STR_Z[]              = {WW_LShift, WW_z_Z, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL}; 
-const struct print_info WW_PRINT_Z = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_Z};
+const struct print_info WW_PRINT_Z = {ELEMENT_SIMPLE, SPACING_FORWARD, 18, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_3 + TIME_RELEASE_SHIFT_3),
+                                      &WW_STR_Z};
 
 // a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z print strings.
 const byte WW_STR_a[]              = {WW_a_A, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_a = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_a};
+const struct print_info WW_PRINT_a = {ELEMENT_SIMPLE, SPACING_FORWARD, 0, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3),
+                                      &WW_STR_a};
 
 const byte WW_STR_b[]              = {WW_b_B_Bold, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_b = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_b};
+const struct print_info WW_PRINT_b = {ELEMENT_SIMPLE, SPACING_FORWARD, 88, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_b};
 
 const byte WW_STR_c[]              = {WW_c_C_Ctr, WW_NULL_7, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_c = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_c};
+const struct print_info WW_PRINT_c = {ELEMENT_SIMPLE, SPACING_FORWARD, 4, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_7 + TIME_RELEASE_NOSHIFT_7),
+                                      &WW_STR_c};
 
 const byte WW_STR_d[]              = {WW_d_D_DecT, WW_NULL_7, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_d = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_d};
+const struct print_info WW_PRINT_d = {ELEMENT_SIMPLE, SPACING_FORWARD, 6, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_7 + TIME_RELEASE_NOSHIFT_7),
+                                      &WW_STR_d};
 
 const byte WW_STR_e[]              = {WW_e_E, WW_NULL_7, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_e = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_e};
+const struct print_info WW_PRINT_e = {ELEMENT_SIMPLE, SPACING_FORWARD, 95, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_7 + TIME_RELEASE_NOSHIFT_7),
+                                      &WW_STR_e};
 
 const byte WW_STR_f[]              = {WW_f_F, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_f = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_f};
+const struct print_info WW_PRINT_f = {ELEMENT_SIMPLE, SPACING_FORWARD, 9, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_f};
 
 const byte WW_STR_g[]              = {WW_g_G, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_g = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_g};
+const struct print_info WW_PRINT_g = {ELEMENT_SIMPLE, SPACING_FORWARD, 89, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_g};
 
 const byte WW_STR_h[]              = {WW_h_H_12DOWN, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_h = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_h};
+const struct print_info WW_PRINT_h = {ELEMENT_SIMPLE, SPACING_FORWARD, 7, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_h};
 
 const byte WW_STR_i[]              = {WW_i_I_Word, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_i = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_i};
+const struct print_info WW_PRINT_i = {ELEMENT_SIMPLE, SPACING_FORWARD, 92, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10),
+                                      &WW_STR_i};
 
 const byte WW_STR_j[]              = {WW_j_J, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_j = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_j};
+const struct print_info WW_PRINT_j = {ELEMENT_SIMPLE, SPACING_FORWARD, 85, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_j};
 
 const byte WW_STR_k[]              = {WW_k_K, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_k = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_k};
+const struct print_info WW_PRINT_k = {ELEMENT_SIMPLE, SPACING_FORWARD, 10, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10),
+                                      &WW_STR_k};
 
 const byte WW_STR_l[]              = {WW_l_L_Lang, WW_NULL_11, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_l = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_l};
+const struct print_info WW_PRINT_l = {ELEMENT_SIMPLE, SPACING_FORWARD, 8, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_11 + TIME_RELEASE_NOSHIFT_11),
+                                      &WW_STR_l};
 
 const byte WW_STR_m[]              = {WW_m_M, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_m = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_m};
+const struct print_info WW_PRINT_m = {ELEMENT_SIMPLE, SPACING_FORWARD, 3, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_m};
 
 const byte WW_STR_n[]              = {WW_n_N_Caps, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_n = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_n};
+const struct print_info WW_PRINT_n = {ELEMENT_SIMPLE, SPACING_FORWARD, 1, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_n};
 
 const byte WW_STR_o[]              = {WW_o_O_RFlsh, WW_NULL_11, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_o = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_o};
+const struct print_info WW_PRINT_o = {ELEMENT_SIMPLE, SPACING_FORWARD, 94, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_11 + TIME_RELEASE_NOSHIFT_11),
+                                      &WW_STR_o};
 
 const byte WW_STR_p[]              = {WW_p_P, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_p = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_p};
+const struct print_info WW_PRINT_p = {ELEMENT_SIMPLE, SPACING_FORWARD, 81, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 + TIME_RELEASE_NOSHIFT_12),
+                                      &WW_STR_p};
 
 const byte WW_STR_q[]              = {WW_q_Q_Impr, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_q = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_q};
+const struct print_info WW_PRINT_q = {ELEMENT_SIMPLE, SPACING_FORWARD, 91, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3),
+                                      &WW_STR_q};
 
 const byte WW_STR_r[]              = {WW_r_R_ARtn, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_r = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_r};
+const struct print_info WW_PRINT_r = {ELEMENT_SIMPLE, SPACING_FORWARD, 2, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_r};
 
 const byte WW_STR_s[]              = {WW_s_S, WW_NULL_6, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_s = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_s};
+const struct print_info WW_PRINT_s = {ELEMENT_SIMPLE, SPACING_FORWARD, 5, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_6 + TIME_RELEASE_NOSHIFT_6),
+                                      &WW_STR_s};
 
 const byte WW_STR_t[]              = {WW_t_T, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_t = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_t};
+const struct print_info WW_PRINT_t = {ELEMENT_SIMPLE, SPACING_FORWARD, 93, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_t};
 
 const byte WW_STR_u[]              = {WW_u_U_Cont, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_u = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_u};
+const struct print_info WW_PRINT_u = {ELEMENT_SIMPLE, SPACING_FORWARD, 90, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_u};
 
 const byte WW_STR_v[]              = {WW_v_V, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_v = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_v};
+const struct print_info WW_PRINT_v = {ELEMENT_SIMPLE, SPACING_FORWARD, 82, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_v};
 
 const byte WW_STR_w[]              = {WW_w_W, WW_NULL_6, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_w = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_w};
+const struct print_info WW_PRINT_w = {ELEMENT_SIMPLE, SPACING_FORWARD, 84, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_6 + TIME_RELEASE_NOSHIFT_6),
+                                      &WW_STR_w};
 
 const byte WW_STR_x[]              = {WW_x_X_POWERWISE, WW_NULL_6, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_x = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_x};
+const struct print_info WW_PRINT_x = {ELEMENT_SIMPLE, SPACING_FORWARD, 80, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_6 + TIME_RELEASE_NOSHIFT_6),
+                                      &WW_STR_x};
 
 const byte WW_STR_y[]              = {WW_y_Y_12UP, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_y = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_y};
+const struct print_info WW_PRINT_y = {ELEMENT_SIMPLE, SPACING_FORWARD, 87, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_y};
 
 const byte WW_STR_z[]              = {WW_z_Z, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_z = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_z};
+const struct print_info WW_PRINT_z = {ELEMENT_SIMPLE, SPACING_FORWARD, 83, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3),
+                                      &WW_STR_z};
 
 // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 print strings.
 const byte WW_STR_0[]              = {WW_0_RPAREN, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_0 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_0};
+const struct print_info WW_PRINT_0 = {ELEMENT_SIMPLE, SPACING_FORWARD, 47, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 + TIME_RELEASE_NOSHIFT_12),
+                                      &WW_STR_0};
 
 const byte WW_STR_1[]              = {WW_1_EXCLAMATION_Spell, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_1 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_1};
+const struct print_info WW_PRINT_1 = {ELEMENT_SIMPLE, SPACING_FORWARD, 45, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3),
+                                      &WW_STR_1};
 
 const byte WW_STR_2[]              = {WW_2_AT_Add, WW_NULL_6, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_2 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_2};
+const struct print_info WW_PRINT_2 = {ELEMENT_SIMPLE, SPACING_FORWARD, 46, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_6 + TIME_RELEASE_NOSHIFT_6),
+                                      &WW_STR_2};
 
 const byte WW_STR_3[]              = {WW_3_POUND_Del, WW_NULL_7, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_3 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_3};
+const struct print_info WW_PRINT_3 = {ELEMENT_SIMPLE, SPACING_FORWARD, 43, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_7 + TIME_RELEASE_NOSHIFT_7),
+                                      &WW_STR_3};
 
 const byte WW_STR_4[]              = {WW_4_DOLLAR_Vol, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_4 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_4};
+const struct print_info WW_PRINT_4 = {ELEMENT_SIMPLE, SPACING_FORWARD, 49, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_4};
 
 const byte WW_STR_5[]              = {WW_5_PERCENT, WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_5 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_5};
+const struct print_info WW_PRINT_5 = {ELEMENT_SIMPLE, SPACING_FORWARD, 48, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8),
+                                      &WW_STR_5};
 
 const byte WW_STR_6[]              = {WW_6_CENT, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_6 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_6};
+const struct print_info WW_PRINT_6 = {ELEMENT_SIMPLE, SPACING_FORWARD, 50, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_6};
 
 const byte WW_STR_7[]              = {WW_7_AMPERSAND, WW_NULL_9, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_7 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_7};
+const struct print_info WW_PRINT_7 = {ELEMENT_SIMPLE, SPACING_FORWARD, 52, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9),
+                                      &WW_STR_7};
 
 const byte WW_STR_8[]              = {WW_8_ASTERISK, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_8 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_8};
+const struct print_info WW_PRINT_8 = {ELEMENT_SIMPLE, SPACING_FORWARD, 51, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10),
+                                      &WW_STR_8};
 
 const byte WW_STR_9[]              = {WW_9_LPAREN_Stop, WW_NULL_11, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_9 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_9};
+const struct print_info WW_PRINT_9 = {ELEMENT_SIMPLE, SPACING_FORWARD, 41, 0,
+                                      TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_11 + TIME_RELEASE_NOSHIFT_11),
+                                      &WW_STR_9};
 
 // !, @, #, $, %, <cent>, &, *, (, ) print strings.
 const byte WW_STR_EXCLAMATION[]              = {WW_LShift, WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1, WW_NULL_14,
                                                 WW_NULL};
-const struct print_info WW_PRINT_EXCLAMATION = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_EXCLAMATION};
+const struct print_info WW_PRINT_EXCLAMATION = {ELEMENT_SIMPLE, SPACING_FORWARD, 72, 0,
+                                                TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_3 + TIME_RELEASE_SHIFT_3),
+                                                &WW_STR_EXCLAMATION};
 
-const byte WW_STR_AT[]                       = {WW_LShift, WW_2_AT_Add, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_AT          = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_AT};
+const byte WW_STR_AT[]              = {WW_LShift, WW_2_AT_Add, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_AT = {ELEMENT_SIMPLE, SPACING_FORWARD, 60, 0,
+                                       TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_6 + TIME_RELEASE_SHIFT_6),
+                                       &WW_STR_AT};
 
-const byte WW_STR_POUND[]                    = {WW_LShift, WW_3_POUND_Del, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_POUND       = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_POUND};
+const byte WW_STR_POUND[]              = {WW_LShift, WW_3_POUND_Del, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_POUND = {ELEMENT_SIMPLE, SPACING_FORWARD, 55, 0,
+                                          TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_7 + TIME_RELEASE_SHIFT_7),
+                                          &WW_STR_POUND};
 
-const byte WW_STR_DOLLAR[]                   = {WW_LShift, WW_4_DOLLAR_Vol, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_DOLLAR      = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_DOLLAR};
+const byte WW_STR_DOLLAR[]              = {WW_LShift, WW_4_DOLLAR_Vol, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_DOLLAR = {ELEMENT_SIMPLE, SPACING_FORWARD, 54, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                           &WW_STR_DOLLAR};
 
-const byte WW_STR_PERCENT[]                  = {WW_LShift, WW_5_PERCENT, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_PERCENT     = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_PERCENT};
+const byte WW_STR_PERCENT[]              = {WW_LShift, WW_5_PERCENT, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_PERCENT = {ELEMENT_SIMPLE, SPACING_FORWARD, 56, 0,
+                                            TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_8 + TIME_RELEASE_SHIFT_8),
+                                            &WW_STR_PERCENT};
 
-const byte WW_STR_CENT[]                     = {WW_LShift, WW_6_CENT, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_CENT        = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_CENT};
+const byte WW_STR_CENT[]              = {WW_LShift, WW_6_CENT, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_CENT = {ELEMENT_SIMPLE, SPACING_FORWARD, 57, 0,
+                                         TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                         &WW_STR_CENT};
 
-const byte WW_STR_AMPERSAND[]                = {WW_LShift, WW_7_AMPERSAND, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_AMPERSAND   = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_AMPERSAND};
+const byte WW_STR_AMPERSAND[]              = {WW_LShift, WW_7_AMPERSAND, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_AMPERSAND = {ELEMENT_SIMPLE, SPACING_FORWARD, 62, 0,
+                                              TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                              &WW_STR_AMPERSAND};
 
-const byte WW_STR_ASTERISK[]                 = {WW_LShift, WW_8_ASTERISK, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_ASTERISK    = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_ASTERISK};
+const byte WW_STR_ASTERISK[]              = {WW_LShift, WW_8_ASTERISK, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_ASTERISK = {ELEMENT_SIMPLE, SPACING_FORWARD, 53, 0,
+                                             TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_10 + TIME_RELEASE_SHIFT_10),
+                                             &WW_STR_ASTERISK};
 
-const byte WW_STR_LPAREN[]                   = {WW_LShift, WW_9_LPAREN_Stop, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_LPAREN      = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_LPAREN};
+const byte WW_STR_LPAREN[]              = {WW_LShift, WW_9_LPAREN_Stop, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_LPAREN = {ELEMENT_SIMPLE, SPACING_FORWARD, 34, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_11 + TIME_RELEASE_SHIFT_11),
+                                           &WW_STR_LPAREN};
 
-const byte WW_STR_RPAREN[]                   = {WW_LShift, WW_0_RPAREN, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RPAREN      = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_RPAREN};
+const byte WW_STR_RPAREN[]              = {WW_LShift, WW_0_RPAREN, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_RPAREN = {ELEMENT_SIMPLE, SPACING_FORWARD, 21, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                           &WW_STR_RPAREN};
 
 // ., ,, [, ], =, +, /, ?, -, _, :, ;, ', ", <half>, <quarter>, +/-, <degree>, <superscript 2>, <superscript 3>,
 // <section>, <paragraph> print strings.
-const byte WW_STR_PERIOD[]                  = {WW_PERIOD_PERIOD, WW_NULL_11, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_PERIOD     = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_PERIOD};
+const byte WW_STR_PERIOD[]              = {WW_PERIOD_PERIOD, WW_NULL_11, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_PERIOD = {ELEMENT_SIMPLE, SPACING_FORWARD, 36, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_11 + TIME_RELEASE_NOSHIFT_11),
+                                           &WW_STR_PERIOD};
 
-const byte WW_STR_COMMA[]                   = {WW_COMMA_COMMA, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_COMMA      = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_COMMA};
+const byte WW_STR_COMMA[]              = {WW_COMMA_COMMA, WW_NULL_10, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_COMMA = {ELEMENT_SIMPLE, SPACING_FORWARD, 38, 0,
+                                          TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10),
+                                          &WW_STR_COMMA};
 
-const byte WW_STR_LBRACKET[]                = {WW_LShift, WW_RBRACKET_LBRACKET_SUPER3, WW_LShift, WW_NULL_1, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_LBRACKET   = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_LBRACKET};
+const byte WW_STR_LBRACKET[]              = {WW_LShift, WW_RBRACKET_LBRACKET_SUPER3, WW_LShift, WW_NULL_1, WW_NULL_14,
+                                             WW_NULL};
+const struct print_info WW_PRINT_LBRACKET = {ELEMENT_SIMPLE, SPACING_FORWARD, 64, 0,
+                                             TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_10 + TIME_RELEASE_SHIFT_10),
+                                             &WW_STR_LBRACKET};
 
-const byte WW_STR_RBRACKET[]                = {WW_RBRACKET_LBRACKET_SUPER3, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RBRACKET   = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_RBRACKET};
+const byte WW_STR_RBRACKET[]              = {WW_RBRACKET_LBRACKET_SUPER3, WW_NULL_10, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_RBRACKET = {ELEMENT_SIMPLE, SPACING_FORWARD, 63, 0,
+                                             TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10),
+                                             &WW_STR_RBRACKET};
 
-const byte WW_STR_EQUAL[]                   = {WW_EQUAL_PLUS, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_EQUAL      = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_EQUAL};
+const byte WW_STR_EQUAL[]              = {WW_EQUAL_PLUS, WW_NULL_10, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_EQUAL = {ELEMENT_SIMPLE, SPACING_FORWARD, 76, 0,
+                                          TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10),
+                                          &WW_STR_EQUAL};
 
-const byte WW_STR_PLUS[]                    = {WW_LShift, WW_EQUAL_PLUS, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_PLUS       = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_PLUS};
+const byte WW_STR_PLUS[]              = {WW_LShift, WW_EQUAL_PLUS, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_PLUS = {ELEMENT_SIMPLE, SPACING_FORWARD, 58, 0,
+                                         TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_10 + TIME_RELEASE_SHIFT_10),
+                                         &WW_STR_PLUS};
 
-const byte WW_STR_SLASH[]                   = {WW_SLASH_QUESTION, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_SLASH      = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_SLASH};
+const byte WW_STR_SLASH[]              = {WW_SLASH_QUESTION, WW_NULL_12, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_SLASH = {ELEMENT_SIMPLE, SPACING_FORWARD, 39, 0,
+                                          TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 + TIME_RELEASE_NOSHIFT_12),
+                                          &WW_STR_SLASH};
 
-const byte WW_STR_QUESTION[]                = {WW_RShift, WW_SLASH_QUESTION, WW_RShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_QUESTION   = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_QUESTION};
+const byte WW_STR_QUESTION[]              = {WW_RShift, WW_SLASH_QUESTION, WW_RShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_QUESTION = {ELEMENT_SIMPLE, SPACING_FORWARD, 73, 0,
+                                             TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                             &WW_STR_QUESTION};
 
-const byte WW_STR_HYPHEN[]                  = {WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_HYPHEN     = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_HYPHEN};
+const byte WW_STR_HYPHEN[]              = {WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_HYPHEN = {ELEMENT_SIMPLE, SPACING_FORWARD, 13, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 + TIME_RELEASE_NOSHIFT_12),
+                                           &WW_STR_HYPHEN};
 
 const byte WW_STR_UNDERSCORE[]              = {WW_LShift, WW_HYPHEN_UNDERSCORE, WW_LShift, WW_NULL_1, WW_NULL_14,
                                                WW_NULL};
-const struct print_info WW_PRINT_UNDERSCORE = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_UNDERSCORE};
+const struct print_info WW_PRINT_UNDERSCORE = {ELEMENT_SIMPLE, SPACING_FORWARD, 78, 0,
+                                               TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                               &WW_STR_UNDERSCORE};
 
-const byte WW_STR_COLON[]                   = {WW_LShift, WW_SEMICOLON_COLON_SECTION, WW_LShift, WW_NULL_1, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_COLON      = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_COLON};
+const byte WW_STR_COLON[]              = {WW_LShift, WW_SEMICOLON_COLON_SECTION, WW_LShift, WW_NULL_1, WW_NULL_14,
+                                          WW_NULL};
+const struct print_info WW_PRINT_COLON = {ELEMENT_SIMPLE, SPACING_FORWARD, 77, 0,
+                                          TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                          &WW_STR_COLON};
 
-const byte WW_STR_SEMICOLON[]               = {WW_SEMICOLON_COLON_SECTION, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_SEMICOLON  = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_SEMICOLON};
+const byte WW_STR_SEMICOLON[]              = {WW_SEMICOLON_COLON_SECTION, WW_NULL_12, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_SEMICOLON = {ELEMENT_SIMPLE, SPACING_FORWARD, 79, 0,
+                                              TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 + TIME_RELEASE_NOSHIFT_12),
+                                              &WW_STR_SEMICOLON};
 
 const byte WW_STR_APOSTROPHE[]              = {WW_APOSTROPHE_QUOTE_PARAGRAPH, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_APOSTROPHE = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_APOSTROPHE};
+const struct print_info WW_PRINT_APOSTROPHE = {ELEMENT_SIMPLE, SPACING_FORWARD, 75, 0,
+                                               TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 + TIME_RELEASE_NOSHIFT_12),
+                                               &WW_STR_APOSTROPHE};
 
-const byte WW_STR_QUOTE[]                   = {WW_LShift, WW_APOSTROPHE_QUOTE_PARAGRAPH, WW_LShift, WW_NULL_1,
-                                               WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_QUOTE      = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_QUOTE};
+const byte WW_STR_QUOTE[]              = {WW_LShift, WW_APOSTROPHE_QUOTE_PARAGRAPH, WW_LShift, WW_NULL_1, WW_NULL_14,
+                                          WW_NULL};
+const struct print_info WW_PRINT_QUOTE = {ELEMENT_SIMPLE, SPACING_FORWARD, 74, 0,
+                                          TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                          &WW_STR_QUOTE};
 
-const byte WW_STR_HALF[]                    = {WW_HALF_QUARTER_SUPER2, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_HALF       = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_HALF};
+const byte WW_STR_HALF[]              = {WW_HALF_QUARTER_SUPER2, WW_NULL_12, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_HALF = {ELEMENT_SIMPLE, SPACING_FORWARD, 70, 0,
+                                         TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 + TIME_RELEASE_NOSHIFT_12),
+                                         &WW_STR_HALF};
 
-const byte WW_STR_QUARTER[]                 = {WW_LShift, WW_HALF_QUARTER_SUPER2, WW_LShift, WW_NULL_1, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_QUARTER    = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_QUARTER};
+const byte WW_STR_QUARTER[]              = {WW_LShift, WW_HALF_QUARTER_SUPER2, WW_LShift, WW_NULL_1, WW_NULL_14,
+                                            WW_NULL};
+const struct print_info WW_PRINT_QUARTER = {ELEMENT_SIMPLE, SPACING_FORWARD, 71, 0,
+                                            TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                            &WW_STR_QUARTER};
 
-const byte WW_STR_PLUSMINUS[]               = {WW_PLUSMINUS_DEGREE, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_PLUSMINUS  = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_PLUSMINUS};
+const byte WW_STR_PLUSMINUS[]              = {WW_PLUSMINUS_DEGREE, WW_NULL_3, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_PLUSMINUS = {ELEMENT_SIMPLE, SPACING_FORWARD, 59, 0,
+                                              TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3),
+                                              &WW_STR_PLUSMINUS};
 
-const byte WW_STR_DEGREE[]                  = {WW_LShift, WW_PLUSMINUS_DEGREE, WW_LShift, WW_NULL_1, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_DEGREE     = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_DEGREE};
+const byte WW_STR_DEGREE[]              = {WW_LShift, WW_PLUSMINUS_DEGREE, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_DEGREE = {ELEMENT_SIMPLE, SPACING_FORWARD, 67, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_3 + TIME_RELEASE_SHIFT_3),
+                                           &WW_STR_DEGREE};
 
-const byte WW_STR_SUPER2[]                  = {WW_Code, WW_HALF_QUARTER_SUPER2, WW_Code, WW_NULL_5, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_SUPER2     = {SPACING_FORWARD, TIMING_CODE, &WW_STR_SUPER2};
+const byte WW_STR_SUPER2[]              = {WW_Code, WW_HALF_QUARTER_SUPER2, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_SUPER2 = {ELEMENT_SIMPLE, SPACING_FORWARD, 65, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_12 + TIME_RELEASE_CODE_12),
+                                           &WW_STR_SUPER2};
 
-const byte WW_STR_SUPER3[]                  = {WW_Code, WW_RBRACKET_LBRACKET_SUPER3, WW_Code, WW_NULL_5, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_SUPER3     = {SPACING_FORWARD, TIMING_CODE, &WW_STR_SUPER3};
+const byte WW_STR_SUPER3[]              = {WW_Code, WW_RBRACKET_LBRACKET_SUPER3, WW_Code, WW_NULL_5, WW_NULL_14,
+                                           WW_NULL};
+const struct print_info WW_PRINT_SUPER3 = {ELEMENT_SIMPLE, SPACING_FORWARD, 66, 0,
+                                           TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_10 + TIME_RELEASE_CODE_10),
+                                           &WW_STR_SUPER3};
 
-const byte WW_STR_SECTION[]                 = {WW_Code, WW_SEMICOLON_COLON_SECTION, WW_Code, WW_NULL_5, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_SECTION    = {SPACING_FORWARD, TIMING_CODE, &WW_STR_SECTION};
+const byte WW_STR_SECTION[]              = {WW_Code, WW_SEMICOLON_COLON_SECTION, WW_Code, WW_NULL_5, WW_NULL_14,
+                                            WW_NULL};
+const struct print_info WW_PRINT_SECTION = {ELEMENT_SIMPLE, SPACING_FORWARD, 68, 0,
+                                            TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_12 + TIME_RELEASE_CODE_12),
+                                            &WW_STR_SECTION};
 
-const byte WW_STR_PARAGRAPH[]               = {WW_Code, WW_APOSTROPHE_QUOTE_PARAGRAPH, WW_Code, WW_NULL_5, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info WW_PRINT_PARAGRAPH  = {SPACING_FORWARD, TIMING_CODE, &WW_STR_PARAGRAPH};
+const byte WW_STR_PARAGRAPH[]              = {WW_Code, WW_APOSTROPHE_QUOTE_PARAGRAPH, WW_Code, WW_NULL_5, WW_NULL_14,
+                                              WW_NULL};
+const struct print_info WW_PRINT_PARAGRAPH = {ELEMENT_SIMPLE, SPACING_FORWARD, 69, 0,
+                                              TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_12 + TIME_RELEASE_CODE_12),
+                                              &WW_STR_PARAGRAPH};
 
 // Bold, Caps, Word, Cont print strings.
 const byte WW_STR_Bold[]              = {WW_Code, WW_b_B_Bold, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Bold = {SPACING_NONE, TIMING_NONE, &WW_STR_Bold};
+const struct print_info WW_PRINT_Bold = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_8 + TIME_RELEASE_CODE_8),
+                                         &WW_STR_Bold};
 
 const byte WW_STR_Caps[]              = {WW_Code, WW_n_N_Caps, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Caps = {SPACING_NONE, TIMING_NONE, &WW_STR_Caps};
+const struct print_info WW_PRINT_Caps = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_9 + TIME_RELEASE_CODE_9),
+                                         &WW_STR_Caps};
 
 const byte WW_STR_Word[]              = {WW_Code, WW_i_I_Word, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Word = {SPACING_NONE, TIMING_NONE, &WW_STR_Word};
+const struct print_info WW_PRINT_Word = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_10 + TIME_RELEASE_CODE_10),
+                                         &WW_STR_Word};
 
 const byte WW_STR_Cont[]              = {WW_Code, WW_u_U_Cont, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Cont = {SPACING_NONE, TIMING_NONE, &WW_STR_Cont};
+const struct print_info WW_PRINT_Cont = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_9 + TIME_RELEASE_CODE_9),
+                                         &WW_STR_Cont};
 
-// Spell, Add, Del, A Rtn, Lang, Line Space, Impr, Vol, Ctr, Dec T, R Flsh, IndL, Indr Clr, RePrt, Stop print strings.
-const byte WW_STR_Spell[]                  = {WW_Code, WW_1_EXCLAMATION_Spell, WW_Code, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Spell     = {SPACING_NONE, TIMING_NONE, &WW_STR_Spell};
+// Spell, Add, Del, A Rtn, Lang, Line Space, Impr, Vol, Ctr, Dec T, R Flsh, IndL, Indr Clr, Re Prt, Stop print strings.
+const byte WW_STR_Spell[]              = {WW_Code, WW_1_EXCLAMATION_Spell, WW_Code, WW_NULL_3, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Spell = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_RESET, 0,
+                                          TIME_JIGGLE - (TIME_PRESS_CODE_3 + TIME_RELEASE_CODE_3),
+                                          &WW_STR_Spell};
 
-const byte WW_STR_Add[]                    = {WW_Code, WW_2_AT_Add, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Add       = {SPACING_NONE, TIMING_NONE, &WW_STR_Add};
+const byte WW_STR_Add[]              = {WW_Code, WW_2_AT_Add, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Add = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_RESET, 0,
+                                        TIME_JIGGLE - (TIME_PRESS_CODE_6 + TIME_RELEASE_CODE_6),
+                                        &WW_STR_Add};
 
-const byte WW_STR_Del[]                    = {WW_Code, WW_3_POUND_Del, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Del       = {SPACING_NONE, TIMING_NONE, &WW_STR_Del};
+const byte WW_STR_Del[]              = {WW_Code, WW_3_POUND_Del, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Del = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_RESET, 0,
+                                        TIME_JIGGLE - (TIME_PRESS_CODE_7 + TIME_RELEASE_CODE_7),
+                                        &WW_STR_Del};
 
-const byte WW_STR_ARtn[]                   = {WW_Code, WW_r_R_ARtn, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_ARtn      = {SPACING_NONE, TIMING_NONE, &WW_STR_ARtn};
+const byte WW_STR_ARtn[]              = {WW_Code, WW_r_R_ARtn, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_ARtn = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_8 + TIME_RELEASE_CODE_8),
+                                         &WW_STR_ARtn};
 
-const byte WW_STR_Lang[]                   = {WW_Code, WW_l_L_Lang, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Lang      = {SPACING_NONE, TIMING_NONE, &WW_STR_Lang};
+const byte WW_STR_Lang[]              = {WW_Code, WW_l_L_Lang, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Lang = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_11 + TIME_RELEASE_CODE_11),
+                                         &WW_STR_Lang};
 
 const byte WW_STR_LineSpace[]              = {WW_Code, WW_Reloc_LineSpace, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_LineSpace = {SPACING_NONE, TIMING_NONE, &WW_STR_LineSpace};
+const struct print_info WW_PRINT_LineSpace = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                              TIME_NULL - (TIME_PRESS_CODE_2 + TIME_RELEASE_CODE_2),
+                                              &WW_STR_LineSpace};
 
-const byte WW_STR_Impr[]                   = {WW_Code, WW_q_Q_Impr, WW_Code, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Impr      = {SPACING_NONE, TIMING_NONE, &WW_STR_Impr};
+const byte WW_STR_Impr[]              = {WW_Code, WW_q_Q_Impr, WW_Code, WW_NULL_3, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Impr = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_3 + TIME_RELEASE_CODE_3),
+                                         &WW_STR_Impr};
 
-const byte WW_STR_Vol[]                    = {WW_Code, WW_4_DOLLAR_Vol, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Vol       = {SPACING_NONE, TIMING_NONE, &WW_STR_Vol};
+const byte WW_STR_Vol[]              = {WW_Code, WW_4_DOLLAR_Vol, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Vol = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                        TIME_NULL - (TIME_PRESS_CODE_8 + TIME_RELEASE_CODE_8),
+                                        &WW_STR_Vol};
 
-const byte WW_STR_Ctr[]                    = {WW_Code, WW_c_C_Ctr, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Ctr       = {SPACING_NONE, TIMING_NONE, &WW_STR_Ctr};
+const byte WW_STR_Ctr[]              = {WW_Code, WW_c_C_Ctr, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Ctr = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                        TIME_NULL - (TIME_PRESS_CODE_7 + TIME_RELEASE_CODE_7),
+                                        &WW_STR_Ctr};
 
-const byte WW_STR_DecT[]                   = {WW_Code, WW_d_D_DecT, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_DecT      = {SPACING_NONE, TIMING_NONE, &WW_STR_DecT};
+const byte WW_STR_DecT[]              = {WW_Code, WW_d_D_DecT, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_DecT = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_7 + TIME_RELEASE_CODE_7),
+                                         &WW_STR_DecT};
 
-const byte WW_STR_RFlsh[]                  = {WW_Code, WW_o_O_RFlsh, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RFlsh     = {SPACING_NONE, TIMING_NONE, &WW_STR_RFlsh};
+const byte WW_STR_RFlsh[]              = {WW_Code, WW_o_O_RFlsh, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_RFlsh = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                          TIME_NULL - (TIME_PRESS_CODE_11 + TIME_RELEASE_CODE_11),
+                                          &WW_STR_RFlsh};
 
-const byte WW_STR_IndL[]                   = {WW_Code, WW_Tab_IndL, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_IndL      = {SPACING_NONE, TIMING_NONE, &WW_STR_IndL};
+const byte WW_STR_IndL[]              = {WW_Code, WW_Tab_IndL, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_IndL = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_14 + TIME_RELEASE_CODE_14),
+                                         &WW_STR_IndL};
 
-const byte WW_STR_IndClr[]                 = {WW_Code, WW_CRtn_IndClr, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_IndClr    = {SPACING_NONE, TIMING_NONE, &WW_STR_IndClr};
+const byte WW_STR_IndClr[]              = {WW_Code, WW_CRtn_IndClr, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_IndClr = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                           TIME_NULL - (TIME_PRESS_CODE_13 + TIME_RELEASE_CODE_13),
+                                           &WW_STR_IndClr};
 
-const byte WW_STR_RePrt[]                  = {WW_Code, WW_MarRel_RePrt, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RePrt     = {SPACING_NONE, TIMING_NONE, &WW_STR_RePrt};
+const byte WW_STR_RePrt[]              = {WW_Code, WW_MarRel_RePrt, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_RePrt = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_UNDEFINED, 0,
+                                          TIME_UNKNOWN - (TIME_PRESS_CODE_14 + TIME_RELEASE_CODE_14),
+                                          &WW_STR_RePrt};
 
-const byte WW_STR_Stop[]                   = {WW_Code, WW_9_LPAREN_Stop, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Stop      = {SPACING_NONE, TIMING_NONE, &WW_STR_Stop};
+const byte WW_STR_Stop[]              = {WW_Code, WW_9_LPAREN_Stop, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Stop = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_NULL - (TIME_PRESS_CODE_11 + TIME_RELEASE_CODE_11),
+                                         &WW_STR_Stop};
 
 // <left arrow>, <right arrow>, <up arrow>, <down arrow>, <left word>, <right word>, <up line>, <down line>, Paper Up,
 // Paper Down, <up micro>, <down micro>, <1/2 up>, <1/2 down>, Backspace, Bksp 1, <back x>, <back word>, Reloc print
 // strings.
-const byte WW_STR_LARROW[]                 = {WW_LARROW_Word, WW_NULL_13, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_LARROW    = {SPACING_BACKWARD, TIMING_HMOVE, &WW_STR_LARROW};
+const byte WW_STR_LEFTARROW[]              = {WW_LEFTARROW_LeftWord, WW_NULL_13, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_LEFTARROW = {ELEMENT_SIMPLE, SPACING_BACKWARD, POSITION_NOCHANGE, 0,
+                                              TIME_HMOVE - (TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13),
+                                              &WW_STR_LEFTARROW};
 
-const byte WW_STR_RARROW[]                 = {WW_RARROW_Word, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RARROW    = {SPACING_FORWARD, TIMING_HMOVE, &WW_STR_RARROW};
+const byte WW_STR_RIGHTARROW[]              = {WW_RIGHTARROW_RightWord, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_RIGHTARROW = {ELEMENT_SIMPLE, SPACING_FORWARD, POSITION_NOCHANGE, 0,
+                                               TIME_HMOVE - (TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2),
+                                               &WW_STR_RIGHTARROW};
 
-const byte WW_STR_UARROW[]                 = {WW_UARROW_Line, WW_NULL_13, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_UARROW    = {SPACING_NONE, TIMING_VMOVE, &WW_STR_UARROW};
+const byte WW_STR_UPARROW[]              = {WW_UPARROW_UpLine, WW_NULL_13, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_UPARROW = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                            TIME_VMOVE - (TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13),
+                                            &WW_STR_UPARROW};
 
-const byte WW_STR_DARROW[]                 = {WW_DARROW_Line, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_DARROW    = {SPACING_NONE, TIMING_VMOVE, &WW_STR_DARROW};
+const byte WW_STR_DOWNARROW[]              = {WW_DOWNARROW_DownLine, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_DOWNARROW = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                              TIME_VMOVE - (TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2),
+                                              &WW_STR_DOWNARROW};
 
-const byte WW_STR_LWord[]                  = {WW_Code, WW_LARROW_Word, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_LWord     = {SPACING_UNKNOWN, TIMING_HMOVE2, &WW_STR_LWord};
+const byte WW_STR_LeftWord[]              = {WW_Code, WW_LEFTARROW_LeftWord, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_LeftWord = {ELEMENT_SIMPLE, SPACING_UNKNOWN, POSITION_NOCHANGE, 0,
+                                             TIME_HMOVE - (TIME_PRESS_CODE_13 + TIME_RELEASE_CODE_13),
+                                             &WW_STR_LeftWord};
 
-const byte WW_STR_RWord[]                  = {WW_Code, WW_RARROW_Word, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RWord     = {SPACING_UNKNOWN, TIMING_HMOVE2, &WW_STR_RWord};
+const byte WW_STR_RightWord[]              = {WW_Code, WW_RIGHTARROW_RightWord, WW_Code, WW_NULL_2, WW_NULL_14,
+                                              WW_NULL};
+const struct print_info WW_PRINT_RightWord = {ELEMENT_SIMPLE, SPACING_UNKNOWN, POSITION_NOCHANGE, 0,
+                                              TIME_HMOVE - (TIME_PRESS_CODE_2 + TIME_RELEASE_CODE_2),
+                                              &WW_STR_RightWord};
 
-const byte WW_STR_ULine[]                  = {WW_Code, WW_UARROW_Line, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_ULine     = {SPACING_NONE, TIMING_VMOVE2, &WW_STR_ULine};
+const byte WW_STR_UpLine[]              = {WW_Code, WW_UPARROW_UpLine, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_UpLine = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                           TIME_VMOVE - (TIME_PRESS_CODE_13 + TIME_RELEASE_CODE_13),
+                                           &WW_STR_UpLine};
 
-const byte WW_STR_DLine[]                  = {WW_Code, WW_DARROW_Line, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_DLine     = {SPACING_NONE, TIMING_VMOVE2, &WW_STR_DLine};
+const byte WW_STR_DownLine[]              = {WW_Code, WW_DOWNARROW_DownLine, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_DownLine = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                             TIME_VMOVE - (TIME_PRESS_CODE_2 + TIME_RELEASE_CODE_2),
+                                             &WW_STR_DownLine};
 
-const byte WW_STR_PaperUp[]                = {WW_PaperUp_Micro, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_PaperUp   = {SPACING_NONE, TIMING_VMOVE, &WW_STR_PaperUp};
+const byte WW_STR_PaperUp[]              = {WW_PaperUp_UpMicro, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_PaperUp = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                            TIME_VMOVE_HALF - (TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2),
+                                            &WW_STR_PaperUp};
 
-const byte WW_STR_PaperDown[]              = {WW_PaperDown_Micro, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_PaperDown = {SPACING_NONE, TIMING_VMOVE, &WW_STR_PaperDown};
+const byte WW_STR_PaperDown[]              = {WW_PaperDown_DownMicro, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_PaperDown = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                              TIME_VMOVE_HALF - (TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2),
+                                              &WW_STR_PaperDown};
 
-const byte WW_STR_UMicro[]                 = {WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_UMicro    = {SPACING_NONE, TIMING_VMOVE2, &WW_STR_UMicro};
+const byte WW_STR_UpMicro[]              = {WW_Code, WW_PaperUp_UpMicro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_UpMicro = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                            TIME_VMOVE_MICRO - (TIME_PRESS_CODE_2 + TIME_RELEASE_CODE_2),
+                                            &WW_STR_UpMicro};
 
-const byte WW_STR_DMicro[]                 = {WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_DMicro    = {SPACING_NONE, TIMING_VMOVE2, &WW_STR_DMicro};
+const byte WW_STR_DownMicro[]              = {WW_Code, WW_PaperDown_DownMicro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_DownMicro = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                              TIME_VMOVE_MICRO - (TIME_PRESS_CODE_2 + TIME_RELEASE_CODE_2),
+                                              &WW_STR_DownMicro};
 
-const byte WW_STR_12UP[]                   = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_12UP      = {SPACING_NONE, TIMING_VMOVE2, &WW_STR_12UP};
+const byte WW_STR_12UP[]              = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_12UP = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                         TIME_VMOVE_HALF - (TIME_PRESS_CODE_9 + TIME_RELEASE_CODE_9),
+                                         &WW_STR_12UP};
 
-const byte WW_STR_12DOWN[]                 = {WW_Code, WW_h_H_12DOWN, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_12DOWN    = {SPACING_NONE, TIMING_VMOVE2, &WW_STR_12DOWN};
+const byte WW_STR_12DOWN[]              = {WW_Code, WW_h_H_12DOWN, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_12DOWN = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                           TIME_VMOVE_HALF - (TIME_PRESS_CODE_9 + TIME_RELEASE_CODE_9),
+                                           &WW_STR_12DOWN};
 
 const byte WW_STR_Backspace[]              = {WW_Backspace_Bksp1, WW_NULL_13, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Backspace = {SPACING_BACKWARD, TIMING_HMOVE, &WW_STR_Backspace};
+const struct print_info WW_PRINT_Backspace = {ELEMENT_SIMPLE, SPACING_BACKWARD, POSITION_NOCHANGE, 0,
+                                              TIME_HMOVE - (TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13),
+                                              &WW_STR_Backspace};
 
-const byte WW_STR_Bksp1[]                  = {WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Bksp1     = {SPACING_NONE, TIMING_HMOVE2, &WW_STR_Bksp1};
+const byte WW_STR_Bksp1[]              = {WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Bksp1 = {ELEMENT_SIMPLE, SPACING_UNKNOWN, POSITION_NOCHANGE, 0,
+                                          TIME_HMOVE_MICRO - (TIME_PRESS_CODE_13 + TIME_RELEASE_CODE_13),
+                                          &WW_STR_Bksp1};
 
-const byte WW_STR_BACKX[]                  = {WW_BACKX_Word, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_BACKX     = {SPACING_BACKWARD, TIMING_HMOVE, &WW_STR_BACKX};
+const byte WW_STR_BACKX[]              = {WW_BACKX_Word, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_BACKX = {ELEMENT_SIMPLE, SPACING_BACKWARD, POSITION_NOCHANGE, 0,
+                                          TIME_HMOVE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                          &WW_STR_BACKX};
 
-const byte WW_STR_BWord[]                  = {WW_Code, WW_BACKX_Word, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_BWord     = {SPACING_UNKNOWN, TIMING_UNKNOWN, &WW_STR_BWord};
+const byte WW_STR_BWord[]              = {WW_Code, WW_BACKX_Word, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_BWord = {ELEMENT_SIMPLE, SPACING_UNKNOWN, POSITION_NOCHANGE, 0,
+                                          TIME_HMOVE - (TIME_PRESS_CODE_14 + TIME_RELEASE_CODE_14),
+                                          &WW_STR_BWord};
 
-const byte WW_STR_Reloc[]                  = {WW_Reloc_LineSpace, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Reloc     = {SPACING_UNKNOWN, TIMING_UNKNOWN, &WW_STR_Reloc};
+const byte WW_STR_Reloc[]              = {WW_Reloc_LineSpace, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_Reloc = {ELEMENT_SIMPLE, SPACING_UNKNOWN, POSITION_NOCHANGE, 0,
+                                          TIME_UNKNOWN - (TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2),
+                                          &WW_STR_Reloc};
 
 // L Mar, R Mar, Mar Rel, T Set, T Clr, Clr All print strings.
-const byte WW_STR_LMar[]                 = {WW_LMar, WW_NULL_4, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_LMar    = {SPACING_LMAR, TIMING_NONE, &WW_STR_LMar};
+const byte WW_STR_LMar[]              = {WW_LMar, WW_NULL_4, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_LMar = {ELEMENT_SIMPLE, SPACING_LMAR, POSITION_RESET, 0,
+                                         TIME_JIGGLE - (TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4),
+                                         &WW_STR_LMar};
 
-const byte WW_STR_RMar[]                 = {WW_RMar, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_RMar    = {SPACING_RMAR, TIMING_NONE, &WW_STR_RMar};
+const byte WW_STR_RMar[]              = {WW_RMar, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_RMar = {ELEMENT_SIMPLE, SPACING_RMAR, POSITION_RESET, 0,
+                                         TIME_JIGGLE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                         &WW_STR_RMar};
 
-const byte WW_STR_MarRel[]               = {WW_MarRel_RePrt, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_MarRel  = {SPACING_MARREL, TIMING_NONE, &WW_STR_MarRel};
+const byte WW_STR_MarRel[]              = {WW_MarRel_RePrt, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_MarRel = {ELEMENT_SIMPLE, SPACING_MARREL, POSITION_RESET, 0,
+                                           TIME_JIGGLE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                           &WW_STR_MarRel};
 
-const byte WW_STR_TSet[]                 = {WW_TSet, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_TSet    = {SPACING_TSET, TIMING_NONE, &WW_STR_TSet};
+const byte WW_STR_TSet[]              = {WW_TSet, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_TSet = {ELEMENT_SIMPLE, SPACING_TSET, POSITION_RESET, 0,
+                                         TIME_JIGGLE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                         &WW_STR_TSet};
 
-const byte WW_STR_TClr[]                 = {WW_TClr, WW_NULL_4, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_TClr    = {SPACING_TCLR, TIMING_NONE, &WW_STR_TClr};
+const byte WW_STR_TClr[]              = {WW_TClr_TClrAll, WW_NULL_4, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_TClr = {ELEMENT_SIMPLE, SPACING_TCLR, POSITION_RESET, 0,
+                                         TIME_JIGGLE - (TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4),
+                                         &WW_STR_TClr};
 
-const byte WW_STR_ClrAll[]               = {WW_TClr, WW_CRtn_IndClr, WW_TClr, WW_NULL_4, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_ClrAll  = {SPACING_CLRALL, TIMING_NONE, &WW_STR_ClrAll};
-const struct print_info WW_PRINT_ClrAllX = {SPACING_NONE, TIMING_NONE, &WW_STR_ClrAll};
-                                             // Special case for Set_margins_tabs() that doesn't clear tabs[].
+const byte WW_STR_TClrAll[]               = {WW_TClr_TClrAll, WW_CRtn_IndClr, WW_TClr_TClrAll, WW_NULL_4, WW_NULL_14,
+                                             WW_NULL};
+const struct print_info WW_PRINT_TClrAll  = {ELEMENT_SIMPLE, SPACING_TCLRALL, POSITION_RESET, 0,
+                                             TIME_JIGGLE + TIME_RETURN_OFFSET - (TIME_PRESS_NOSHIFT_4 +
+                                                                                 TIME_RELEASE_NOSHIFT_4),
+                                             &WW_STR_TClrAll};
+const struct print_info WW_PRINT_TClrAllX = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_RESET, 0,
+                                             TIME_JIGGLE + TIME_RETURN_OFFSET - (TIME_PRESS_NOSHIFT_4 +
+                                                                                 TIME_RELEASE_NOSHIFT_4),
+                                             &WW_STR_TClrAll};
+                                               // Special case for Set_margins_tabs() that doesn't clear tabs[].
 
 // Special function print strings.
 const byte WW_STR_POWERWISE_OFF[]              = {WW_Code, WW_x_X_POWERWISE, WW_Code, WW_0_RPAREN, WW_Code, WW_NULL_5,
                                                   WW_NULL_14, WW_NULL}; 
-const struct print_info WW_PRINT_POWERWISE_OFF = {SPACING_NONE, TIMING_NONE, &WW_STR_POWERWISE_OFF};
+const struct print_info WW_PRINT_POWERWISE_OFF = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                                  TIME_NULL - (TIME_PRESS_CODE_6 + TIME_RELEASE_CODE_6),
+                                                  &WW_STR_POWERWISE_OFF};
 
-const byte WW_STR_SPELL_CHECK[]                = {WW_Code, WW_1_EXCLAMATION_Spell, WW_Code, WW_NULL_3, WW_NULL_14,
-                                                  WW_NULL};
-const struct print_info WW_PRINT_SPELL_CHECK   = {SPACING_NONE, TIMING_NONE, &WW_STR_SPELL_CHECK};
+const byte WW_STR_SPELL_CHECK[]              = {WW_Code, WW_1_EXCLAMATION_Spell, WW_Code, WW_NULL_3, WW_NULL_14,
+                                                WW_NULL};
+const struct print_info WW_PRINT_SPELL_CHECK = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                                TIME_NULL - (TIME_PRESS_CODE_3 + TIME_RELEASE_CODE_3),
+                                                &WW_STR_SPELL_CHECK};
 
-const byte WW_STR_BEEP[]                       = {WW_Code, WW_x_X_POWERWISE, WW_Code, WW_9_LPAREN_Stop, WW_Code,
-                                                  WW_Code, WW_9_LPAREN_Stop, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_BEEP          = {SPACING_NONE, TIMING_NONE, &WW_STR_BEEP};
+const byte WW_STR_BEEP[]              = {WW_Code, WW_x_X_POWERWISE, WW_Code, WW_9_LPAREN_Stop, WW_Code, WW_Code,
+                                         WW_9_LPAREN_Stop, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_BEEP = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_RESET, 0,
+                                         TIME_BEEP - (TIME_PRESS_CODE_6 + TIME_RELEASE_CODE_6),
+                                         &WW_STR_BEEP};
 
 
 //**********************************************************************************************************************
@@ -2534,8 +2821,9 @@ volatile int total_warnings = 0;            // Total count of warnings.
 volatile int warning_counts[NUM_WARNINGS];  // Count of warnings by warning code.
 
 // Print variables.
-volatile int current_column = INITIAL_LMARGIN;             // Current typewriter print column.
-volatile const struct print_info *previous_string = NULL;  // Previous print string.
+volatile int current_column = INITIAL_LMARGIN;              // Current typewriter print column.
+volatile int current_position = POSITION_INITIAL;           // Current rotational position of printwheel.
+volatile const struct print_info *previous_element = NULL;  // Previous print element.
 
 // Software flow control variables.
 volatile boolean flow_in_on = TRUE;   // Input flow control turned on.
@@ -2574,13 +2862,14 @@ volatile int pb_count = 0;  // Count of of characters in print buffer.
 volatile byte print_buffer[SIZE_PRINT_BUFFER] = {0};  // Circular print buffer.
 
 // Configuration parameters stored in EEPROM.
+volatile byte emulation = INITIAL_EMULATION;            // Current emulation.           Used by all emulations.
 volatile byte errors = INITIAL_ERRORS;                  // Report errors.               Used by all emulations.
 volatile byte warnings = INITIAL_WARNINGS;              // Report warnings.             Used by all emulations.
 volatile byte battery = INITIAL_BATTERY;                // Battery installed.           Used by all emulations.
 volatile byte lmargin = INITIAL_LMARGIN;                // Left margin.                 Used by all emulations.
 volatile byte rmargin = INITIAL_RMARGIN;                // Right margin.                Used by all emulations.
-volatile byte emulation = INITIAL_EMULATION;            // Current emulation.           Used by all emulations.
 volatile byte offset = INITIAL_OFFSET;                  // Column offset.               Used by all emulations.
+volatile byte asciiwheel = INITIAL_ASCIIWHEEL;          // ASCII printwheel.            Used by all emulations.
 
 volatile byte slash = INITIAL_SLASH;                    // Print slashed zeroes.        Used by IBM 1620 Jr.
 volatile byte bold = INITIAL_BOLD;                      // Print bold input.            Used by IBM 1620 Jr.
@@ -2592,7 +2881,6 @@ volatile byte parity = INITIAL_PARITY;                  // Parity.              
 volatile byte dps = INITIAL_DPS;                        // Databits, parity, stopbits.  Used by ASCII Terminal (RS-232).
 volatile byte swflow = INITIAL_SWFLOW;                  // Software flow control.       Used by ASCII Terminal.
 volatile byte hwflow = INITIAL_HWFLOW;                  // Hardware flow control.       Used by ASCII Terminal (RS-232).
-volatile byte asciiwheel = INITIAL_ASCIIWHEEL;          // ASCII printwheel.            Used by ASCII Terminal.
 volatile byte uppercase = INITIAL_UPPERCASE;            // Uppercase only.              Used by ASCII Terminal.
 volatile byte autoreturn = INITIAL_AUTORETURN;          // Auto return.                 Used by ASCII Terminal.
 volatile byte transmiteol = INITIAL_TRANSMITEOL;        // Send end-of-line.            Used by ASCII Terminal.
@@ -2620,121 +2908,65 @@ volatile byte tabs[200] = {SETTING_UNDEFINED};          // Tab settings.        
 #define IBM_VERSION  IBM_NAME " (v" VERSION_TEXT ")"
 
 // IBM 1620 Jr. key values.
-#define IBM_KEY_LSHIFT           WW_KEY_LShift                      // <left shift> key code.
-#define IBM_KEY_RSHIFT           WW_KEY_RShift                      // <right shift> key code.
-#define IBM_KEY_RARROW           WW_KEY_RARROW_Word                 // <right arrow> key code.
-#define IBM_KEY_DARROW           WW_KEY_DARROW_Line                 // <down arrow> key code.
-#define IBM_KEY_Z                WW_KEY_z_Z                         // Z key code.
-#define IBM_KEY_Q                WW_KEY_q_Q_Impr                    // Q key code.
-#define IBM_KEY_RELEASESTART     WW_KEY_PLUSMINUS_DEGREE            // <release start> key code.
-#define IBM_KEY_A                WW_KEY_a_A                         // A key code.
-#define IBM_KEY_SPACE            WW_KEY_SPACE_REQSPACE              // <space> key code.
-#define IBM_KEY_LOADPAPER        WW_KEY_LOADPAPER                   // <load paper> key code.
-#define IBM_KEY_LMAR             WW_KEY_LMar                        // <left margin> key code.
-#define IBM_KEY_TCLR             WW_KEY_TClr                        // <tab clear> key code.
-#define IBM_KEY_X                WW_KEY_x_X_POWERWISE               // X key code.
-#define IBM_KEY_W                WW_KEY_w_W                         // W key code.
-#define IBM_KEY_S                WW_KEY_s_S                         // S key code.
-#define IBM_KEY_C                WW_KEY_c_C_Ctr                     // C key code.
-#define IBM_KEY_E                WW_KEY_e_E                         // E key code.
-#define IBM_KEY_D                WW_KEY_d_D_DecT                    // D key code.
-#define IBM_KEY_B                WW_KEY_b_B_Bold                    // B key code.
-#define IBM_KEY_V                WW_KEY_v_V                         // V key code.
-#define IBM_KEY_T                WW_KEY_t_T                         // T key code.
-#define IBM_KEY_R                WW_KEY_r_R_ARtn                    // R key code.
-#define IBM_KEY_AT               WW_KEY_4_DOLLAR_Vol                // @ key code.
-#define IBM_KEY_LPAREN           WW_KEY_5_PERCENT                   // ( key code.
-#define IBM_KEY_F                WW_KEY_f_F                         // F key code.
-#define IBM_KEY_G                WW_KEY_g_G                         // G key code.
-#define IBM_KEY_N                WW_KEY_n_N_Caps                    // N key code.
-#define IBM_KEY_M_7              WW_KEY_m_M                         // M, 7 key code.
-#define IBM_KEY_Y                WW_KEY_y_Y_12UP                    // Y key code.
-#define IBM_KEY_U_1              WW_KEY_u_U_Cont                    // U, 1 key code.
-#define IBM_KEY_FLAG             WW_KEY_7_AMPERSAND                 // <flag> key code.
-#define IBM_KEY_RPAREN           WW_KEY_6_CENT                      // ) key code.
-#define IBM_KEY_J_4              WW_KEY_j_J                         // J, 4 key code.
-#define IBM_KEY_H                WW_KEY_h_H_12DOWN                  // H key code.
-#define IBM_KEY_COMMA_8          WW_KEY_COMMA_COMMA                 // ,, 8 key code.
-#define IBM_KEY_I_2              WW_KEY_i_I_Word                    // I, 2 key code.
-#define IBM_KEY_EQUAL            WW_KEY_8_ASTERISK                  // = key code.
-#define IBM_KEY_GMARK            WW_KEY_EQUAL_PLUS                  // <group mark> key code.
-#define IBM_KEY_K_5              WW_KEY_k_K                         // K, 5 key code.
-#define IBM_KEY_PERIOD_9         WW_KEY_PERIOD_PERIOD               // ., 9 key code.
-#define IBM_KEY_O_3              WW_KEY_o_O_RFlsh                   // O, 3 key code.
-#define IBM_KEY_0                WW_KEY_9_LPAREN_Stop               // 0 key code.
-#define IBM_KEY_L_6              WW_KEY_l_L_Lang                    // L, 6 key code.
-#define IBM_KEY_SLASH            WW_KEY_SLASH_QUESTION              // / key code.
-#define IBM_KEY_HYPHEN           WW_KEY_HALF_QUARTER_SUPER2         // - key code.
-#define IBM_KEY_P                WW_KEY_p_P                         // P key code.
-#define IBM_KEY_ASTERISK_PERIOD  WW_KEY_0_RPAREN                    // *, . key code.
-#define IBM_KEY_RMARK            WW_KEY_HYPHEN_UNDERSCORE           // <record mark> key code.
-#define IBM_KEY_PLUS             WW_KEY_SEMICOLON_COLON_SECTION     // + key code.
-#define IBM_KEY_DOLLAR           WW_KEY_APOSTROPHE_QUOTE_PARAGRAPH  // $ key code.
-#define IBM_KEY_LARROW           WW_KEY_LARROW_Word                 // <left arrow> key code.
-#define IBM_KEY_UARROW           WW_KEY_UARROW_Line                 // <up arrow> key code.
-#define IBM_KEY_BACKSPACE        WW_KEY_Backspace_Bksp1             // <backspace> key code.
-#define IBM_KEY_RETURN           WW_KEY_CRtn_IndClr                 // <return> key code.
-#define IBM_KEY_LOCK             WW_KEY_Lock                        // <shift lock> key code.
-#define IBM_KEY_RMAR             WW_KEY_RMar                        // <right margin> key code.
-#define IBM_KEY_TAB              WW_KEY_Tab_IndL                    // <tab> key code.
-#define IBM_KEY_MARREL           WW_KEY_MarRel_RePrt                // <margin release> key code.
-#define IBM_KEY_TSET             WW_KEY_TSet                        // <tab set> key code.
-
-// IBM 1620 Jr. print string timing values (in usec).
-#define TIMING_IBM_FLAG           (POSITIVE((1 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
-                                            (2 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (0 * TIME_ADJUST)))
-                                    // Residual time for flag print character.
-
-#define TIMING_IBM_SLASH_0        (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (4 * FSCAN_1_CHANGE + 1 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (17 * TIME_ADJUST)))
-                                    // Residual time for slashed zero print character.
-
-#define TIMING_IBM_FLAG_SLASH_0   (POSITIVE((3 * TIME_CHARACTER + 2 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
-                                            (6 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (54 * TIME_ADJUST)))
-                                    // Residual time for flagged slashed zero print character.
-
-#define TIMING_IBM_FLAG_DIGIT     (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
-                                            (4 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (19 * TIME_ADJUST)))
-                                    // Residual time for flagged digit print character.
-
-#define TIMING_IBM_FLAG_NUMBLANK  (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
-                                            (4 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-4 * TIME_ADJUST)))
-                                    // Residual time for flagged numeric blank print character.
-
-#define TIMING_IBM_RMARK          (POSITIVE((3 * TIME_CHARACTER + 2 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (6 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-10 * TIME_ADJUST)))
-                                    // Residual time for record mark print character.
-
-#define TIMING_IBM_FLAG_RMARK     (POSITIVE((4 * TIME_CHARACTER + 3 * TIME_HMOVEMENT + 2 * TIME_VMOVEMENT) - \
-                                            (8 * FSCAN_1_CHANGE + 6 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-4 * TIME_ADJUST)))
-                                    // Residual time for flagged record mark print character.
-
-#define TIMING_IBM_GMARK          (POSITIVE((4 * TIME_CHARACTER + 3 * TIME_HMOVEMENT + 6 * TIME_VMOVEMENT) - \
-                                            (18 * FSCAN_1_CHANGE + 5 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
-                                            (12 * TIME_ADJUST)))
-                                    // Residual time for group mark print character.
-
-#define TIMING_IBM_FLAG_GMARK     (POSITIVE((5 * TIME_CHARACTER + 4 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
-                                            (20 * FSCAN_1_CHANGE + 8 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
-                                            (26 * TIME_ADJUST)))
-                                    // Residual time for flagged group mark print character.
-
-#define TIMING_IBM_RELEASESTART   (POSITIVE((2 * TIME_CHARACTER + 4 * TIME_HMOVEMENT + 5 * TIME_VMOVEMENT) - \
-                                            (20 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 1 * FSCAN_3_CHANGES) + \
-                                            (-33 * TIME_ADJUST)))
-                                    // Residual time for release start print character.
-
-#define TIMING_IBM_INVALID        (POSITIVE((3 * TIME_CHARACTER + 2 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (6 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-5 * TIME_ADJUST)))
-                                     // Residual time for invalid print character.
+#define IBM_KEY_LSHIFT                  WW_KEY_LShift                      // <left shift> key code.
+#define IBM_KEY_RSHIFT                  WW_KEY_RShift                      // <right shift> key code.
+#define IBM_KEY_RIGHTARROW              WW_KEY_RIGHTARROW_RightWord        // <right arrow> key code.
+#define IBM_KEY_DOWNARROW               WW_KEY_DOWNARROW_DownLine          // <down arrow> key code.
+#define IBM_KEY_Z                       WW_KEY_z_Z                         // Z key code.
+#define IBM_KEY_Q                       WW_KEY_q_Q_Impr                    // Q key code.
+#define IBM_KEY_RELEASESTART            WW_KEY_PLUSMINUS_DEGREE            // <release start> key code.
+#define IBM_KEY_A                       WW_KEY_a_A                         // A key code.
+#define IBM_KEY_SPACE                   WW_KEY_SPACE_REQSPACE              // <space> key code.
+#define IBM_KEY_LOADPAPER_SETTOPOFFORM  WW_KEY_LOADPAPER_SETTOPOFFORM      // <load paper>, <set top of form> key code.
+#define IBM_KEY_LMAR                    WW_KEY_LMar                        // <left margin> key code.
+#define IBM_KEY_TCLR_TCLRALL            WW_KEY_TClr_TClrAll                // <tab clear>, <tab clear all> key code.
+#define IBM_KEY_X                       WW_KEY_x_X_POWERWISE               // X key code.
+#define IBM_KEY_W                       WW_KEY_w_W                         // W key code.
+#define IBM_KEY_S                       WW_KEY_s_S                         // S key code.
+#define IBM_KEY_C                       WW_KEY_c_C_Ctr                     // C key code.
+#define IBM_KEY_E                       WW_KEY_e_E                         // E key code.
+#define IBM_KEY_D                       WW_KEY_d_D_DecT                    // D key code.
+#define IBM_KEY_B                       WW_KEY_b_B_Bold                    // B key code.
+#define IBM_KEY_V                       WW_KEY_v_V                         // V key code.
+#define IBM_KEY_T                       WW_KEY_t_T                         // T key code.
+#define IBM_KEY_R                       WW_KEY_r_R_ARtn                    // R key code.
+#define IBM_KEY_AT                      WW_KEY_4_DOLLAR_Vol                // @ key code.
+#define IBM_KEY_LPAREN                  WW_KEY_5_PERCENT                   // ( key code.
+#define IBM_KEY_F                       WW_KEY_f_F                         // F key code.
+#define IBM_KEY_G                       WW_KEY_g_G                         // G key code.
+#define IBM_KEY_N                       WW_KEY_n_N_Caps                    // N key code.
+#define IBM_KEY_M_7                     WW_KEY_m_M                         // M, 7 key code.
+#define IBM_KEY_Y                       WW_KEY_y_Y_12UP                    // Y key code.
+#define IBM_KEY_U_1                     WW_KEY_u_U_Cont                    // U, 1 key code.
+#define IBM_KEY_FLAG                    WW_KEY_7_AMPERSAND                 // <flag> key code.
+#define IBM_KEY_RPAREN                  WW_KEY_6_CENT                      // ) key code.
+#define IBM_KEY_J_4                     WW_KEY_j_J                         // J, 4 key code.
+#define IBM_KEY_H                       WW_KEY_h_H_12DOWN                  // H key code.
+#define IBM_KEY_COMMA_8                 WW_KEY_COMMA_COMMA                 // ,, 8 key code.
+#define IBM_KEY_I_2                     WW_KEY_i_I_Word                    // I, 2 key code.
+#define IBM_KEY_EQUAL                   WW_KEY_8_ASTERISK                  // = key code.
+#define IBM_KEY_GMARK                   WW_KEY_EQUAL_PLUS                  // <group mark> key code.
+#define IBM_KEY_K_5                     WW_KEY_k_K                         // K, 5 key code.
+#define IBM_KEY_PERIOD_9                WW_KEY_PERIOD_PERIOD               // ., 9 key code.
+#define IBM_KEY_O_3                     WW_KEY_o_O_RFlsh                   // O, 3 key code.
+#define IBM_KEY_0                       WW_KEY_9_LPAREN_Stop               // 0 key code.
+#define IBM_KEY_L_6                     WW_KEY_l_L_Lang                    // L, 6 key code.
+#define IBM_KEY_SLASH                   WW_KEY_SLASH_QUESTION              // / key code.
+#define IBM_KEY_HYPHEN                  WW_KEY_HALF_QUARTER_SUPER2         // - key code.
+#define IBM_KEY_P                       WW_KEY_p_P                         // P key code.
+#define IBM_KEY_ASTERISK_PERIOD         WW_KEY_0_RPAREN                    // *, . key code.
+#define IBM_KEY_RMARK                   WW_KEY_HYPHEN_UNDERSCORE           // <record mark> key code.
+#define IBM_KEY_PLUS                    WW_KEY_SEMICOLON_COLON_SECTION     // + key code.
+#define IBM_KEY_DOLLAR                  WW_KEY_APOSTROPHE_QUOTE_PARAGRAPH  // $ key code.
+#define IBM_KEY_LEFTARROW               WW_KEY_LEFTARROW_LeftWord          // <left arrow> key code.
+#define IBM_KEY_UPARROW                 WW_KEY_UPARROW_UpLine              // <up arrow> key code.
+#define IBM_KEY_BACKSPACE               WW_KEY_Backspace_Bksp1             // <backspace> key code.
+#define IBM_KEY_RETURN                  WW_KEY_CRtn_IndClr                 // <return> key code.
+#define IBM_KEY_LOCK                    WW_KEY_Lock                        // <shift lock> key code.
+#define IBM_KEY_RMAR                    WW_KEY_RMar                        // <right margin> key code.
+#define IBM_KEY_TAB                     WW_KEY_Tab_IndL                    // <tab> key code.
+#define IBM_KEY_MARREL                  WW_KEY_MarRel_RePrt                // <margin release> key code.
+#define IBM_KEY_TSET                    WW_KEY_TSet                        // <tab set> key code.
 
 // IBM 1620 Jr. command characters.
 #define CHAR_IBM_MODE_0   'a'  // Mode 0 command character.
@@ -2753,133 +2985,106 @@ volatile byte tabs[200] = {SETTING_UNDEFINED};          // Tab settings.        
 
 //**********************************************************************************************************************
 //
+//  IBM 1620 Jr. dynamic print string.
+//
+//**********************************************************************************************************************
+
+// Dynamic print strings.
+const struct print_info *ibm_print_zero;
+const struct print_info *ibm_print_rmark;
+const struct print_info *ibm_print_gmark;
+
+
+//**********************************************************************************************************************
+//
 //  IBM 1620 Jr. print strings.
 //
 //**********************************************************************************************************************
 
 // <flag>, <slash 0>, <flag slash 0>, <flag 0>, <flag 1>, <flag 2>, <flag 3>, <flag 4>, <flag 5>, <flag 6>, <flag 7>,
 // <flag 8>, <slash 9> print strings.
-const byte IBM_STR_FLAG[]                      = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG         = {SPACING_NONE, TIMING_IBM_FLAG, &IBM_STR_FLAG};
+const struct print_info *IBM_STR_FLAG[] = {&WW_PRINT_12UP, &WW_PRINT_HYPHEN, &WW_PRINT_Backspace, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG};
 
-const byte IBM_STR_SLASH_0[]                   = {WW_0_RPAREN, WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13,
-                                                  WW_SLASH_QUESTION, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_SLASH_0      = {SPACING_FORWARD, TIMING_IBM_SLASH_0, &IBM_STR_SLASH_0};
+const struct print_info *IBM_STR_SLASH_0[] = {&WW_PRINT_0, &WW_PRINT_Backspace, &WW_PRINT_SLASH, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_SLASH_0  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_SLASH_0};
+const struct print_info IBM_PRINT_0        = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ibm_print_zero};
 
-const byte IBM_STR_FLAG_SLASH_0[]              = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_0_RPAREN, WW_NULL_12,
-                                                  WW_Backspace_Bksp1, WW_NULL_13, WW_SLASH_QUESTION, WW_NULL_12,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_SLASH_0 = {SPACING_FORWARD, TIMING_IBM_FLAG_SLASH_0, &IBM_STR_FLAG_SLASH_0};
+const struct print_info *IBM_STR_FLAG_SLASH_0[] = {&IBM_PRINT_FLAG, &IBM_PRINT_SLASH_0, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_SLASH_0  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_SLASH_0};
 
-const byte IBM_STR_FLAG_0[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_0_RPAREN, WW_NULL_12,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_0       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_0};
+const struct print_info *IBM_STR_FLAG_0[] = {&IBM_PRINT_FLAG, &IBM_PRINT_0, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_0  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_0};
 
-const byte IBM_STR_FLAG_1[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_1_EXCLAMATION_Spell,
-                                                  WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_1       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_1};
+const struct print_info *IBM_STR_FLAG_1[] = {&IBM_PRINT_FLAG, &WW_PRINT_1, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_1  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_1};
 
-const byte IBM_STR_FLAG_2[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_2_AT_Add, WW_NULL_6,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_2       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_2};
+const struct print_info *IBM_STR_FLAG_2[] = {&IBM_PRINT_FLAG, &WW_PRINT_2, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_2  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_2};
 
-const byte IBM_STR_FLAG_3[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_3_POUND_Del, WW_NULL_7,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_3       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_3};
+const struct print_info *IBM_STR_FLAG_3[] = {&IBM_PRINT_FLAG, &WW_PRINT_3, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_3  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_3};
 
-const byte IBM_STR_FLAG_4[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_4_DOLLAR_Vol,
-                                                  WW_NULL_8, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_4       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_4};
+const struct print_info *IBM_STR_FLAG_4[] = {&IBM_PRINT_FLAG, &WW_PRINT_4, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_4  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_4};
 
-const byte IBM_STR_FLAG_5[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_5_PERCENT, WW_NULL_8,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_5       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_5};
+const struct print_info *IBM_STR_FLAG_5[] = {&IBM_PRINT_FLAG, &WW_PRINT_5, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_5  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_5};
 
-const byte IBM_STR_FLAG_6[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_6_CENT, WW_NULL_9,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_6       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_6};
+const struct print_info *IBM_STR_FLAG_6[] = {&IBM_PRINT_FLAG, &WW_PRINT_6, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_6  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_6};
 
-const byte IBM_STR_FLAG_7[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_7_AMPERSAND, WW_NULL_9,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_7       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_7};
+const struct print_info *IBM_STR_FLAG_7[] = {&IBM_PRINT_FLAG, &WW_PRINT_7, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_7  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_7};
 
-const byte IBM_STR_FLAG_8[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_8_ASTERISK, WW_NULL_10,
-                                                  WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_8       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_8};
+const struct print_info *IBM_STR_FLAG_8[] = {&IBM_PRINT_FLAG, &WW_PRINT_8, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_8  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_8};
 
-const byte IBM_STR_FLAG_9[]                    = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                  WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_9_LPAREN_Stop,
-                                                  WW_NULL_11, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_9       = {SPACING_FORWARD, TIMING_IBM_FLAG_DIGIT, &IBM_STR_FLAG_9};
+const struct print_info *IBM_STR_FLAG_9[] = {&IBM_PRINT_FLAG, &WW_PRINT_9, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_9  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_9};
 
-// <flag numblank> print strings.
-const byte IBM_STR_FLAG_NUMBLANK[]              = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                   WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_LShift, WW_2_AT_Add,
-                                                   WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_NUMBLANK = {SPACING_FORWARD, TIMING_IBM_FLAG_NUMBLANK, &IBM_STR_FLAG_NUMBLANK};
+// <flag numblank> print string.
+const struct print_info *IBM_STR_FLAG_NUMBLANK[] = {&IBM_PRINT_FLAG, &WW_PRINT_AT, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_NUMBLANK  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_NUMBLANK};
 
 // <rmark>, <flag rmark>, <gmark>, <flag gmark> print strings.
-const byte IBM_STR_RMARK[]                   = {WW_EQUAL_PLUS, WW_NULL_10, WW_Backspace_Bksp1, WW_NULL_13, WW_LShift,
-                                                WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1, WW_Backspace_Bksp1,
-                                                WW_NULL_13, WW_i_I_Word, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_RMARK      = {SPACING_FORWARD, TIMING_IBM_RMARK, &IBM_STR_RMARK};
+const struct print_info *IBM_STR_RMARK_IPW[] = {&WW_PRINT_EQUAL, &WW_PRINT_Backspace, &WW_PRINT_EXCLAMATION,
+                                                &WW_PRINT_Backspace, &WW_PRINT_i, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_RMARK_IPW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_RMARK_IPW};
+const struct print_info *IBM_STR_RMARK_APW[] = {&WW_PRINT_EQUAL, &WW_PRINT_Backspace, &WW_PRINT_EXCLAMATION,
+                                                NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_RMARK_APW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_RMARK_APW};
+const struct print_info IBM_PRINT_RMARK      = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ibm_print_rmark};
 
-const byte IBM_STR_FLAG_RMARK[]              = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_EQUAL_PLUS, WW_NULL_10,
-                                                WW_Backspace_Bksp1, WW_NULL_13, WW_LShift, WW_1_EXCLAMATION_Spell,
-                                                WW_LShift, WW_NULL_1, WW_Backspace_Bksp1, WW_NULL_13, WW_i_I_Word,
-                                                WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_RMARK = {SPACING_FORWARD, TIMING_IBM_FLAG_RMARK, &IBM_STR_FLAG_RMARK};
+const struct print_info *IBM_STR_FLAG_RMARK[] = {&IBM_PRINT_FLAG, &IBM_PRINT_RMARK, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_RMARK  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_RMARK};
 
-const byte IBM_STR_GMARK[]                   = {WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_EQUAL_PLUS,
-                                                WW_NULL_10, WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperDown_Micro,
-                                                WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code,
-                                                WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_HYPHEN_UNDERSCORE,
-                                                WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperUp_Micro,
-                                                WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_LShift,
-                                                WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1, WW_Backspace_Bksp1,
-                                                WW_NULL_13, WW_i_I_Word, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_GMARK      = {SPACING_FORWARD, TIMING_IBM_GMARK, &IBM_STR_GMARK};
+const struct print_info *IBM_STR_GMARK_IPW[] = {&WW_PRINT_UpMicro, &WW_PRINT_EQUAL, &WW_PRINT_Backspace,
+                                                &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_DownMicro,
+                                                &WW_PRINT_HYPHEN, &WW_PRINT_Backspace, &WW_PRINT_UpMicro,
+                                                &WW_PRINT_UpMicro, &WW_PRINT_EXCLAMATION, &WW_PRINT_Backspace,
+                                                &WW_PRINT_i, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_GMARK_IPW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_GMARK_IPW};
+const struct print_info *IBM_STR_GMARK_APW[] = {&WW_PRINT_UpMicro, &WW_PRINT_EQUAL, &WW_PRINT_Backspace,
+                                                &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_DownMicro,
+                                                &WW_PRINT_HYPHEN, &WW_PRINT_Backspace, &WW_PRINT_UpMicro,
+                                                &WW_PRINT_UpMicro, &WW_PRINT_EXCLAMATION, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_GMARK_APW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_GMARK_APW};
+const struct print_info IBM_PRINT_GMARK      = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ibm_print_gmark};
 
-const byte IBM_STR_FLAG_GMARK[]              = {WW_Code, WW_y_Y_12UP, WW_Code, WW_NULL_5, WW_HYPHEN_UNDERSCORE,
-                                                WW_NULL_12, WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperUp_Micro,
-                                                WW_Code, WW_NULL_2, WW_EQUAL_PLUS, WW_NULL_10, WW_Backspace_Bksp1,
-                                                WW_NULL_13, WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code,
-                                                WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                WW_NULL_2, WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_Backspace_Bksp1,
-                                                WW_NULL_13, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
-                                                WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_LShift,
-                                                WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1, WW_Backspace_Bksp1,
-                                                WW_NULL_13, WW_i_I_Word, WW_NULL_10, WW_NULL_14, WW_NULL};
-const struct print_info IBM_PRINT_FLAG_GMARK  = {SPACING_FORWARD, TIMING_IBM_FLAG_GMARK, &IBM_STR_FLAG_GMARK};
+const struct print_info *IBM_STR_FLAG_GMARK[] = {&IBM_PRINT_FLAG, &IBM_PRINT_GMARK, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_GMARK  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_GMARK};
 
 // <release start>, <invalid> print strings.
-const byte IBM_STR_RELEASESTART[]              = {WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
-                                                  WW_Code, WW_NULL_2, WW_LShift, WW_r_R_ARtn, WW_LShift, WW_NULL_1,
-                                                  WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                  WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                  WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_PaperUp_Micro, WW_NULL_2,
-                                                  WW_LShift, WW_s_S, WW_LShift, WW_NULL_1, WW_Code, WW_PaperDown_Micro,
-                                                  WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_NULL_14,
-                                                  WW_NULL};
-const struct print_info IBM_PRINT_RELEASESTART = {SPACING_FORWARD, TIMING_IBM_RELEASESTART, &IBM_STR_RELEASESTART};
+const struct print_info *IBM_STR_RELEASESTART[] = {&WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_R,
+                                                   &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                   &WW_PRINT_PaperUp, &WW_PRINT_S, &WW_PRINT_DownMicro,
+                                                   &WW_PRINT_DownMicro, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_RELEASESTART  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_RELEASESTART};
 
-const byte IBM_STR_INVALID[]                   = {WW_LShift, WW_x_X_POWERWISE, WW_LShift, WW_NULL_1, WW_Backspace_Bksp1,
-                                                  WW_NULL_13, WW_LShift, WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1,
-                                                  WW_Backspace_Bksp1, WW_NULL_13, WW_i_I_Word, WW_NULL_10, WW_NULL_14,
-                                                  WW_NULL};
-const struct print_info IBM_PRINT_INVALID      = {SPACING_FORWARD, TIMING_IBM_INVALID, &IBM_STR_INVALID};
+const struct print_info *IBM_STR_INVALID[] = {&WW_PRINT_X, &WW_PRINT_Backspace, &WW_PRINT_EXCLAMATION,
+                                              &WW_PRINT_Backspace, &WW_PRINT_i, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_INVALID  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_INVALID};
 
 
 //**********************************************************************************************************************
@@ -2937,7 +3142,7 @@ const struct serial_action IBM_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,       &WW_PRINT_HYPHEN},          // -
   {CMD_PRINT,       &WW_PRINT_PERIOD},          // .
   {CMD_PRINT,       &WW_PRINT_SLASH},           // /
-  {CMD_PRINT,       &IBM_PRINT_SLASH_0},        // 0
+  {CMD_PRINT,       &IBM_PRINT_0},              // 0
   {CMD_PRINT,       &WW_PRINT_1},               // 1
   {CMD_PRINT,       &WW_PRINT_2},               // 2
   {CMD_PRINT,       &WW_PRINT_3},               // 3
@@ -2949,9 +3154,9 @@ const struct serial_action IBM_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,       &WW_PRINT_9},               // 9
   {CMD_PRINT,       &WW_PRINT_Tab},             // :
   {CMD_PRINT,       &WW_PRINT_CRtn},            // ;
-  {CMD_PRINT,       &WW_PRINT_LARROW},          // <
+  {CMD_PRINT,       &WW_PRINT_LEFTARROW},       // <
   {CMD_PRINT,       &WW_PRINT_EQUAL},           // =
-  {CMD_PRINT,       &WW_PRINT_RARROW},          // >
+  {CMD_PRINT,       &WW_PRINT_RIGHTARROW},      // >
   {CMD_PRINT,       &IBM_PRINT_INVALID},        // ?
   {CMD_PRINT,       &WW_PRINT_AT},              // @
   {CMD_PRINT,       &WW_PRINT_A},               // A
@@ -2981,9 +3186,9 @@ const struct serial_action IBM_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,       &WW_PRINT_Y},               // Y
   {CMD_PRINT,       &WW_PRINT_Z},               // Z
   {CMD_PRINT,       &WW_PRINT_LMar},            // [
-  {CMD_PRINT,       &WW_PRINT_ClrAll},          // <backslash>
+  {CMD_PRINT,       &WW_PRINT_TClrAll},         // <backslash>
   {CMD_PRINT,       &WW_PRINT_RMar},            // ]
-  {CMD_PRINT,       &WW_PRINT_UARROW},          // ^
+  {CMD_PRINT,       &WW_PRINT_UPARROW},         // ^
   {CMD_PRINT,       &WW_PRINT_Backspace},       // _
   {CMD_PRINT,       &WW_PRINT_TClr},            // `
   {CMD_IBM_MODE_0,  NULL},                      // a
@@ -2994,7 +3199,7 @@ const struct serial_action IBM_SERIAL_ACTIONS[128] = {
   {CMD_NONE,        NULL},                      // f
   {CMD_IBM_PING,    NULL},                      // g
   {CMD_IBM_ACK,     NULL},                      // h
-  {CMD_PRINT,       &IBM_PRINT_FLAG_SLASH_0},   // i
+  {CMD_PRINT,       &IBM_PRINT_FLAG_0},         // i
   {CMD_PRINT,       &IBM_PRINT_FLAG_1},         // j
   {CMD_PRINT,       &IBM_PRINT_FLAG_2},         // k
   {CMD_PRINT,       &IBM_PRINT_FLAG_3},         // l
@@ -3007,7 +3212,7 @@ const struct serial_action IBM_SERIAL_ACTIONS[128] = {
   {CMD_IBM_SLASH,   NULL},                      // s
   {CMD_NONE,        NULL},                      // t
   {CMD_IBM_UNSLASH, NULL},                      // u
-  {CMD_PRINT,       &WW_PRINT_DARROW},          // v
+  {CMD_PRINT,       &WW_PRINT_DOWNARROW},       // v
   {CMD_NONE,        NULL},                      // w
   {CMD_NONE,        NULL},                      // x
   {CMD_NONE,        NULL},                      // y
@@ -3029,1477 +3234,1477 @@ const struct serial_action IBM_SERIAL_ACTIONS[128] = {
 // Mode 0 (locked) key action table.
 const struct key_action IBM_ACTIONS_MODE0[3 * NUM_WW_KEYS] = { 
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_SEND | ACTION_PRINT,                      '>',   &WW_PRINT_RARROW},         // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      'v',   &WW_PRINT_DARROW},         // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_SEND | ACTION_PRINT,                      '<',   &WW_PRINT_LARROW},         // <left arrow>
-  {ACTION_SEND | ACTION_PRINT,                      '^',   &WW_PRINT_UARROW},         // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '_',   &WW_PRINT_Backspace},      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      ';',   &WW_PRINT_CRtn},           // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      ':',   &WW_PRINT_Tab},            // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &WW_PRINT_RIGHTARROW},     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     'v',  0, &WW_PRINT_DOWNARROW},      // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &WW_PRINT_LEFTARROW},      // <left arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &WW_PRINT_UPARROW},        // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '_',  0, &WW_PRINT_Backspace},      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_CRtn},           // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     ':',  0, &WW_PRINT_Tab},            // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '\\', 0, &WW_PRINT_TClrAll},        // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Code.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_IBM_SETUP,                                0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '[',   &WW_PRINT_LMar},           // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '`',   &WW_PRINT_TClr},           // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_SEND | ACTION_PRINT,                      ']',   &WW_PRINT_RMar},           // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_SEND | ACTION_PRINT,                      '{',   &WW_PRINT_MarRel},         // <margin release>
-  {ACTION_SEND | ACTION_PRINT,                      '\'',  &WW_PRINT_TSet},           // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_IBM_SETUP,                               0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_SETTOPOFFORM},   // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '[',  0, &WW_PRINT_LMar},           // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '`',  0, &WW_PRINT_TClr},           // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_SEND | ACTION_PRINT,                     ']',  0, &WW_PRINT_RMar},           // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_SEND | ACTION_PRINT,                     '{',  0, &WW_PRINT_MarRel},         // <margin release>
+  {ACTION_SEND | ACTION_PRINT,                     '\'', 0, &WW_PRINT_TSet},           // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                      // *** not available on WW1000
 };
 
 // Mode 1 (numeric input) key action table.
 const struct key_action IBM_ACTIONS_MODE1[3 * NUM_WW_KEYS] = {
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_SEND | ACTION_PRINT,                      '>',   &WW_PRINT_RARROW},         // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      'v',   &WW_PRINT_DARROW},         // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      '#',   &IBM_PRINT_RELEASESTART},  // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_SEND | ACTION_PRINT,                      '@',   &WW_PRINT_AT},             // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_SEND | ACTION_PRINT,                      '7',   &WW_PRINT_7},              // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_SEND | ACTION_PRINT,                      '1',   &WW_PRINT_1},              // U, 1
-  {ACTION_PRINT | ACTION_IBM_MODE_1F,               0,     &IBM_PRINT_FLAG},          // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_SEND | ACTION_PRINT,                      '4',   &WW_PRINT_4},              // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_SEND | ACTION_PRINT,                      '8',   &WW_PRINT_8},              // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      '2',   &WW_PRINT_2},              // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_SEND | ACTION_PRINT,                      '}',   &IBM_PRINT_GMARK},         // <group mark>
-  {ACTION_SEND | ACTION_PRINT,                      '5',   &WW_PRINT_5},              // K, 5
-  {ACTION_SEND | ACTION_PRINT,                      '9',   &WW_PRINT_9},              // ., 9
-  {ACTION_SEND | ACTION_PRINT,                      '3',   &WW_PRINT_3},              // O, 3
-  {ACTION_SEND | ACTION_PRINT,                      '0',   &IBM_PRINT_SLASH_0},       // 0
-  {ACTION_SEND | ACTION_PRINT,                      '6',   &WW_PRINT_6},              // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_SEND | ACTION_PRINT,                      '|',   &IBM_PRINT_RMARK},         // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_SEND | ACTION_PRINT,                      '<',   &WW_PRINT_LARROW},         // <left arrow>
-  {ACTION_SEND | ACTION_PRINT,                      '^',   &WW_PRINT_UARROW},         // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '_',   &WW_PRINT_Backspace},      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      ';',   &WW_PRINT_CRtn},           // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      ':',   &WW_PRINT_Tab},            // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &WW_PRINT_RIGHTARROW},     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     'v',  0, &WW_PRINT_DOWNARROW},      // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     '#',  0, &IBM_PRINT_RELEASESTART},  // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_SEND | ACTION_PRINT,                     '@',  0, &WW_PRINT_AT},             // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_SEND | ACTION_PRINT,                     '7',  0, &WW_PRINT_7},              // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_SEND | ACTION_PRINT,                     '1',  0, &WW_PRINT_1},              // U, 1
+  {ACTION_PRINT | ACTION_IBM_MODE_1F,              0,    0, &IBM_PRINT_FLAG},          // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_SEND | ACTION_PRINT,                     '4',  0, &WW_PRINT_4},              // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_SEND | ACTION_PRINT,                     '8',  0, &WW_PRINT_8},              // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     '2',  0, &WW_PRINT_2},              // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_SEND | ACTION_PRINT,                     '}',  0, &IBM_PRINT_GMARK},         // <group mark>
+  {ACTION_SEND | ACTION_PRINT,                     '5',  0, &WW_PRINT_5},              // K, 5
+  {ACTION_SEND | ACTION_PRINT,                     '9',  0, &WW_PRINT_9},              // ., 9
+  {ACTION_SEND | ACTION_PRINT,                     '3',  0, &WW_PRINT_3},              // O, 3
+  {ACTION_SEND | ACTION_PRINT,                     '0',  0, &IBM_PRINT_0},             // 0
+  {ACTION_SEND | ACTION_PRINT,                     '6',  0, &WW_PRINT_6},              // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_SEND | ACTION_PRINT,                     '|',  0, &IBM_PRINT_RMARK},         // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &WW_PRINT_LEFTARROW},      // <left arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &WW_PRINT_UPARROW},        // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '_',  0, &WW_PRINT_Backspace},      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_CRtn},           // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     ':',  0, &WW_PRINT_Tab},            // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '\\', 0, &WW_PRINT_TClrAll},        // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Code.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '[',   &WW_PRINT_LMar},           // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '`',   &WW_PRINT_TClr},           // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_SEND | ACTION_PRINT,                      ']',   &WW_PRINT_RMar},           // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_SEND | ACTION_PRINT,                      '{',   &WW_PRINT_MarRel},         // <margin release>
-  {ACTION_SEND | ACTION_PRINT,                      '\'',  &WW_PRINT_TSet},           // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_SETTOPOFFORM},   // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '[',  0, &WW_PRINT_LMar},           // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '`',  0, &WW_PRINT_TClr},           // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_SEND | ACTION_PRINT,                     ']',  0, &WW_PRINT_RMar},           // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_SEND | ACTION_PRINT,                     '{',  0, &WW_PRINT_MarRel},         // <margin release>
+  {ACTION_SEND | ACTION_PRINT,                     '\'', 0, &WW_PRINT_TSet},           // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                      // *** not available on WW1000
 };
 
 // Mode 1 (flagged numeric input) key action table.
 const struct key_action IBM_ACTIONS_MODE1_FLAG[3 * NUM_WW_KEYS] = {
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  '#',   &IBM_PRINT_RELEASESTART},  // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  '~',   &WW_PRINT_AT},             // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'p',   &WW_PRINT_7},              // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'j',   &WW_PRINT_1},              // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'm',   &WW_PRINT_4},              // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'q',   &WW_PRINT_8},              // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'k',   &WW_PRINT_2},              // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  '"',   &IBM_PRINT_GMARK},         // <group mark>
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'n',   &WW_PRINT_5},              // K, 5
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'r',   &WW_PRINT_9},              // ., 9
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'l',   &WW_PRINT_3},              // O, 3
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'i',   &IBM_PRINT_SLASH_0},       // 0
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  'o',   &WW_PRINT_6},              // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1,  '!',   &IBM_PRINT_RMARK},         // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, '#',  0, &IBM_PRINT_RELEASESTART},  // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, '~',  0, &WW_PRINT_AT},             // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'p',  0, &WW_PRINT_7},              // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'j',  0, &WW_PRINT_1},              // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'm',  0, &WW_PRINT_4},              // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'q',  0, &WW_PRINT_8},              // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'k',  0, &WW_PRINT_2},              // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, '"',  0, &IBM_PRINT_GMARK},         // <group mark>
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'n',  0, &WW_PRINT_5},              // K, 5
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'r',  0, &WW_PRINT_9},              // ., 9
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'l',  0, &WW_PRINT_3},              // O, 3
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'i',  0, &IBM_PRINT_0},             // 0
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, 'o',  0, &WW_PRINT_6},              // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_SEND | ACTION_PRINT | ACTION_IBM_MODE_1, '!',  0, &IBM_PRINT_RMARK},         // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Code.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                      // *** not available on WW1000
 };
 
 // Mode 2 (alphameric input) key action table.
 const struct key_action IBM_ACTIONS_MODE2[3 * NUM_WW_KEYS] = {
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_SEND | ACTION_PRINT,                      '>',   &WW_PRINT_RARROW},         // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      'v',   &WW_PRINT_DARROW},         // <down arrow>
-  {ACTION_SEND | ACTION_PRINT,                      'Z',   &WW_PRINT_Z},              // Z
-  {ACTION_SEND | ACTION_PRINT,                      'Q',   &WW_PRINT_Q},              // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      '#',   &IBM_PRINT_RELEASESTART},  // <release start>
-  {ACTION_SEND | ACTION_PRINT,                      'A',   &WW_PRINT_A},              // A
-  {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},          // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_SEND | ACTION_PRINT,                      'X',   &WW_PRINT_X},              // X
-  {ACTION_SEND | ACTION_PRINT,                      'W',   &WW_PRINT_W},              // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      'S',   &WW_PRINT_S},              // S
-  {ACTION_SEND | ACTION_PRINT,                      'C',   &WW_PRINT_C},              // C
-  {ACTION_SEND | ACTION_PRINT,                      'E',   &WW_PRINT_E},              // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      'D',   &WW_PRINT_D},              // D
-  {ACTION_SEND | ACTION_PRINT,                      'B',   &WW_PRINT_B},              // B
-  {ACTION_SEND | ACTION_PRINT,                      'V',   &WW_PRINT_V},              // V
-  {ACTION_SEND | ACTION_PRINT,                      'T',   &WW_PRINT_T},              // T
-  {ACTION_SEND | ACTION_PRINT,                      'R',   &WW_PRINT_R},              // R
-  {ACTION_SEND | ACTION_PRINT,                      '@',   &WW_PRINT_AT},             // @
-  {ACTION_SEND | ACTION_PRINT,                      '(',   &WW_PRINT_LPAREN},         // (
-  {ACTION_SEND | ACTION_PRINT,                      'F',   &WW_PRINT_F},              // F
-  {ACTION_SEND | ACTION_PRINT,                      'G',   &WW_PRINT_G},              // G
-  {ACTION_SEND | ACTION_PRINT,                      'N',   &WW_PRINT_N},              // N
-  {ACTION_SEND | ACTION_PRINT,                      'M',   &WW_PRINT_M},              // M, 7
-  {ACTION_SEND | ACTION_PRINT,                      'Y',   &WW_PRINT_Y},              // Y
-  {ACTION_SEND | ACTION_PRINT,                      'U',   &WW_PRINT_U},              // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_SEND | ACTION_PRINT,                      ')',   &WW_PRINT_RPAREN},         // )
-  {ACTION_SEND | ACTION_PRINT,                      'J',   &WW_PRINT_J},              // J, 4
-  {ACTION_SEND | ACTION_PRINT,                      'H',   &WW_PRINT_H},              // H
-  {ACTION_SEND | ACTION_PRINT,                      ',',   &WW_PRINT_COMMA},          // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      'I',   &WW_PRINT_I},              // I, 2
-  {ACTION_SEND | ACTION_PRINT,                      '=',   &WW_PRINT_EQUAL},          // =
-  {ACTION_SEND | ACTION_PRINT,                      '}',   &IBM_PRINT_GMARK},         // <group mark>
-  {ACTION_SEND | ACTION_PRINT,                      'K',   &WW_PRINT_K},              // K, 5
-  {ACTION_SEND | ACTION_PRINT,                      '.',   &WW_PRINT_PERIOD},         // ., 9
-  {ACTION_SEND | ACTION_PRINT,                      'O',   &WW_PRINT_O},              // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_SEND | ACTION_PRINT,                      'L',   &WW_PRINT_L},              // L, 6
-  {ACTION_SEND | ACTION_PRINT,                      '/',   &WW_PRINT_SLASH},          // /
-  {ACTION_SEND | ACTION_PRINT,                      '-',   &WW_PRINT_HYPHEN},         // -
-  {ACTION_SEND | ACTION_PRINT,                      'P',   &WW_PRINT_P},              // P
-  {ACTION_SEND | ACTION_PRINT,                      '*',   &WW_PRINT_ASTERISK},       // *, .
-  {ACTION_SEND | ACTION_PRINT,                      '|',   &IBM_PRINT_RMARK},         // <record mark>
-  {ACTION_SEND | ACTION_PRINT,                      '+',   &WW_PRINT_PLUS},           // +
-  {ACTION_SEND | ACTION_PRINT,                      '$',   &WW_PRINT_DOLLAR},         // $
-  {ACTION_SEND | ACTION_PRINT,                      '<',   &WW_PRINT_LARROW},         // <left arrow>
-  {ACTION_SEND | ACTION_PRINT,                      '^',   &WW_PRINT_UARROW},         // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '_',   &WW_PRINT_Backspace},      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      ';',   &WW_PRINT_CRtn},           // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      ':',   &WW_PRINT_Tab},            // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &WW_PRINT_RIGHTARROW},     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     'v',  0, &WW_PRINT_DOWNARROW},      // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'Z',  0, &WW_PRINT_Z},              // Z
+  {ACTION_SEND | ACTION_PRINT,                     'Q',  0, &WW_PRINT_Q},              // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     '#',  0, &IBM_PRINT_RELEASESTART},  // <release start>
+  {ACTION_SEND | ACTION_PRINT,                     'A',  0, &WW_PRINT_A},              // A
+  {ACTION_SEND | ACTION_PRINT,                     ' ',  0, &WW_PRINT_SPACE},          // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_SEND | ACTION_PRINT,                     'X',  0, &WW_PRINT_X},              // X
+  {ACTION_SEND | ACTION_PRINT,                     'W',  0, &WW_PRINT_W},              // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     'S',  0, &WW_PRINT_S},              // S
+  {ACTION_SEND | ACTION_PRINT,                     'C',  0, &WW_PRINT_C},              // C
+  {ACTION_SEND | ACTION_PRINT,                     'E',  0, &WW_PRINT_E},              // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     'D',  0, &WW_PRINT_D},              // D
+  {ACTION_SEND | ACTION_PRINT,                     'B',  0, &WW_PRINT_B},              // B
+  {ACTION_SEND | ACTION_PRINT,                     'V',  0, &WW_PRINT_V},              // V
+  {ACTION_SEND | ACTION_PRINT,                     'T',  0, &WW_PRINT_T},              // T
+  {ACTION_SEND | ACTION_PRINT,                     'R',  0, &WW_PRINT_R},              // R
+  {ACTION_SEND | ACTION_PRINT,                     '@',  0, &WW_PRINT_AT},             // @
+  {ACTION_SEND | ACTION_PRINT,                     '(',  0, &WW_PRINT_LPAREN},         // (
+  {ACTION_SEND | ACTION_PRINT,                     'F',  0, &WW_PRINT_F},              // F
+  {ACTION_SEND | ACTION_PRINT,                     'G',  0, &WW_PRINT_G},              // G
+  {ACTION_SEND | ACTION_PRINT,                     'N',  0, &WW_PRINT_N},              // N
+  {ACTION_SEND | ACTION_PRINT,                     'M',  0, &WW_PRINT_M},              // M, 7
+  {ACTION_SEND | ACTION_PRINT,                     'Y',  0, &WW_PRINT_Y},              // Y
+  {ACTION_SEND | ACTION_PRINT,                     'U',  0, &WW_PRINT_U},              // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_SEND | ACTION_PRINT,                     ')',  0, &WW_PRINT_RPAREN},         // )
+  {ACTION_SEND | ACTION_PRINT,                     'J',  0, &WW_PRINT_J},              // J, 4
+  {ACTION_SEND | ACTION_PRINT,                     'H',  0, &WW_PRINT_H},              // H
+  {ACTION_SEND | ACTION_PRINT,                     ',',  0, &WW_PRINT_COMMA},          // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     'I',  0, &WW_PRINT_I},              // I, 2
+  {ACTION_SEND | ACTION_PRINT,                     '=',  0, &WW_PRINT_EQUAL},          // =
+  {ACTION_SEND | ACTION_PRINT,                     '}',  0, &IBM_PRINT_GMARK},         // <group mark>
+  {ACTION_SEND | ACTION_PRINT,                     'K',  0, &WW_PRINT_K},              // K, 5
+  {ACTION_SEND | ACTION_PRINT,                     '.',  0, &WW_PRINT_PERIOD},         // ., 9
+  {ACTION_SEND | ACTION_PRINT,                     'O',  0, &WW_PRINT_O},              // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_SEND | ACTION_PRINT,                     'L',  0, &WW_PRINT_L},              // L, 6
+  {ACTION_SEND | ACTION_PRINT,                     '/',  0, &WW_PRINT_SLASH},          // /
+  {ACTION_SEND | ACTION_PRINT,                     '-',  0, &WW_PRINT_HYPHEN},         // -
+  {ACTION_SEND | ACTION_PRINT,                     'P',  0, &WW_PRINT_P},              // P
+  {ACTION_SEND | ACTION_PRINT,                     '*',  0, &WW_PRINT_ASTERISK},       // *, .
+  {ACTION_SEND | ACTION_PRINT,                     '|',  0, &IBM_PRINT_RMARK},         // <record mark>
+  {ACTION_SEND | ACTION_PRINT,                     '+',  0, &WW_PRINT_PLUS},           // +
+  {ACTION_SEND | ACTION_PRINT,                     '$',  0, &WW_PRINT_DOLLAR},         // $
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &WW_PRINT_LEFTARROW},      // <left arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &WW_PRINT_UPARROW},        // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '_',  0, &WW_PRINT_Backspace},      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_CRtn},           // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     ':',  0, &WW_PRINT_Tab},            // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_SEND | ACTION_PRINT,                      '7',   &WW_PRINT_7},              // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_SEND | ACTION_PRINT,                      '1',   &WW_PRINT_1},              // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_SEND | ACTION_PRINT,                      '4',   &WW_PRINT_4},              // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_SEND | ACTION_PRINT,                      '8',   &WW_PRINT_8},              // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      '2',   &WW_PRINT_2},              // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_SEND | ACTION_PRINT,                      '5',   &WW_PRINT_5},              // K, 5
-  {ACTION_SEND | ACTION_PRINT,                      '9',   &WW_PRINT_9},              // ., 9
-  {ACTION_SEND | ACTION_PRINT,                      '3',   &WW_PRINT_3},              // O, 3
-  {ACTION_SEND | ACTION_PRINT,                      '0',   &IBM_PRINT_SLASH_0},       // 0
-  {ACTION_SEND | ACTION_PRINT,                      '6',   &WW_PRINT_6},              // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_SEND | ACTION_PRINT,                      '.',   &WW_PRINT_PERIOD},         // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '\\', 0, &WW_PRINT_TClrAll},        // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_SEND | ACTION_PRINT,                     '7',  0, &WW_PRINT_7},              // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_SEND | ACTION_PRINT,                     '1',  0, &WW_PRINT_1},              // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_SEND | ACTION_PRINT,                     '4',  0, &WW_PRINT_4},              // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_SEND | ACTION_PRINT,                     '8',  0, &WW_PRINT_8},              // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     '2',  0, &WW_PRINT_2},              // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_SEND | ACTION_PRINT,                     '5',  0, &WW_PRINT_5},              // K, 5
+  {ACTION_SEND | ACTION_PRINT,                     '9',  0, &WW_PRINT_9},              // ., 9
+  {ACTION_SEND | ACTION_PRINT,                     '3',  0, &WW_PRINT_3},              // O, 3
+  {ACTION_SEND | ACTION_PRINT,                     '0',  0, &IBM_PRINT_0},             // 0
+  {ACTION_SEND | ACTION_PRINT,                     '6',  0, &WW_PRINT_6},              // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_SEND | ACTION_PRINT,                     '.',  0, &WW_PRINT_PERIOD},         // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Code.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '[',   &WW_PRINT_LMar},           // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '`',   &WW_PRINT_TClr},           // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_SEND | ACTION_PRINT,                      ']',   &WW_PRINT_RMar},           // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_SEND | ACTION_PRINT,                      '{',   &WW_PRINT_MarRel},         // <margin release>
-  {ACTION_SEND | ACTION_PRINT,                      '\'',  &WW_PRINT_TSet},           // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_SETTOPOFFORM},   // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '[',  0, &WW_PRINT_LMar},           // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '`',  0, &WW_PRINT_TClr},           // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_SEND | ACTION_PRINT,                     ']',  0, &WW_PRINT_RMar},           // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_SEND | ACTION_PRINT,                     '{',  0, &WW_PRINT_MarRel},         // <margin release>
+  {ACTION_SEND | ACTION_PRINT,                     '\'', 0, &WW_PRINT_TSet},           // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                      // *** not available on WW1000
 };
 
 // Mode 3 (output) key action table.
 const struct key_action IBM_ACTIONS_MODE3[3 * NUM_WW_KEYS] = {
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_SEND | ACTION_PRINT,                      '#',   &IBM_PRINT_RELEASESTART},  // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      ';',   &WW_PRINT_CRtn},           // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      ':',   &WW_PRINT_Tab},            // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_SEND | ACTION_PRINT,                     '#',  0, &IBM_PRINT_RELEASESTART},  // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_CRtn},           // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     ':',  0, &WW_PRINT_Tab},            // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},      // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Code.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                      // *** not available on WW1000
 };
 
 // Setup key action table.
 const struct key_action IBM_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_COMMAND,                                  'Z',   NULL},                     // Z
-  {ACTION_COMMAND,                                  'Q',   NULL},                     // Q
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <release start>
-  {ACTION_COMMAND,                                  'A',   NULL},                     // A
-  {ACTION_COMMAND,                                  ' ',   NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_COMMAND,                                  'X',   NULL},                     // X
-  {ACTION_COMMAND,                                  'W',   NULL},                     // W
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  'S',   NULL},                     // S
-  {ACTION_COMMAND,                                  'C',   NULL},                     // C
-  {ACTION_COMMAND,                                  'E',   NULL},                     // E
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  'D',   NULL},                     // D
-  {ACTION_COMMAND,                                  'B',   NULL},                     // B
-  {ACTION_COMMAND,                                  'V',   NULL},                     // V
-  {ACTION_COMMAND,                                  'T',   NULL},                     // T
-  {ACTION_COMMAND,                                  'R',   NULL},                     // R
-  {ACTION_COMMAND,                                  '@',   NULL},                     // @
-  {ACTION_COMMAND,                                  '(',   NULL},                     // (
-  {ACTION_COMMAND,                                  'F',   NULL},                     // F
-  {ACTION_COMMAND,                                  'G',   NULL},                     // G
-  {ACTION_COMMAND,                                  'N',   NULL},                     // N
-  {ACTION_COMMAND,                                  'M',   NULL},                     // M, 7
-  {ACTION_COMMAND,                                  'Y',   NULL},                     // Y
-  {ACTION_COMMAND,                                  'U',   NULL},                     // U, 1
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <flag>
-  {ACTION_COMMAND,                                  ')',   NULL},                     // )
-  {ACTION_COMMAND,                                  'J',   NULL},                     // J, 4
-  {ACTION_COMMAND,                                  'H',   NULL},                     // H
-  {ACTION_COMMAND,                                  ',',   NULL},                     // ,, 8
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  'I',   NULL},                     // I, 2
-  {ACTION_COMMAND,                                  '=',   NULL},                     // =
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <group mark>
-  {ACTION_COMMAND,                                  'K',   NULL},                     // K, 5
-  {ACTION_COMMAND,                                  '.',   NULL},                     // ., 9
-  {ACTION_COMMAND,                                  'O',   NULL},                     // O, 3
-  {ACTION_COMMAND,                                  '0',   NULL},                     // 0
-  {ACTION_COMMAND,                                  'L',   NULL},                     // L, 6
-  {ACTION_COMMAND,                                  '/',   NULL},                     // /
-  {ACTION_COMMAND,                                  '-',   NULL},                     // -
-  {ACTION_COMMAND,                                  'P',   NULL},                     // P
-  {ACTION_COMMAND,                                  '*',   NULL},                     // *, .
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <record mark>
-  {ACTION_COMMAND,                                  '+',   NULL},                     // +
-  {ACTION_COMMAND,                                  '$',   NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_COMMAND,                                  0x0d,  NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_COMMAND,                                 'Z',  0, NULL},                     // Z
+  {ACTION_COMMAND,                                 'Q',  0, NULL},                     // Q
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <release start>
+  {ACTION_COMMAND,                                 'A',  0, NULL},                     // A
+  {ACTION_COMMAND,                                 ' ',  0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_COMMAND,                                 'X',  0, NULL},                     // X
+  {ACTION_COMMAND,                                 'W',  0, NULL},                     // W
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 'S',  0, NULL},                     // S
+  {ACTION_COMMAND,                                 'C',  0, NULL},                     // C
+  {ACTION_COMMAND,                                 'E',  0, NULL},                     // E
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 'D',  0, NULL},                     // D
+  {ACTION_COMMAND,                                 'B',  0, NULL},                     // B
+  {ACTION_COMMAND,                                 'V',  0, NULL},                     // V
+  {ACTION_COMMAND,                                 'T',  0, NULL},                     // T
+  {ACTION_COMMAND,                                 'R',  0, NULL},                     // R
+  {ACTION_COMMAND,                                 '@',  0, NULL},                     // @
+  {ACTION_COMMAND,                                 '(',  0, NULL},                     // (
+  {ACTION_COMMAND,                                 'F',  0, NULL},                     // F
+  {ACTION_COMMAND,                                 'G',  0, NULL},                     // G
+  {ACTION_COMMAND,                                 'N',  0, NULL},                     // N
+  {ACTION_COMMAND,                                 'M',  0, NULL},                     // M, 7
+  {ACTION_COMMAND,                                 'Y',  0, NULL},                     // Y
+  {ACTION_COMMAND,                                 'U',  0, NULL},                     // U, 1
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <flag>
+  {ACTION_COMMAND,                                 ')',  0, NULL},                     // )
+  {ACTION_COMMAND,                                 'J',  0, NULL},                     // J, 4
+  {ACTION_COMMAND,                                 'H',  0, NULL},                     // H
+  {ACTION_COMMAND,                                 ',',  0, NULL},                     // ,, 8
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 'I',  0, NULL},                     // I, 2
+  {ACTION_COMMAND,                                 '=',  0, NULL},                     // =
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <group mark>
+  {ACTION_COMMAND,                                 'K',  0, NULL},                     // K, 5
+  {ACTION_COMMAND,                                 '.',  0, NULL},                     // ., 9
+  {ACTION_COMMAND,                                 'O',  0, NULL},                     // O, 3
+  {ACTION_COMMAND,                                 '0',  0, NULL},                     // 0
+  {ACTION_COMMAND,                                 'L',  0, NULL},                     // L, 6
+  {ACTION_COMMAND,                                 '/',  0, NULL},                     // /
+  {ACTION_COMMAND,                                 '-',  0, NULL},                     // -
+  {ACTION_COMMAND,                                 'P',  0, NULL},                     // P
+  {ACTION_COMMAND,                                 '*',  0, NULL},                     // *, .
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <record mark>
+  {ACTION_COMMAND,                                 '+',  0, NULL},                     // +
+  {ACTION_COMMAND,                                 '$',  0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_COMMAND,                                 0x0d, 0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_COMMAND,                                  'Z',   NULL},                     // Z
-  {ACTION_COMMAND,                                  'Q',   NULL},                     // Q
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <release start>
-  {ACTION_COMMAND,                                  'A',   NULL},                     // A
-  {ACTION_COMMAND,                                  ' ',   NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_COMMAND,                                  'X',   NULL},                     // X
-  {ACTION_COMMAND,                                  'W',   NULL},                     // W
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  'S',   NULL},                     // S
-  {ACTION_COMMAND,                                  'C',   NULL},                     // C
-  {ACTION_COMMAND,                                  'E',   NULL},                     // E
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  'D',   NULL},                     // D
-  {ACTION_COMMAND,                                  'B',   NULL},                     // B
-  {ACTION_COMMAND,                                  'V',   NULL},                     // V
-  {ACTION_COMMAND,                                  'T',   NULL},                     // T
-  {ACTION_COMMAND,                                  'R',   NULL},                     // R
-  {ACTION_COMMAND,                                  '@',   NULL},                     // @
-  {ACTION_COMMAND,                                  '(',   NULL},                     // (
-  {ACTION_COMMAND,                                  'F',   NULL},                     // F
-  {ACTION_COMMAND,                                  'G',   NULL},                     // G
-  {ACTION_COMMAND,                                  'N',   NULL},                     // N
-  {ACTION_COMMAND,                                  '7',   NULL},                     // M, 7
-  {ACTION_COMMAND,                                  'Y',   NULL},                     // Y
-  {ACTION_COMMAND,                                  '1',   NULL},                     // U, 1
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <flag>
-  {ACTION_COMMAND,                                  ')',   NULL},                     // )
-  {ACTION_COMMAND,                                  '4',   NULL},                     // J, 4
-  {ACTION_COMMAND,                                  'H',   NULL},                     // H
-  {ACTION_COMMAND,                                  '8',   NULL},                     // ,, 8
-  {ACTION_COMMAND,                                  '~',   NULL},                     // *** unlabelled key
-  {ACTION_COMMAND,                                  '2',   NULL},                     // I, 2
-  {ACTION_COMMAND,                                  '=',   NULL},                     // =
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <group mark>
-  {ACTION_COMMAND,                                  '5',   NULL},                     // K, 5
-  {ACTION_COMMAND,                                  '9',   NULL},                     // ., 9
-  {ACTION_COMMAND,                                  '3',   NULL},                     // O, 3
-  {ACTION_COMMAND,                                  '0',   NULL},                     // 0
-  {ACTION_COMMAND,                                  '6',   NULL},                     // L, 6
-  {ACTION_COMMAND,                                  '/',   NULL},                     // /
-  {ACTION_COMMAND,                                  '-',   NULL},                     // -
-  {ACTION_COMMAND,                                  'P',   NULL},                     // P
-  {ACTION_COMMAND,                                  '.',   NULL},                     // *, .
-  {ACTION_COMMAND,                                  '~',   NULL},                     // <record mark>
-  {ACTION_COMMAND,                                  '+',   NULL},                     // +
-  {ACTION_COMMAND,                                  '$',   NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_COMMAND,                                  0x0d,  NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_COMMAND,                                 'Z',  0, NULL},                     // Z
+  {ACTION_COMMAND,                                 'Q',  0, NULL},                     // Q
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <release start>
+  {ACTION_COMMAND,                                 'A',  0, NULL},                     // A
+  {ACTION_COMMAND,                                 ' ',  0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_COMMAND,                                 'X',  0, NULL},                     // X
+  {ACTION_COMMAND,                                 'W',  0, NULL},                     // W
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 'S',  0, NULL},                     // S
+  {ACTION_COMMAND,                                 'C',  0, NULL},                     // C
+  {ACTION_COMMAND,                                 'E',  0, NULL},                     // E
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 'D',  0, NULL},                     // D
+  {ACTION_COMMAND,                                 'B',  0, NULL},                     // B
+  {ACTION_COMMAND,                                 'V',  0, NULL},                     // V
+  {ACTION_COMMAND,                                 'T',  0, NULL},                     // T
+  {ACTION_COMMAND,                                 'R',  0, NULL},                     // R
+  {ACTION_COMMAND,                                 '@',  0, NULL},                     // @
+  {ACTION_COMMAND,                                 '(',  0, NULL},                     // (
+  {ACTION_COMMAND,                                 'F',  0, NULL},                     // F
+  {ACTION_COMMAND,                                 'G',  0, NULL},                     // G
+  {ACTION_COMMAND,                                 'N',  0, NULL},                     // N
+  {ACTION_COMMAND,                                 '7',  0, NULL},                     // M, 7
+  {ACTION_COMMAND,                                 'Y',  0, NULL},                     // Y
+  {ACTION_COMMAND,                                 '1',  0, NULL},                     // U, 1
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <flag>
+  {ACTION_COMMAND,                                 ')',  0, NULL},                     // )
+  {ACTION_COMMAND,                                 '4',  0, NULL},                     // J, 4
+  {ACTION_COMMAND,                                 'H',  0, NULL},                     // H
+  {ACTION_COMMAND,                                 '8',  0, NULL},                     // ,, 8
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // *** unlabelled key
+  {ACTION_COMMAND,                                 '2',  0, NULL},                     // I, 2
+  {ACTION_COMMAND,                                 '=',  0, NULL},                     // =
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <group mark>
+  {ACTION_COMMAND,                                 '5',  0, NULL},                     // K, 5
+  {ACTION_COMMAND,                                 '9',  0, NULL},                     // ., 9
+  {ACTION_COMMAND,                                 '3',  0, NULL},                     // O, 3
+  {ACTION_COMMAND,                                 '0',  0, NULL},                     // 0
+  {ACTION_COMMAND,                                 '6',  0, NULL},                     // L, 6
+  {ACTION_COMMAND,                                 '/',  0, NULL},                     // /
+  {ACTION_COMMAND,                                 '-',  0, NULL},                     // -
+  {ACTION_COMMAND,                                 'P',  0, NULL},                     // P
+  {ACTION_COMMAND,                                 '.',  0, NULL},                     // *, .
+  {ACTION_COMMAND,                                 '~',  0, NULL},                     // <record mark>
+  {ACTION_COMMAND,                                 '+',  0, NULL},                     // +
+  {ACTION_COMMAND,                                 '$',  0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_COMMAND,                                 0x0d, 0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
 
   // Code.
-  {ACTION_NONE,                                     0,     NULL},                     // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                     // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <setup>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // Z
-  {ACTION_NONE,                                     0,     NULL},                     // Q
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <release start>
-  {ACTION_NONE,                                     0,     NULL},                     // A
-  {ACTION_NONE,                                     0,     NULL},                     // <space>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                     // <code>
-  {ACTION_NONE,                                     0,     NULL},                     // X
-  {ACTION_NONE,                                     0,     NULL},                     // W
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // S
-  {ACTION_NONE,                                     0,     NULL},                     // C
-  {ACTION_NONE,                                     0,     NULL},                     // E
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_COMMAND,                                  0x04,  NULL},                     // D
-  {ACTION_NONE,                                     0,     NULL},                     // B
-  {ACTION_NONE,                                     0,     NULL},                     // V
-  {ACTION_NONE,                                     0,     NULL},                     // T
-  {ACTION_NONE,                                     0,     NULL},                     // R
-  {ACTION_NONE,                                     0,     NULL},                     // @
-  {ACTION_NONE,                                     0,     NULL},                     // (
-  {ACTION_NONE,                                     0,     NULL},                     // F
-  {ACTION_NONE,                                     0,     NULL},                     // G
-  {ACTION_NONE,                                     0,     NULL},                     // N
-  {ACTION_NONE,                                     0,     NULL},                     // M, 7
-  {ACTION_NONE,                                     0,     NULL},                     // Y
-  {ACTION_NONE,                                     0,     NULL},                     // U, 1
-  {ACTION_NONE,                                     0,     NULL},                     // <flag>
-  {ACTION_NONE,                                     0,     NULL},                     // )
-  {ACTION_NONE,                                     0,     NULL},                     // J, 4
-  {ACTION_NONE,                                     0,     NULL},                     // H
-  {ACTION_NONE,                                     0,     NULL},                     // ,, 8
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // I, 2
-  {ACTION_NONE,                                     0,     NULL},                     // =
-  {ACTION_NONE,                                     0,     NULL},                     // <group mark>
-  {ACTION_NONE,                                     0,     NULL},                     // K, 5
-  {ACTION_NONE,                                     0,     NULL},                     // ., 9
-  {ACTION_NONE,                                     0,     NULL},                     // O, 3
-  {ACTION_NONE,                                     0,     NULL},                     // 0
-  {ACTION_NONE,                                     0,     NULL},                     // L, 6
-  {ACTION_NONE,                                     0,     NULL},                     // /
-  {ACTION_NONE,                                     0,     NULL},                     // -
-  {ACTION_NONE,                                     0,     NULL},                     // P
-  {ACTION_NONE,                                     0,     NULL},                     // *, .
-  {ACTION_NONE,                                     0,     NULL},                     // <record mark>
-  {ACTION_NONE,                                     0,     NULL},                     // +
-  {ACTION_NONE,                                     0,     NULL},                     // $
-  {ACTION_NONE,                                     0,     NULL},                     // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                     // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                     // <return>
-  {ACTION_NONE,                                     0,     NULL},                     //
-  {ACTION_NONE,                                     0,     NULL},                     // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                     // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab>
-  {ACTION_NONE,                                     0,     NULL},                     // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                     // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // Z
+  {ACTION_NONE,                                    0,    0, NULL},                     // Q
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
+  {ACTION_NONE,                                    0,    0, NULL},                     // A
+  {ACTION_NONE,                                    0,    0, NULL},                     // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <code>
+  {ACTION_NONE,                                    0,    0, NULL},                     // X
+  {ACTION_NONE,                                    0,    0, NULL},                     // W
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // S
+  {ACTION_NONE,                                    0,    0, NULL},                     // C
+  {ACTION_NONE,                                    0,    0, NULL},                     // E
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_COMMAND,                                 0x04, 0, NULL},                     // D
+  {ACTION_NONE,                                    0,    0, NULL},                     // B
+  {ACTION_NONE,                                    0,    0, NULL},                     // V
+  {ACTION_NONE,                                    0,    0, NULL},                     // T
+  {ACTION_NONE,                                    0,    0, NULL},                     // R
+  {ACTION_NONE,                                    0,    0, NULL},                     // @
+  {ACTION_NONE,                                    0,    0, NULL},                     // (
+  {ACTION_NONE,                                    0,    0, NULL},                     // F
+  {ACTION_NONE,                                    0,    0, NULL},                     // G
+  {ACTION_NONE,                                    0,    0, NULL},                     // N
+  {ACTION_NONE,                                    0,    0, NULL},                     // M, 7
+  {ACTION_NONE,                                    0,    0, NULL},                     // Y
+  {ACTION_NONE,                                    0,    0, NULL},                     // U, 1
+  {ACTION_NONE,                                    0,    0, NULL},                     // <flag>
+  {ACTION_NONE,                                    0,    0, NULL},                     // )
+  {ACTION_NONE,                                    0,    0, NULL},                     // J, 4
+  {ACTION_NONE,                                    0,    0, NULL},                     // H
+  {ACTION_NONE,                                    0,    0, NULL},                     // ,, 8
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // I, 2
+  {ACTION_NONE,                                    0,    0, NULL},                     // =
+  {ACTION_NONE,                                    0,    0, NULL},                     // <group mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // K, 5
+  {ACTION_NONE,                                    0,    0, NULL},                     // ., 9
+  {ACTION_NONE,                                    0,    0, NULL},                     // O, 3
+  {ACTION_NONE,                                    0,    0, NULL},                     // 0
+  {ACTION_NONE,                                    0,    0, NULL},                     // L, 6
+  {ACTION_NONE,                                    0,    0, NULL},                     // /
+  {ACTION_NONE,                                    0,    0, NULL},                     // -
+  {ACTION_NONE,                                    0,    0, NULL},                     // P
+  {ACTION_NONE,                                    0,    0, NULL},                     // *, .
+  {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
+  {ACTION_NONE,                                    0,    0, NULL},                     // +
+  {ACTION_NONE,                                    0,    0, NULL},                     // $
+  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                     // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                     //
+  {ACTION_NONE,                                    0,    0, NULL},                     // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                     // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                      // *** not available on WW1000
 };
 
 
@@ -4522,7 +4727,7 @@ volatile boolean send_ack_IBM = FALSE;  // Current send ack state.
 //
 //**********************************************************************************************************************
 
-void Setup_IBM () {
+void Setup_IBM (void) {
 
   // Initialize variables.
   key_actions = &IBM_ACTIONS_MODE0;
@@ -4537,8 +4742,22 @@ void Setup_IBM () {
   lock_IBM = FALSE;
   send_ack_IBM = FALSE;
 
+  // Initialize dynamic print elements.
+  if (slash == SETTING_TRUE) {
+    ibm_print_zero = &IBM_PRINT_SLASH_0;
+  } else {
+    ibm_print_zero = &WW_PRINT_0;
+  }
+  if (asciiwheel == SETTING_TRUE) {
+    ibm_print_rmark = &IBM_PRINT_RMARK_APW;
+    ibm_print_gmark = &IBM_PRINT_GMARK_APW;
+  } else {
+    ibm_print_rmark = &IBM_PRINT_RMARK_IPW;
+    ibm_print_gmark = &IBM_PRINT_GMARK_IPW;
+  }
+
   // Turn on the Lock light to indicate mode 0.
-  Print_string (&WW_PRINT_Lock);
+  (void)Print_element (&WW_PRINT_Lock);
   lock_IBM = TRUE;
 }
 
@@ -4550,36 +4769,50 @@ void Setup_IBM () {
 //**********************************************************************************************************************
 
 // Print IBM 1620 Jr. setup title.
-void Print_IBM_setup_title () {
+void Print_IBM_setup_title (void) {
 
-  Print_characters ("\r\r---- Cadetwriter: " IBM_VERSION " Setup\r\r");
+  (void)Print_string ("\r\r---- Cadetwriter: " IBM_VERSION " Setup\r\r");
 }
 
 // Update IBM 1620 Jr. settings.
-void Update_IBM_settings () {
+void Update_IBM_settings (void) {
   byte obattery = battery;
   byte ooffset = offset;
 
   // Query new settings.
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   errors = Read_truefalse_setting ("record errors", errors);
   warnings = Read_truefalse_setting ("record warnings", warnings);
   battery = Read_truefalse_setting ("batteries installed", battery);
   slash = Read_truefalse_setting ("slash zeroes", slash);
+  if (slash == SETTING_TRUE) {
+    ibm_print_zero = &IBM_PRINT_SLASH_0;
+  } else {
+    ibm_print_zero = &WW_PRINT_0;
+  }
   bold = Read_truefalse_setting ("bold input", bold);
   offset = Read_integer_setting ("line offset", offset, 0, 10);
-  Print_string (&WW_PRINT_CRtn);
+  asciiwheel = Read_truefalse_setting ("ASCII printwheel", asciiwheel);
+  if (asciiwheel == SETTING_TRUE) {
+    ibm_print_rmark = &IBM_PRINT_RMARK_APW;
+    ibm_print_gmark = &IBM_PRINT_GMARK_APW;
+  } else {
+    ibm_print_rmark = &IBM_PRINT_RMARK_IPW;
+    ibm_print_gmark = &IBM_PRINT_GMARK_IPW;
+  }
+  (void)Print_element (&WW_PRINT_CRtn);
 
   // Save settings in EEPROM if requested.
   if (Ask_yesno_question ("Save settings", FALSE)) {
     Write_EEPROM (EEPROM_ERRORS, errors);
     Write_EEPROM (EEPROM_WARNINGS, warnings);
     Write_EEPROM (EEPROM_BATTERY, battery);
+    Write_EEPROM (EEPROM_OFFSET, offset);
+    Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     Write_EEPROM (EEPROM_SLASH, slash);
     Write_EEPROM (EEPROM_BOLD, bold);
-    Write_EEPROM (EEPROM_OFFSET, offset);
   }
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
  
   // Reset margins and tabs if battery or offset changed.
   if ((obattery != battery) || (ooffset != offset)) {
@@ -4590,39 +4823,45 @@ void Update_IBM_settings () {
 // Print IBM 1620 Jr. character set.
 void Print_IBM_character_set ()  {
 
-  Print_string (&WW_PRINT_CRtn);  Print_string (&WW_PRINT_SPACE);  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_A);  Print_string (&WW_PRINT_B);  Print_string (&WW_PRINT_C);  Print_string (&WW_PRINT_D);
-  Print_string (&WW_PRINT_E);  Print_string (&WW_PRINT_F);  Print_string (&WW_PRINT_G);  Print_string (&WW_PRINT_H);
-  Print_string (&WW_PRINT_I);  Print_string (&WW_PRINT_J);  Print_string (&WW_PRINT_K);  Print_string (&WW_PRINT_L);
-  Print_string (&WW_PRINT_M);  Print_string (&WW_PRINT_N);  Print_string (&WW_PRINT_O);  Print_string (&WW_PRINT_P);
-  Print_string (&WW_PRINT_Q);  Print_string (&WW_PRINT_R);  Print_string (&WW_PRINT_S);  Print_string (&WW_PRINT_T);
-  Print_string (&WW_PRINT_U);  Print_string (&WW_PRINT_V);  Print_string (&WW_PRINT_W);  Print_string (&WW_PRINT_X);
-  Print_string (&WW_PRINT_Y);  Print_string (&WW_PRINT_Z);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&IBM_PRINT_SLASH_0);  Print_string (&WW_PRINT_1);  Print_string (&WW_PRINT_2);
-  Print_string (&WW_PRINT_3);         Print_string (&WW_PRINT_4);  Print_string (&WW_PRINT_5);
-  Print_string (&WW_PRINT_6);         Print_string (&WW_PRINT_7);  Print_string (&WW_PRINT_8);
-  Print_string (&WW_PRINT_9);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&IBM_PRINT_FLAG_SLASH_0);  Print_string (&IBM_PRINT_FLAG_1);  Print_string (&IBM_PRINT_FLAG_2);
-  Print_string (&IBM_PRINT_FLAG_3);        Print_string (&IBM_PRINT_FLAG_4);  Print_string (&IBM_PRINT_FLAG_5);
-  Print_string (&IBM_PRINT_FLAG_6);        Print_string (&IBM_PRINT_FLAG_7);  Print_string (&IBM_PRINT_FLAG_8);
-  Print_string (&IBM_PRINT_FLAG_9);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_DOLLAR);  Print_string (&WW_PRINT_LPAREN);  Print_string (&WW_PRINT_RPAREN);
-  Print_string (&WW_PRINT_PLUS);    Print_string (&WW_PRINT_HYPHEN);  Print_string (&WW_PRINT_ASTERISK);
-  Print_string (&WW_PRINT_SLASH);   Print_string (&WW_PRINT_EQUAL);   Print_string (&WW_PRINT_PERIOD);
-  Print_string (&WW_PRINT_COMMA);   Print_string (&WW_PRINT_AT);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&IBM_PRINT_FLAG_NUMBLANK);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&IBM_PRINT_RMARK);       Print_string (&IBM_PRINT_FLAG_RMARK);  Print_string (&IBM_PRINT_GMARK);
-  Print_string (&IBM_PRINT_FLAG_GMARK);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&IBM_PRINT_INVALID);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&IBM_PRINT_RELEASESTART);
-  Print_string (&WW_PRINT_CRtn);  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_SPACE);  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_A);  (void)Print_element (&WW_PRINT_B);  (void)Print_element (&WW_PRINT_C);
+  (void)Print_element (&WW_PRINT_D);  (void)Print_element (&WW_PRINT_E);  (void)Print_element (&WW_PRINT_F);
+  (void)Print_element (&WW_PRINT_G);  (void)Print_element (&WW_PRINT_H);  (void)Print_element (&WW_PRINT_I);
+  (void)Print_element (&WW_PRINT_J);  (void)Print_element (&WW_PRINT_K);  (void)Print_element (&WW_PRINT_L);
+  (void)Print_element (&WW_PRINT_M);  (void)Print_element (&WW_PRINT_N);  (void)Print_element (&WW_PRINT_O);
+  (void)Print_element (&WW_PRINT_P);  (void)Print_element (&WW_PRINT_Q);  (void)Print_element (&WW_PRINT_R);
+  (void)Print_element (&WW_PRINT_S);  (void)Print_element (&WW_PRINT_T);  (void)Print_element (&WW_PRINT_U);
+  (void)Print_element (&WW_PRINT_V);  (void)Print_element (&WW_PRINT_W);  (void)Print_element (&WW_PRINT_X);
+  (void)Print_element (&WW_PRINT_Y);  (void)Print_element (&WW_PRINT_Z);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&IBM_PRINT_SLASH_0);  (void)Print_element (&WW_PRINT_1);  (void)Print_element (&WW_PRINT_2);
+  (void)Print_element (&WW_PRINT_3);         (void)Print_element (&WW_PRINT_4);  (void)Print_element (&WW_PRINT_5);
+  (void)Print_element (&WW_PRINT_6);         (void)Print_element (&WW_PRINT_7);  (void)Print_element (&WW_PRINT_8);
+  (void)Print_element (&WW_PRINT_9);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&IBM_PRINT_FLAG_0);  (void)Print_element (&IBM_PRINT_FLAG_1);
+  (void)Print_element (&IBM_PRINT_FLAG_2);  (void)Print_element (&IBM_PRINT_FLAG_3);
+  (void)Print_element (&IBM_PRINT_FLAG_4);  (void)Print_element (&IBM_PRINT_FLAG_5);
+  (void)Print_element (&IBM_PRINT_FLAG_6);  (void)Print_element (&IBM_PRINT_FLAG_7);
+  (void)Print_element (&IBM_PRINT_FLAG_8);  (void)Print_element (&IBM_PRINT_FLAG_9);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_DOLLAR);  (void)Print_element (&WW_PRINT_LPAREN);
+  (void)Print_element (&WW_PRINT_RPAREN);  (void)Print_element (&WW_PRINT_PLUS);
+  (void)Print_element (&WW_PRINT_HYPHEN);  (void)Print_element (&WW_PRINT_ASTERISK);
+  (void)Print_element (&WW_PRINT_SLASH);   (void)Print_element (&WW_PRINT_EQUAL);
+  (void)Print_element (&WW_PRINT_PERIOD);  (void)Print_element (&WW_PRINT_COMMA);
+  (void)Print_element (&WW_PRINT_AT);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&IBM_PRINT_FLAG_NUMBLANK);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&IBM_PRINT_RMARK);  (void)Print_element (&IBM_PRINT_FLAG_RMARK);
+  (void)Print_element (&IBM_PRINT_GMARK);  (void)Print_element (&IBM_PRINT_FLAG_GMARK);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&IBM_PRINT_INVALID);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&IBM_PRINT_RELEASESTART);
+  (void)Print_element (&WW_PRINT_CRtn);  (void)Print_element (&WW_PRINT_CRtn);
 }
 
 
@@ -4646,19 +4885,19 @@ void Print_IBM_character_set ()  {
 // ASCII Terminal key values.
 #define ASCII_KEY_LSHIFT                    WW_KEY_LShift                      // <left shift> key code.
 #define ASCII_KEY_RSHIFT                    WW_KEY_RShift                      // <right shift> key code.
-#define ASCII_KEY_RARROW                    WW_KEY_RARROW_Word                 // <right arrow> key code.
-#define ASCII_KEY_SETUP                     WW_KEY_PaperUp_Micro               // <setup> key code.
-#define ASCII_KEY_BSLASH_BAR_FS             WW_KEY_PaperDown_Micro             // \, | key code.
-#define ASCII_KEY_DARROW                    WW_KEY_DARROW_Line                 // <down arrow> key code.
+#define ASCII_KEY_RIGHTARROW                WW_KEY_RIGHTARROW_RightWord        // <right arrow> key code.
+#define ASCII_KEY_SETUP                     WW_KEY_PaperUp_UpMicro             // <setup> key code.
+#define ASCII_KEY_BSLASH_BAR_FS             WW_KEY_PaperDown_DownMicro         // \, | key code.
+#define ASCII_KEY_DOWNARROW                 WW_KEY_DOWNARROW_DownLine          // <down arrow> key code.
 #define ASCII_KEY_z_Z_SUB                   WW_KEY_z_Z                         // z, Z, SUB key code.
 #define ASCII_KEY_q_Q_DC1_XON               WW_KEY_q_Q_Impr                    // q, Q, DC1/XON key code.
 #define ASCII_KEY_1_EXCLAMATION             WW_KEY_1_EXCLAMATION_Spell         // 1, ! key code.
 #define ASCII_KEY_BAPOSTROPHE_TILDE_RS      WW_KEY_PLUSMINUS_DEGREE            // `, ~ key code.
 #define ASCII_KEY_a_A_SOH                   WW_KEY_a_A                         // a, A, SOH key code.
 #define ASCII_KEY_SPACE                     WW_KEY_SPACE_REQSPACE              // <space> key code.
-#define ASCII_KEY_LOADPAPER                 WW_KEY_LOADPAPER                   // <load paper> key code.
+#define ASCII_KEY_LOADPAPER_SETTOPOFFORM    WW_KEY_LOADPAPER_SETTOPOFFORM      // <load paper> key code.
 #define ASCII_KEY_LMAR                      WW_KEY_LMar                        // <left margin> key code.
-#define ASCII_KEY_TCLR                      WW_KEY_TClr                        // <tab clear> key code.
+#define ASCII_KEY_TCLR_TCLRALL              WW_KEY_TClr_TClrAll                // <tab clear>, <tab clear all> key code.
 #define ASCII_KEY_CONTROL                   WW_KEY_Code                        // <control> key code.
 #define ASCII_KEY_x_X_CAN                   WW_KEY_x_X_POWERWISE               // x, X, CAN key code.
 #define ASCII_KEY_w_W_ETB                   WW_KEY_w_W                         // w, W, ETB key code.
@@ -4701,8 +4940,8 @@ void Print_IBM_character_set ()  {
 #define ASCII_KEY_HYPHEN_UNDERSCORE         WW_KEY_HYPHEN_UNDERSCORE           // -, _, US key code.
 #define ASCII_KEY_SEMICOLON_COLON           WW_KEY_SEMICOLON_COLON_SECTION     // ;, : key code.
 #define ASCII_KEY_APOSTROPHE_QUOTE          WW_KEY_APOSTROPHE_QUOTE_PARAGRAPH  // ', " key code.
-#define ASCII_KEY_LARROW                    WW_KEY_LARROW_Word                 // <left arrow> key code.
-#define ASCII_KEY_UARROW                    WW_KEY_UARROW_Line                 // <up arrow> key code.
+#define ASCII_KEY_LEFTARROW                 WW_KEY_LEFTARROW_LeftWord          // <left arrow> key code.
+#define ASCII_KEY_UPARROW                   WW_KEY_UPARROW_UpLine              // <up arrow> key code.
 #define ASCII_KEY_BACKSPACE                 WW_KEY_Backspace_Bksp1             // <backspace> key code.
 #define ASCII_KEY_RETURN                    WW_KEY_CRtn_IndClr                 // <return> key code.
 #define ASCII_KEY_DELETE_US                 WW_KEY_BACKX_Word                  // <delete> key code.
@@ -4711,62 +4950,6 @@ void Print_IBM_character_set ()  {
 #define ASCII_KEY_TAB                       WW_KEY_Tab_IndL                    // <tab> key code.
 #define ASCII_KEY_ESCAPE_MARREL             WW_KEY_MarRel_RePrt                // <escape>, <margin release> key code.
 #define ASCII_KEY_TSET                      WW_KEY_TSet                        // <tab set> key code.
-
-// ASCII Terminal print string timing values (in usec).
-#define TIMING_ASCII_SPACE2       (POSITIVE((1 * TIME_CHARACTER + 0 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (4 * FSCAN_1_CHANGE + 0 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-1 * TIME_ADJUST)))
-                                    // Residual time for special space print character.
-
-#define TIMING_ASCII_SPACE3       (POSITIVE((1 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (6 * FSCAN_1_CHANGE + 1 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-1 * TIME_ADJUST)))
-                                    // Residual time for special space print character.
-
-#define TIMING_ASCII_LESS_PG      (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 6 * TIME_VMOVEMENT) - \
-                                            (23 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 3 * FSCAN_3_CHANGES) + \
-                                            (-13 * TIME_ADJUST)))
-                                    // Residual time for less print character.
-
-#define TIMING_ASCII_GREATER_PG   (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 3 * TIME_VMOVEMENT) - \
-                                            (27 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 3 * FSCAN_3_CHANGES) + \
-                                            (65 * TIME_ADJUST)))
-                                    // Residual time for greater print character.
-
-#define TIMING_ASCII_BSLASH_PG    (POSITIVE((4 * TIME_CHARACTER + 8 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
-                                            (28 * FSCAN_1_CHANGE + 7 * FSCAN_2_CHANGES + 4 * FSCAN_3_CHANGES) + \
-                                            (50 * TIME_ADJUST)))
-                                    // Residual time for backslash print character.
-
-#define TIMING_ASCII_CARET_PG     (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
-                                            (30 * FSCAN_1_CHANGE + 5 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
-                                            (11 * TIME_ADJUST)))
-                                    // Residual time for caret print character.
-
-#define TIMING_ASCII_BAPOSTROPHE_PG  (POSITIVE((2 * TIME_CHARACTER + 6 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
-                                              (28 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
-                                              (-48 * TIME_ADJUST)))
-                                      // Residual time for back apostophe print character.
-
-#define TIMING_ASCII_LBRACE_PG    (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (17 * FSCAN_1_CHANGE + 6 * FSCAN_2_CHANGES + 1 * FSCAN_3_CHANGES) + \
-                                            (10 * TIME_ADJUST)))
-                                    // Residual time for left brace print character.
-
-#define TIMING_ASCII_BAR_PG       (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (4 * FSCAN_1_CHANGE + 2 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (-8 * TIME_ADJUST)))
-                                    // Residual time for bar print character.
-
-#define TIMING_ASCII_RBRACE_PG    (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
-                                            (18 * FSCAN_1_CHANGE + 6 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
-                                            (8 * TIME_ADJUST)))
-                                    // Residual time for right brace print character.
-
-#define TIMING_ASCII_TILDE_PG     (POSITIVE((5 * TIME_CHARACTER + 9 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
-                                            (33 * FSCAN_1_CHANGE + 9 * FSCAN_2_CHANGES + 5 * FSCAN_3_CHANGES) + \
-                                            (88 * TIME_ADJUST)))
-                                    // Residual time for tilde print character.
 
 // ASCII Terminal characters.
 #define CHAR_ASCII_LF    0x0a  // LF character.
@@ -4783,15 +4966,15 @@ void Print_IBM_character_set ()  {
 //**********************************************************************************************************************
 
 // Dynamic print strings.
-const struct print_info* ascii_print_less;
-const struct print_info* ascii_print_greater;
-const struct print_info* ascii_print_bslash;
-const struct print_info* ascii_print_caret;
-const struct print_info* ascii_print_bapostrophe;
-const struct print_info* ascii_print_lbrace;
-const struct print_info* ascii_print_bar;
-const struct print_info* ascii_print_rbrace;
-const struct print_info* ascii_print_tilde;
+const struct print_info *ascii_print_less;
+const struct print_info *ascii_print_greater;
+const struct print_info *ascii_print_bslash;
+const struct print_info *ascii_print_caret;
+const struct print_info *ascii_print_bapostrophe;
+const struct print_info *ascii_print_lbrace;
+const struct print_info *ascii_print_bar;
+const struct print_info *ascii_print_rbrace;
+const struct print_info *ascii_print_tilde;
 
 
 //**********************************************************************************************************************
@@ -4801,167 +4984,137 @@ const struct print_info* ascii_print_tilde;
 //**********************************************************************************************************************
 
 // <space> print string.
-const byte ASCII_STR_SPACE2[]               = {WW_SPACE_REQSPACE, WW_NULL_4, WW_SPACE_REQSPACE, WW_NULL_4, WW_NULL_14,
-                                               WW_NULL};
-const struct print_info ASCII_PRINT_SPACE2  = {SPACING_FORWARD, TIMING_ASCII_SPACE2, &ASCII_STR_SPACE2};
+const struct print_info *ASCII_STR_SPACE2[] = {&WW_PRINT_SPACE, &WW_PRINT_SPACE, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_SPACE2  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_SPACE2};
 
-const byte ASCII_STR_SPACE3[]               = {WW_SPACE_REQSPACE, WW_NULL_4, WW_SPACE_REQSPACE, WW_NULL_4, WW_Code,
-                                               WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_SPACE3  = {SPACING_FORWARD, TIMING_ASCII_SPACE3, &ASCII_STR_SPACE3};
+const struct print_info *ASCII_STR_SPACE3[] = {&WW_PRINT_SPACE, &WW_PRINT_SPACE, &WW_PRINT_Bksp1, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_SPACE3  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_SPACE3};
 
-// <, >, \, ^, `, {, |, }, ~ print strings (Print Graphics).
-const byte ASCII_STR_LESS_PG[]                     = {WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
-                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                      WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro,
-                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperUp_Micro,
-                                                      WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2,
-                                                      WW_PERIOD_PERIOD, WW_NULL_11, WW_Code, WW_Backspace_Bksp1,
-                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14,
-                                                      WW_NULL};
-const struct print_info ASCII_PRINT_LESS_PG        = {SPACING_FORWARD, TIMING_ASCII_LESS_PG, &ASCII_STR_LESS_PG};
+// <, >, \, ^, `, {, |, }, ~ print strings (ASCII printwheel & Print Graphics).
+const byte ASCII_STR_LESS_APW[]              = {WW_Code, WW_LESS_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_LESS_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 68, 0,
+                                                TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_12 + TIME_RELEASE_CODE_12),
+                                                &ASCII_STR_LESS_APW};
+const struct print_info *ASCII_STR_LESS_PG[] = {&WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
+                                                &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                &WW_PRINT_Bksp1, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
+                                                &WW_PRINT_Backspace, &WW_PRINT_UpMicro, &WW_PRINT_UpMicro,
+                                                &WW_PRINT_PERIOD, &WW_PRINT_Bksp1, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_LESS_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_LESS_PG};
+const struct print_info ASCII_PRINT_LESS     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_less};
 
-const byte ASCII_STR_GREATER_PG[]                  = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_MarRel_RePrt, WW_NULL_14, WW_Backspace_Bksp1,
-                                                      WW_NULL_13, WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code,
-                                                      WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
-                                                      WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_GREATER_PG     = {SPACING_FORWARD, TIMING_ASCII_GREATER_PG, &ASCII_STR_GREATER_PG};
+const byte ASCII_STR_GREATER_APW[]              = {WW_Code, WW_GREATER_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_GREATER_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 69, 0,
+                                                   TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_12 + TIME_RELEASE_CODE_12),
+                                                   &ASCII_STR_GREATER_APW};
+const struct print_info *ASCII_STR_GREATER_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bksp1, &WW_PRINT_DownMicro,
+                                                   &WW_PRINT_PERIOD, &WW_PRINT_MarRel, &WW_PRINT_Backspace,
+                                                   &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
+                                                   &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                   &WW_PRINT_Bksp1, &WW_PRINT_UpMicro, &WW_PRINT_PERIOD,
+                                                   &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_GREATER_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_GREATER_PG};
+const struct print_info ASCII_PRINT_GREATER     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_greater};
 
-const byte ASCII_STR_BSLASH_PG[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_MarRel_RePrt,
-                                                      WW_NULL_14, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code,
-                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro,
-                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_Backspace_Bksp1,
-                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2,
-                                                      WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_BSLASH_PG      = {SPACING_FORWARD, TIMING_ASCII_BSLASH_PG, &ASCII_STR_BSLASH_PG};
+const byte ASCII_STR_BSLASH_APW[]              = {WW_Code, WW_BSLASH_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_BSLASH_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 66, 0,
+                                                  TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_10 + TIME_RELEASE_CODE_10),
+                                                  &ASCII_STR_BSLASH_APW};
+const struct print_info *ASCII_STR_BSLASH_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bksp1, &WW_PRINT_DownMicro,
+                                                  &WW_PRINT_DownMicro, &WW_PRINT_PERIOD, &WW_PRINT_MarRel,
+                                                  &WW_PRINT_Backspace, &WW_PRINT_Bksp1, &WW_PRINT_DownMicro,
+                                                  &WW_PRINT_PERIOD, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                  &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, &WW_PRINT_UpMicro,
+                                                  &WW_PRINT_PERIOD, &WW_PRINT_Backspace, &WW_PRINT_Bksp1,
+                                                  &WW_PRINT_DownMicro, &WW_PRINT_PERIOD, &WW_PRINT_UpMicro,
+                                                  NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_BSLASH_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_BSLASH_PG};
+const struct print_info ASCII_PRINT_BSLASH      = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_bslash};
 
-const byte ASCII_STR_CARET_PG[]                    = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                      WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code,
-                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro,
-                                                      WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_CARET_PG       = {SPACING_FORWARD, TIMING_ASCII_CARET_PG, &ASCII_STR_CARET_PG};
-
-const byte ASCII_STR_BAPOSTROPHE_PG[]              = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
-                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                      WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro,
-                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                      WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code,
-                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14,
-                                                      WW_NULL};
-const struct print_info ASCII_PRINT_BAPOSTROPHE_PG = {SPACING_FORWARD, TIMING_ASCII_BAPOSTROPHE_PG,
-                                                      &ASCII_STR_BAPOSTROPHE_PG};
-
-
-const byte ASCII_STR_LBRACE_PG[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_NULL_5, WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                      WW_Code, WW_NULL_5, WW_LShift, WW_9_LPAREN_Stop, WW_LShift,
-                                                      WW_NULL_1, WW_Backspace_Bksp1, WW_NULL_13, WW_LShift,
-                                                      WW_RBRACKET_LBRACKET_SUPER3, WW_LShift, WW_NULL_1, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_LBRACE_PG      = {SPACING_FORWARD, TIMING_ASCII_LBRACE_PG, &ASCII_STR_LBRACE_PG};
-
-const byte ASCII_STR_BAR_PG[]                      = {WW_LShift, WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1,
-                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_i_I_Word, WW_NULL_10,
-                                                      WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_BAR_PG         = {SPACING_FORWARD, TIMING_ASCII_BAR_PG, &ASCII_STR_BAR_PG};
-
-const byte ASCII_STR_RBRACE_PG[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_NULL_5, WW_LShift, WW_0_RPAREN, WW_LShift, WW_NULL_1,
-                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_RBRACKET_LBRACKET_SUPER3,
-                                                      WW_NULL_10, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5,
-                                                      WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_Code, WW_Backspace_Bksp1,
-                                                      WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_RBRACE_PG      = {SPACING_FORWARD, TIMING_ASCII_RBRACE_PG, &ASCII_STR_RBRACE_PG};
-
-const byte ASCII_STR_TILDE_PG[]                    = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_MarRel_RePrt, WW_NULL_14, WW_Backspace_Bksp1,
-                                                      WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                      WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_PERIOD_PERIOD,
-                                                      WW_NULL_11, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2,
-                                                      WW_PERIOD_PERIOD, WW_NULL_11, WW_Backspace_Bksp1, WW_NULL_13,
-                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_SPACE_REQSPACE,
-                                                      WW_NULL_4, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
-                                                      WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_TILDE_PG       = {SPACING_FORWARD, TIMING_ASCII_TILDE_PG, &ASCII_STR_TILDE_PG};
-
-// <, >, \, ^, `, {, |, }, ~ print strings (ASCII PrintWheel).
-const byte ASCII_STR_LESS_APW[]                     = {WW_Code, WW_LESS_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_LESS_APW        = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_LESS_APW};
-
-const byte ASCII_STR_GREATER_APW[]                  = {WW_Code, WW_GREATER_APW, WW_Code, WW_NULL_5, WW_NULL_14,
-                                                       WW_NULL};
-const struct print_info ASCII_PRINT_GREATER_APW     = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_GREATER_APW};
-
-const byte ASCII_STR_BSLASH_APW[]                   = {WW_Code, WW_BSLASH_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_BSLASH_APW      = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_BSLASH_APW};
-
-const byte ASCII_STR_CARET_APW[]                    = {WW_LShift, WW_CARET_APW, WW_LShift, WW_NULL_1, WW_NULL_14,
-                                                       WW_NULL};
-const struct print_info ASCII_PRINT_CARET_APW       = {SPACING_FORWARD, TIMING_SHIFT, &ASCII_STR_CARET_APW};
+const byte ASCII_STR_CARET_APW[]              = {WW_LShift, WW_CARET_APW, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_CARET_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 57, 0,
+                                                 TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9),
+                                                 &ASCII_STR_CARET_APW};
+const struct print_info *ASCII_STR_CARET_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bksp1, &WW_PRINT_DownMicro,
+                                                 &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
+                                                 &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                 &WW_PRINT_PERIOD, &WW_PRINT_Backspace, &WW_PRINT_Bksp1,
+                                                 &WW_PRINT_DownMicro, &WW_PRINT_PERIOD, &WW_PRINT_UpMicro,
+                                                 &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, &WW_PRINT_UpMicro,
+                                                 NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_CARET_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_CARET_PG};
+const struct print_info ASCII_PRINT_CARET     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_caret};
 
 const byte ASCII_STR_BAPOSTROPHE_APW[]              = {WW_BAPOSTROPHE_APW, WW_NULL_3, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_BAPOSTROPHE_APW = {SPACING_FORWARD, TIMING_NOSHIFT, &ASCII_STR_BAPOSTROPHE_APW};
+const struct print_info ASCII_PRINT_BAPOSTROPHE_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 59, 0,
+                                                       TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_3 +
+                                                                               TIME_RELEASE_NOSHIFT_3),
+                                                       &ASCII_STR_BAPOSTROPHE_APW};
+const struct print_info *ASCII_STR_BAPOSTROPHE_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bksp1, &WW_PRINT_DownMicro,
+                                                       &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_DownMicro,
+                                                       &WW_PRINT_PERIOD, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                       &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                       &WW_PRINT_UpMicro, &WW_PRINT_PERIOD, &WW_PRINT_UpMicro,
+                                                       &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_BAPOSTROPHE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_BAPOSTROPHE_PG};
+const struct print_info ASCII_PRINT_BAPOSTROPHE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_bapostrophe};
 
-const byte ASCII_STR_LBRACE_APW[]                   = {WW_LShift, WW_LBRACE_APW, WW_LShift, WW_NULL_1, WW_NULL_14,
-                                                       WW_NULL};
-const struct print_info ASCII_PRINT_LBRACE_APW      = {SPACING_FORWARD, TIMING_SHIFT, &ASCII_STR_LBRACE_APW};
+const byte ASCII_STR_LBRACE_APW[]              = {WW_LShift, WW_LBRACE_APW, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_LBRACE_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 70, 0,
+                                                  TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_12 + TIME_RELEASE_SHIFT_12),
+                                                  &ASCII_STR_LBRACE_APW};
+const struct print_info *ASCII_STR_LBRACE_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bksp1, &WW_PRINT_HYPHEN, &WW_PRINT_Bksp1,
+                                                  &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_LPAREN,
+                                                  &WW_PRINT_Backspace, &WW_PRINT_LBRACKET, &WW_PRINT_Bksp1,
+                                                  NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_LBRACE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_LBRACE_PG};
+const struct print_info ASCII_PRINT_LBRACE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_lbrace};
 
-const byte ASCII_STR_BAR_APW[]                      = {WW_Code, WW_BAR_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_BAR_APW         = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_BAR_APW};
+const byte ASCII_STR_BAR_APW[]              = {WW_Code, WW_BAR_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_BAR_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 71, 0,
+                                               TIME_HIT + TIME_MOVE - (TIME_PRESS_CODE_12 + TIME_RELEASE_CODE_12),
+                                               &ASCII_STR_BAR_APW};
+const struct print_info *ASCII_STR_BAR_PG[] = {&WW_PRINT_EXCLAMATION, &WW_PRINT_Backspace, &WW_PRINT_i,
+                                               NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_BAR_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_BAR_PG};
+const struct print_info ASCII_PRINT_BAR     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_bar};
 
-const byte ASCII_STR_RBRACE_APW[]                   = {WW_RBRACE_APW, WW_NULL_12, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_RBRACE_APW      = {SPACING_FORWARD, TIMING_NOSHIFT, &ASCII_STR_RBRACE_APW};
+const byte ASCII_STR_RBRACE_APW[]              = {WW_RBRACE_APW, WW_NULL_12, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_RBRACE_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 65, 0,
+                                                  TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_12 +
+                                                                          TIME_RELEASE_NOSHIFT_12),
+                                                  &ASCII_STR_RBRACE_APW};
+const struct print_info *ASCII_STR_RBRACE_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bksp1, &WW_PRINT_RPAREN,
+                                                  &WW_PRINT_Backspace, &WW_PRINT_RBRACKET, &WW_PRINT_Bksp1,
+                                                  &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_HYPHEN,
+                                                  &WW_PRINT_Bksp1, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_RBRACE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_RBRACE_PG};
+const struct print_info ASCII_PRINT_RBRACE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_rbrace};
 
-const byte ASCII_STR_TILDE_APW[]                    = {WW_LShift, WW_TILDE_APW, WW_LShift, WW_NULL_1, WW_NULL_14,
-                                                       WW_NULL};
-const struct print_info ASCII_PRINT_TILDE_APW       = {SPACING_FORWARD, TIMING_SHIFT, &ASCII_STR_TILDE_APW};
+const byte ASCII_STR_TILDE_APW[]              = {WW_LShift, WW_TILDE_APW, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_TILDE_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 67, 0,
+                                                 TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_3 + TIME_RELEASE_SHIFT_3),
+                                                 &ASCII_STR_TILDE_APW};
+const struct print_info *ASCII_STR_TILDE_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bksp1, &WW_PRINT_DownMicro,
+                                                 &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
+                                                 &WW_PRINT_MarRel, &WW_PRINT_Backspace, &WW_PRINT_Bksp1,
+                                                 &WW_PRINT_UpMicro, &WW_PRINT_PERIOD, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                 &WW_PRINT_PERIOD, &WW_PRINT_Backspace, &WW_PRINT_Bksp1,
+                                                 &WW_PRINT_UpMicro, &WW_PRINT_PERIOD, &WW_PRINT_Backspace,
+                                                 &WW_PRINT_Bksp1, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
+                                                 &WW_PRINT_RIGHTARROW, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                                                 &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_TILDE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_TILDE_PG};
+const struct print_info ASCII_PRINT_TILDE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_tilde};
 
 // CR, LF print strings.
-const byte ASCII_STR_CR[]              = {WW_CRtn_IndClr, WW_NULL_13, WW_UARROW_Line, WW_NULL_13, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_CR = {SPACING_RETURN, TIMING_RETURN, &ASCII_STR_CR};
+const struct print_info *ASCII_STR_CR[] = {&WW_PRINT_CRtn, &WW_PRINT_UPARROW, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_CR  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_CR};
 
-const byte ASCII_STR_LF[]              = {WW_DARROW_Line, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_LF = {SPACING_NONE, TIMING_VMOVE, &ASCII_STR_LF};
+const byte ASCII_STR_LF[]              = {WW_DOWNARROW_DownLine, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_LF = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                          TIME_VMOVE - (TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2),
+                                          &ASCII_STR_LF};
 
 
 //**********************************************************************************************************************
@@ -5031,9 +5184,9 @@ const struct serial_action ASCII_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,         &WW_PRINT_9},               // 9
   {CMD_PRINT,         &WW_PRINT_COLON},           // :
   {CMD_PRINT,         &WW_PRINT_SEMICOLON},       // ;
-  {CMD_PRINT_SPECIAL, &ascii_print_less},         // <
+  {CMD_PRINT,         &ASCII_PRINT_LESS},         // <
   {CMD_PRINT,         &WW_PRINT_EQUAL},           // =
-  {CMD_PRINT_SPECIAL, &ascii_print_greater},      // >
+  {CMD_PRINT,         &ASCII_PRINT_GREATER},      // >
   {CMD_PRINT,         &WW_PRINT_QUESTION},        // ?
   {CMD_PRINT,         &WW_PRINT_AT},              // @
   {CMD_PRINT,         &WW_PRINT_A},               // A
@@ -5063,11 +5216,11 @@ const struct serial_action ASCII_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,         &WW_PRINT_Y},               // Y
   {CMD_PRINT,         &WW_PRINT_Z},               // Z
   {CMD_PRINT,         &WW_PRINT_LBRACKET},        // [
-  {CMD_PRINT_SPECIAL, &ascii_print_bslash},       // <backslash>
+  {CMD_PRINT,         &ASCII_PRINT_BSLASH},       // <backslash>
   {CMD_PRINT,         &WW_PRINT_RBRACKET},        // ]
-  {CMD_PRINT_SPECIAL, &ascii_print_caret},        // ^
+  {CMD_PRINT,         &ASCII_PRINT_CARET},        // ^
   {CMD_PRINT,         &WW_PRINT_UNDERSCORE},      // _
-  {CMD_PRINT_SPECIAL, &ascii_print_bapostrophe},  // `
+  {CMD_PRINT,         &ASCII_PRINT_BAPOSTROPHE},  // `
   {CMD_PRINT,         &WW_PRINT_a},               // a
   {CMD_PRINT,         &WW_PRINT_b},               // b
   {CMD_PRINT,         &WW_PRINT_c},               // c
@@ -5094,10 +5247,10 @@ const struct serial_action ASCII_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,         &WW_PRINT_x},               // x
   {CMD_PRINT,         &WW_PRINT_y},               // y
   {CMD_PRINT,         &WW_PRINT_z},               // z
-  {CMD_PRINT_SPECIAL, &ascii_print_lbrace},       // {
-  {CMD_PRINT_SPECIAL, &ascii_print_bar},          // |
-  {CMD_PRINT_SPECIAL, &ascii_print_rbrace},       // }
-  {CMD_PRINT_SPECIAL, &ascii_print_tilde},        // ~
+  {CMD_PRINT,         &ASCII_PRINT_LBRACE},       // {
+  {CMD_PRINT,         &ASCII_PRINT_BAR},          // |
+  {CMD_PRINT,         &ASCII_PRINT_RBRACE},       // }
+  {CMD_PRINT,         &ASCII_PRINT_TILDE},        // ~
   {CMD_NONE,          NULL}                       // DEL
 };
 
@@ -5111,1231 +5264,1231 @@ const struct serial_action ASCII_SERIAL_ACTIONS[128] = {
 // Half duplex key action table.
 const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = { 
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '\\',  &ascii_print_bslash},       // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND | ACTION_PRINT,                      'z',   &WW_PRINT_z},               // z, Z, SUB
-  {ACTION_SEND | ACTION_PRINT,                      'q',   &WW_PRINT_q},               // q, Q, DC1/XON
-  {ACTION_SEND | ACTION_PRINT,                      '1',   &WW_PRINT_1},               // 1, !
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '`',   &ascii_print_bapostrophe},  // `, ~
-  {ACTION_SEND | ACTION_PRINT,                      'a',   &WW_PRINT_a},               // a, A, SOH
-  {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND | ACTION_PRINT,                      'x',   &WW_PRINT_x},               // x, X, CAN
-  {ACTION_SEND | ACTION_PRINT,                      'w',   &WW_PRINT_w},               // w, W, ETB
-  {ACTION_SEND | ACTION_PRINT,                      '2',   &WW_PRINT_2},               // 2, @, NUL
-  {ACTION_SEND | ACTION_PRINT,                      's',   &WW_PRINT_s},               // s, S, DC3/XOFF
-  {ACTION_SEND | ACTION_PRINT,                      'c',   &WW_PRINT_c},               // c, C, ETX
-  {ACTION_SEND | ACTION_PRINT,                      'e',   &WW_PRINT_e},               // e, E, ENQ
-  {ACTION_SEND | ACTION_PRINT,                      '3',   &WW_PRINT_3},               // 3, #
-  {ACTION_SEND | ACTION_PRINT,                      'd',   &WW_PRINT_d},               // d, D, EOT
-  {ACTION_SEND | ACTION_PRINT,                      'b',   &WW_PRINT_b},               // b, B, STX
-  {ACTION_SEND | ACTION_PRINT,                      'v',   &WW_PRINT_v},               // v, V, SYN
-  {ACTION_SEND | ACTION_PRINT,                      't',   &WW_PRINT_t},               // t, T, DC4
-  {ACTION_SEND | ACTION_PRINT,                      'r',   &WW_PRINT_r},               // r, R, DC2
-  {ACTION_SEND | ACTION_PRINT,                      '4',   &WW_PRINT_4},               // 4, $
-  {ACTION_SEND | ACTION_PRINT,                      '5',   &WW_PRINT_5},               // 5, %
-  {ACTION_SEND | ACTION_PRINT,                      'f',   &WW_PRINT_f},               // f, F, ACK
-  {ACTION_SEND | ACTION_PRINT,                      'g',   &WW_PRINT_g},               // g, G, BEL
-  {ACTION_SEND | ACTION_PRINT,                      'n',   &WW_PRINT_n},               // n, N, SO
-  {ACTION_SEND | ACTION_PRINT,                      'm',   &WW_PRINT_m},               // m, M, CR
-  {ACTION_SEND | ACTION_PRINT,                      'y',   &WW_PRINT_y},               // y, Y, EM
-  {ACTION_SEND | ACTION_PRINT,                      'u',   &WW_PRINT_u},               // u, U, NAK
-  {ACTION_SEND | ACTION_PRINT,                      '7',   &WW_PRINT_7},               // 7, &
-  {ACTION_SEND | ACTION_PRINT,                      '6',   &WW_PRINT_6},               // 6, ^, RS
-  {ACTION_SEND | ACTION_PRINT,                      'j',   &WW_PRINT_j},               // j, J, LF
-  {ACTION_SEND | ACTION_PRINT,                      'h',   &WW_PRINT_h},               // h, H, BS
-  {ACTION_SEND | ACTION_PRINT,                      ',',   &WW_PRINT_COMMA},           // ,, <
-  {ACTION_SEND | ACTION_PRINT,                      ']',   &WW_PRINT_RBRACKET},        // ], }, GS
-  {ACTION_SEND | ACTION_PRINT,                      'i',   &WW_PRINT_i},               // i, I, TAB
-  {ACTION_SEND | ACTION_PRINT,                      '8',   &WW_PRINT_8},               // 8, *
-  {ACTION_SEND | ACTION_PRINT,                      '=',   &WW_PRINT_EQUAL},           // =, +
-  {ACTION_SEND | ACTION_PRINT,                      'k',   &WW_PRINT_k},               // k, K, VT
-  {ACTION_SEND | ACTION_PRINT,                      '.',   &WW_PRINT_PERIOD},          // ., >
-  {ACTION_SEND | ACTION_PRINT,                      'o',   &WW_PRINT_o},               // o, O, SI
-  {ACTION_SEND | ACTION_PRINT,                      '9',   &WW_PRINT_9},               // 9, (
-  {ACTION_SEND | ACTION_PRINT,                      'l',   &WW_PRINT_l},               // l, L, FF
-  {ACTION_SEND | ACTION_PRINT,                      '/',   &WW_PRINT_SLASH},           // /, ?
-  {ACTION_SEND | ACTION_PRINT,                      '[',   &WW_PRINT_LBRACKET},        // [, {, ESC
-  {ACTION_SEND | ACTION_PRINT,                      'p',   &WW_PRINT_p},               // p, P, DLE
-  {ACTION_SEND | ACTION_PRINT,                      '0',   &WW_PRINT_0},               // 0, )
-  {ACTION_SEND | ACTION_PRINT,                      '-',   &WW_PRINT_HYPHEN},          // -, _, US
-  {ACTION_SEND | ACTION_PRINT,                      ';',   &WW_PRINT_SEMICOLON},       // ;, :
-  {ACTION_SEND | ACTION_PRINT,                      '\'',  &WW_PRINT_APOSTROPHE},      // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      0x08,  &WW_PRINT_Backspace},       // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      0x09,  &WW_PRINT_Tab},             // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '\\', 0, &ASCII_PRINT_BSLASH},       // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'z',  0, &WW_PRINT_z},               // z, Z, SUB
+  {ACTION_SEND | ACTION_PRINT,                     'q',  0, &WW_PRINT_q},               // q, Q, DC1/XON
+  {ACTION_SEND | ACTION_PRINT,                     '1',  0, &WW_PRINT_1},               // 1, !
+  {ACTION_SEND | ACTION_PRINT,                     '`',  0, &ASCII_PRINT_BAPOSTROPHE},  // `, ~
+  {ACTION_SEND | ACTION_PRINT,                     'a',  0, &WW_PRINT_a},               // a, A, SOH
+  {ACTION_SEND | ACTION_PRINT,                     ' ',  0, &WW_PRINT_SPACE},           // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},            // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND | ACTION_PRINT,                     'x',  0, &WW_PRINT_x},               // x, X, CAN
+  {ACTION_SEND | ACTION_PRINT,                     'w',  0, &WW_PRINT_w},               // w, W, ETB
+  {ACTION_SEND | ACTION_PRINT,                     '2',  0, &WW_PRINT_2},               // 2, @, NUL
+  {ACTION_SEND | ACTION_PRINT,                     's',  0, &WW_PRINT_s},               // s, S, DC3/XOFF
+  {ACTION_SEND | ACTION_PRINT,                     'c',  0, &WW_PRINT_c},               // c, C, ETX
+  {ACTION_SEND | ACTION_PRINT,                     'e',  0, &WW_PRINT_e},               // e, E, ENQ
+  {ACTION_SEND | ACTION_PRINT,                     '3',  0, &WW_PRINT_3},               // 3, #
+  {ACTION_SEND | ACTION_PRINT,                     'd',  0, &WW_PRINT_d},               // d, D, EOT
+  {ACTION_SEND | ACTION_PRINT,                     'b',  0, &WW_PRINT_b},               // b, B, STX
+  {ACTION_SEND | ACTION_PRINT,                     'v',  0, &WW_PRINT_v},               // v, V, SYN
+  {ACTION_SEND | ACTION_PRINT,                     't',  0, &WW_PRINT_t},               // t, T, DC4
+  {ACTION_SEND | ACTION_PRINT,                     'r',  0, &WW_PRINT_r},               // r, R, DC2
+  {ACTION_SEND | ACTION_PRINT,                     '4',  0, &WW_PRINT_4},               // 4, $
+  {ACTION_SEND | ACTION_PRINT,                     '5',  0, &WW_PRINT_5},               // 5, %
+  {ACTION_SEND | ACTION_PRINT,                     'f',  0, &WW_PRINT_f},               // f, F, ACK
+  {ACTION_SEND | ACTION_PRINT,                     'g',  0, &WW_PRINT_g},               // g, G, BEL
+  {ACTION_SEND | ACTION_PRINT,                     'n',  0, &WW_PRINT_n},               // n, N, SO
+  {ACTION_SEND | ACTION_PRINT,                     'm',  0, &WW_PRINT_m},               // m, M, CR
+  {ACTION_SEND | ACTION_PRINT,                     'y',  0, &WW_PRINT_y},               // y, Y, EM
+  {ACTION_SEND | ACTION_PRINT,                     'u',  0, &WW_PRINT_u},               // u, U, NAK
+  {ACTION_SEND | ACTION_PRINT,                     '7',  0, &WW_PRINT_7},               // 7, &
+  {ACTION_SEND | ACTION_PRINT,                     '6',  0, &WW_PRINT_6},               // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT,                     'j',  0, &WW_PRINT_j},               // j, J, LF
+  {ACTION_SEND | ACTION_PRINT,                     'h',  0, &WW_PRINT_h},               // h, H, BS
+  {ACTION_SEND | ACTION_PRINT,                     ',',  0, &WW_PRINT_COMMA},           // ,, <
+  {ACTION_SEND | ACTION_PRINT,                     ']',  0, &WW_PRINT_RBRACKET},        // ], }, GS
+  {ACTION_SEND | ACTION_PRINT,                     'i',  0, &WW_PRINT_i},               // i, I, TAB
+  {ACTION_SEND | ACTION_PRINT,                     '8',  0, &WW_PRINT_8},               // 8, *
+  {ACTION_SEND | ACTION_PRINT,                     '=',  0, &WW_PRINT_EQUAL},           // =, +
+  {ACTION_SEND | ACTION_PRINT,                     'k',  0, &WW_PRINT_k},               // k, K, VT
+  {ACTION_SEND | ACTION_PRINT,                     '.',  0, &WW_PRINT_PERIOD},          // ., >
+  {ACTION_SEND | ACTION_PRINT,                     'o',  0, &WW_PRINT_o},               // o, O, SI
+  {ACTION_SEND | ACTION_PRINT,                     '9',  0, &WW_PRINT_9},               // 9, (
+  {ACTION_SEND | ACTION_PRINT,                     'l',  0, &WW_PRINT_l},               // l, L, FF
+  {ACTION_SEND | ACTION_PRINT,                     '/',  0, &WW_PRINT_SLASH},           // /, ?
+  {ACTION_SEND | ACTION_PRINT,                     '[',  0, &WW_PRINT_LBRACKET},        // [, {, ESC
+  {ACTION_SEND | ACTION_PRINT,                     'p',  0, &WW_PRINT_p},               // p, P, DLE
+  {ACTION_SEND | ACTION_PRINT,                     '0',  0, &WW_PRINT_0},               // 0, )
+  {ACTION_SEND | ACTION_PRINT,                     '-',  0, &WW_PRINT_HYPHEN},          // -, _, US
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_SEMICOLON},       // ;, :
+  {ACTION_SEND | ACTION_PRINT,                     '\'', 0, &WW_PRINT_APOSTROPHE},      // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     0x08, 0, &WW_PRINT_Backspace},       // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     0x09, 0, &WW_PRINT_Tab},             // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '|',   &ascii_print_bar},          // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND | ACTION_PRINT,                      'Z',   &WW_PRINT_Z},               // z, Z, SUB
-  {ACTION_SEND | ACTION_PRINT,                      'Q',   &WW_PRINT_Q},               // q, Q, DC1/XON
-  {ACTION_SEND | ACTION_PRINT,                      '!',   &WW_PRINT_EXCLAMATION},     // 1, !
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '~',   &ascii_print_tilde},        // `, ~
-  {ACTION_SEND | ACTION_PRINT,                      'A',   &WW_PRINT_A},               // a, A, SOH
-  {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND | ACTION_PRINT,                      'X',   &WW_PRINT_X},               // x, X, CAN
-  {ACTION_SEND | ACTION_PRINT,                      'W',   &WW_PRINT_W},               // w, W, ETB
-  {ACTION_SEND | ACTION_PRINT,                      '@',   &WW_PRINT_AT},              // 2, @, NUL
-  {ACTION_SEND | ACTION_PRINT,                      'S',   &WW_PRINT_S},               // s, S, DC3/XOFF
-  {ACTION_SEND | ACTION_PRINT,                      'C',   &WW_PRINT_C},               // c, C, ETX
-  {ACTION_SEND | ACTION_PRINT,                      'E',   &WW_PRINT_E},               // e, E, ENQ
-  {ACTION_SEND | ACTION_PRINT,                      '#',   &WW_PRINT_POUND},           // 3, #
-  {ACTION_SEND | ACTION_PRINT,                      'D',   &WW_PRINT_D},               // d, D, EOT
-  {ACTION_SEND | ACTION_PRINT,                      'B',   &WW_PRINT_B},               // b, B, STX
-  {ACTION_SEND | ACTION_PRINT,                      'V',   &WW_PRINT_V},               // v, V, SYN
-  {ACTION_SEND | ACTION_PRINT,                      'T',   &WW_PRINT_T},               // t, T, DC4
-  {ACTION_SEND | ACTION_PRINT,                      'R',   &WW_PRINT_R},               // r, R, DC2
-  {ACTION_SEND | ACTION_PRINT,                      '$',   &WW_PRINT_DOLLAR},          // 4, $
-  {ACTION_SEND | ACTION_PRINT,                      '%',   &WW_PRINT_PERCENT},         // 5, %
-  {ACTION_SEND | ACTION_PRINT,                      'F',   &WW_PRINT_F},               // f, F, ACK
-  {ACTION_SEND | ACTION_PRINT,                      'G',   &WW_PRINT_G},               // g, G, BEL
-  {ACTION_SEND | ACTION_PRINT,                      'N',   &WW_PRINT_N},               // n, N, SO
-  {ACTION_SEND | ACTION_PRINT,                      'M',   &WW_PRINT_M},               // m, M, CR
-  {ACTION_SEND | ACTION_PRINT,                      'Y',   &WW_PRINT_Y},               // y, Y, EM
-  {ACTION_SEND | ACTION_PRINT,                      'U',   &WW_PRINT_U},               // u, U, NAK
-  {ACTION_SEND | ACTION_PRINT,                      '&',   &WW_PRINT_AMPERSAND},       // 7, &
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '^',   &ascii_print_caret},        // 6, ^, RS
-  {ACTION_SEND | ACTION_PRINT,                      'J',   &WW_PRINT_J},               // j, J, LF
-  {ACTION_SEND | ACTION_PRINT,                      'H',   &WW_PRINT_H},               // h, H, BS
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '<',   &ascii_print_less},         // ,, <
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '}',   &ascii_print_rbrace},       // ], }, GS
-  {ACTION_SEND | ACTION_PRINT,                      'I',   &WW_PRINT_I},               // i, I, TAB
-  {ACTION_SEND | ACTION_PRINT,                      '*',   &WW_PRINT_ASTERISK},        // 8, *
-  {ACTION_SEND | ACTION_PRINT,                      '+',   &WW_PRINT_PLUS},            // =, +
-  {ACTION_SEND | ACTION_PRINT,                      'K',   &WW_PRINT_K},               // k, K, VT
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '>',   &ascii_print_greater},      // ., >
-  {ACTION_SEND | ACTION_PRINT,                      'O',   &WW_PRINT_O},               // o, O, SI
-  {ACTION_SEND | ACTION_PRINT,                      '(',   &WW_PRINT_LPAREN},          // 9, (
-  {ACTION_SEND | ACTION_PRINT,                      'L',   &WW_PRINT_L},               // l, L, FF
-  {ACTION_SEND | ACTION_PRINT,                      '?',   &WW_PRINT_QUESTION},        // /, ?
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '{',   &ascii_print_lbrace},       // [, {, ESC
-  {ACTION_SEND | ACTION_PRINT,                      'P',   &WW_PRINT_P},               // p, P, DLE
-  {ACTION_SEND | ACTION_PRINT,                      ')',   &WW_PRINT_RPAREN},          // 0, )
-  {ACTION_SEND | ACTION_PRINT,                      '_',   &WW_PRINT_UNDERSCORE},      // -, _, US
-  {ACTION_SEND | ACTION_PRINT,                      ':',   &WW_PRINT_COLON},           // ;, :
-  {ACTION_SEND | ACTION_PRINT,                      '"',   &WW_PRINT_QUOTE},           // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      0x08,  &WW_PRINT_Backspace},       // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      0x09,  &WW_PRINT_Tab},             // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '|',  0, &ASCII_PRINT_BAR},          // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'Z',  0, &WW_PRINT_Z},               // z, Z, SUB
+  {ACTION_SEND | ACTION_PRINT,                     'Q',  0, &WW_PRINT_Q},               // q, Q, DC1/XON
+  {ACTION_SEND | ACTION_PRINT,                     '!',  0, &WW_PRINT_EXCLAMATION},     // 1, !
+  {ACTION_SEND | ACTION_PRINT,                     '~',  0, &ASCII_PRINT_TILDE},        // `, ~
+  {ACTION_SEND | ACTION_PRINT,                     'A',  0, &WW_PRINT_A},               // a, A, SOH
+  {ACTION_SEND | ACTION_PRINT,                     ' ',  0, &WW_PRINT_SPACE},           // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},            // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND | ACTION_PRINT,                     'X',  0, &WW_PRINT_X},               // x, X, CAN
+  {ACTION_SEND | ACTION_PRINT,                     'W',  0, &WW_PRINT_W},               // w, W, ETB
+  {ACTION_SEND | ACTION_PRINT,                     '@',  0, &WW_PRINT_AT},              // 2, @, NUL
+  {ACTION_SEND | ACTION_PRINT,                     'S',  0, &WW_PRINT_S},               // s, S, DC3/XOFF
+  {ACTION_SEND | ACTION_PRINT,                     'C',  0, &WW_PRINT_C},               // c, C, ETX
+  {ACTION_SEND | ACTION_PRINT,                     'E',  0, &WW_PRINT_E},               // e, E, ENQ
+  {ACTION_SEND | ACTION_PRINT,                     '#',  0, &WW_PRINT_POUND},           // 3, #
+  {ACTION_SEND | ACTION_PRINT,                     'D',  0, &WW_PRINT_D},               // d, D, EOT
+  {ACTION_SEND | ACTION_PRINT,                     'B',  0, &WW_PRINT_B},               // b, B, STX
+  {ACTION_SEND | ACTION_PRINT,                     'V',  0, &WW_PRINT_V},               // v, V, SYN
+  {ACTION_SEND | ACTION_PRINT,                     'T',  0, &WW_PRINT_T},               // t, T, DC4
+  {ACTION_SEND | ACTION_PRINT,                     'R',  0, &WW_PRINT_R},               // r, R, DC2
+  {ACTION_SEND | ACTION_PRINT,                     '$',  0, &WW_PRINT_DOLLAR},          // 4, $
+  {ACTION_SEND | ACTION_PRINT,                     '%',  0, &WW_PRINT_PERCENT},         // 5, %
+  {ACTION_SEND | ACTION_PRINT,                     'F',  0, &WW_PRINT_F},               // f, F, ACK
+  {ACTION_SEND | ACTION_PRINT,                     'G',  0, &WW_PRINT_G},               // g, G, BEL
+  {ACTION_SEND | ACTION_PRINT,                     'N',  0, &WW_PRINT_N},               // n, N, SO
+  {ACTION_SEND | ACTION_PRINT,                     'M',  0, &WW_PRINT_M},               // m, M, CR
+  {ACTION_SEND | ACTION_PRINT,                     'Y',  0, &WW_PRINT_Y},               // y, Y, EM
+  {ACTION_SEND | ACTION_PRINT,                     'U',  0, &WW_PRINT_U},               // u, U, NAK
+  {ACTION_SEND | ACTION_PRINT,                     '&',  0, &WW_PRINT_AMPERSAND},       // 7, &
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &ASCII_PRINT_CARET},        // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT,                     'J',  0, &WW_PRINT_J},               // j, J, LF
+  {ACTION_SEND | ACTION_PRINT,                     'H',  0, &WW_PRINT_H},               // h, H, BS
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &ASCII_PRINT_LESS},         // ,, <
+  {ACTION_SEND | ACTION_PRINT,                     '}',  0, &ASCII_PRINT_RBRACE},       // ], }, GS
+  {ACTION_SEND | ACTION_PRINT,                     'I',  0, &WW_PRINT_I},               // i, I, TAB
+  {ACTION_SEND | ACTION_PRINT,                     '*',  0, &WW_PRINT_ASTERISK},        // 8, *
+  {ACTION_SEND | ACTION_PRINT,                     '+',  0, &WW_PRINT_PLUS},            // =, +
+  {ACTION_SEND | ACTION_PRINT,                     'K',  0, &WW_PRINT_K},               // k, K, VT
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &ASCII_PRINT_GREATER},      // ., >
+  {ACTION_SEND | ACTION_PRINT,                     'O',  0, &WW_PRINT_O},               // o, O, SI
+  {ACTION_SEND | ACTION_PRINT,                     '(',  0, &WW_PRINT_LPAREN},          // 9, (
+  {ACTION_SEND | ACTION_PRINT,                     'L',  0, &WW_PRINT_L},               // l, L, FF
+  {ACTION_SEND | ACTION_PRINT,                     '?',  0, &WW_PRINT_QUESTION},        // /, ?
+  {ACTION_SEND | ACTION_PRINT,                     '{',  0, &ASCII_PRINT_LBRACE},       // [, {, ESC
+  {ACTION_SEND | ACTION_PRINT,                     'P',  0, &WW_PRINT_P},               // p, P, DLE
+  {ACTION_SEND | ACTION_PRINT,                     ')',  0, &WW_PRINT_RPAREN},          // 0, )
+  {ACTION_SEND | ACTION_PRINT,                     '_',  0, &WW_PRINT_UNDERSCORE},      // -, _, US
+  {ACTION_SEND | ACTION_PRINT,                     ':',  0, &WW_PRINT_COLON},           // ;, :
+  {ACTION_SEND | ACTION_PRINT,                     '"',  0, &WW_PRINT_QUOTE},           // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     0x08, 0, &WW_PRINT_Backspace},       // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     0x09, 0, &WW_PRINT_Tab},             // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Control.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_SETUP,                              0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_SEND,                                     0x1a,  NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     0x11,  NULL},                      // q, Q, DC1/XON
-  {ACTION_NONE,                                     0,     NULL},                      // 1, !
-  {ACTION_NONE,                                     0,     NULL},                      // `, ~
-  {ACTION_SEND,                                     0x01,  NULL},                      // a, A, SOH
-  {ACTION_NONE,                                     0,     NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LMar},            // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TClr},            // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     0x18,  NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     0x17,  NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     0x00,  NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     0x13,  NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     0x03,  NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     0x05,  NULL},                      // e, E, ENQ
-  {ACTION_NONE,                                     0,     NULL},                      // 3, #
-  {ACTION_SEND,                                     0x04,  NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     0x02,  NULL},                      // b, B, STX
-  {ACTION_SEND,                                     0x16,  NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     0x14,  NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     0x12,  NULL},                      // r, R, DC2
-  {ACTION_NONE,                                     0,     NULL},                      // 4, $
-  {ACTION_NONE,                                     0,     NULL},                      // 5, %
-  {ACTION_SEND,                                     0x06,  NULL},                      // f, F, ACK
-  {ACTION_SEND | ACTION_PRINT,                      0x07,  &WW_PRINT_BEEP},            // g, G, BEL
-  {ACTION_SEND,                                     0x0e,  NULL},                      // n, N, SO
-  {ACTION_SEND | ACTION_PRINT,                      0x0d,  &ASCII_PRINT_CR},           // m, M, CR
-  {ACTION_SEND,                                     0x19,  NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     0x15,  NULL},                      // u, U, NAK
-  {ACTION_NONE,                                     0,     NULL},                      // 7, &
-  {ACTION_SEND,                                     0x1e,  NULL},                      // 6, ^, RS
-  {ACTION_SEND | ACTION_PRINT,                      0x0a,  &ASCII_PRINT_LF},           // j, J, LF
-  {ACTION_SEND | ACTION_PRINT,                      0x08,  &WW_PRINT_Backspace},       // h, H, BS
-  {ACTION_NONE,                                     0,     NULL},                      // ,, <
-  {ACTION_SEND,                                     0x1d,  NULL},                      // ], }, GS
-  {ACTION_SEND | ACTION_PRINT,                      0x09,  &WW_PRINT_Tab},             // i, I, TAB
-  {ACTION_NONE,                                     0,     NULL},                      // 8, *
-  {ACTION_NONE,                                     0,     NULL},                      // =, +
-  {ACTION_SEND,                                     0x0b,  NULL},                      // k, K, VT
-  {ACTION_NONE,                                     0,     NULL},                      // ., >
-  {ACTION_SEND,                                     0x0f,  NULL},                      // o, O, SI
-  {ACTION_NONE,                                     0,     NULL},                      // 9, (
-  {ACTION_SEND,                                     0x0c,  NULL},                      // l, L, FF
-  {ACTION_NONE,                                     0,     NULL},                      // /, ?
-  {ACTION_SEND,                                     0x1b,  NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     0x10,  NULL},                      // p, P, DLE
-  {ACTION_NONE,                                     0,     NULL},                      // 0, )
-  {ACTION_SEND,                                     0x1f,  NULL},                      // -, _, US
-  {ACTION_NONE,                                     0,     NULL},                      // ;, :
-  {ACTION_NONE,                                     0,     NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RMar},            // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_MarRel},          // <margin release>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TSet},            // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                       // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
+  {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
+  {ACTION_NONE,                                    0,    0, NULL},                      // `, ~
+  {ACTION_SEND,                                    0x01, 0, NULL},                      // a, A, SOH
+  {ACTION_NONE,                                    0,    0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_SETTOPOFFORM},    // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClrAll},         // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    0x18, 0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    0x17, 0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    0x00, 0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    0x13, 0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    0x03, 0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    0x05, 0, NULL},                      // e, E, ENQ
+  {ACTION_NONE,                                    0,    0, NULL},                      // 3, #
+  {ACTION_SEND,                                    0x04, 0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    0x02, 0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    0x16, 0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    0x14, 0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    0x12, 0, NULL},                      // r, R, DC2
+  {ACTION_NONE,                                    0,    0, NULL},                      // 4, $
+  {ACTION_NONE,                                    0,    0, NULL},                      // 5, %
+  {ACTION_SEND,                                    0x06, 0, NULL},                      // f, F, ACK
+  {ACTION_SEND | ACTION_PRINT,                     0x07, 0, &WW_PRINT_BEEP},            // g, G, BEL
+  {ACTION_SEND,                                    0x0e, 0, NULL},                      // n, N, SO
+  {ACTION_SEND | ACTION_PRINT,                     0x0d, 0, &ASCII_PRINT_CR},           // m, M, CR
+  {ACTION_SEND,                                    0x19, 0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    0x15, 0, NULL},                      // u, U, NAK
+  {ACTION_NONE,                                    0,    0, NULL},                      // 7, &
+  {ACTION_SEND,                                    0x1e, 0, NULL},                      // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT,                     0x0a, 0, &ASCII_PRINT_LF},           // j, J, LF
+  {ACTION_SEND | ACTION_PRINT,                     0x08, 0, &WW_PRINT_Backspace},       // h, H, BS
+  {ACTION_NONE,                                    0,    0, NULL},                      // ,, <
+  {ACTION_SEND,                                    0x1d, 0, NULL},                      // ], }, GS
+  {ACTION_SEND | ACTION_PRINT,                     0x09, 0, &WW_PRINT_Tab},             // i, I, TAB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 8, *
+  {ACTION_NONE,                                    0,    0, NULL},                      // =, +
+  {ACTION_SEND,                                    0x0b, 0, NULL},                      // k, K, VT
+  {ACTION_NONE,                                    0,    0, NULL},                      // ., >
+  {ACTION_SEND,                                    0x0f, 0, NULL},                      // o, O, SI
+  {ACTION_NONE,                                    0,    0, NULL},                      // 9, (
+  {ACTION_SEND,                                    0x0c, 0, NULL},                      // l, L, FF
+  {ACTION_NONE,                                    0,    0, NULL},                      // /, ?
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    0x10, 0, NULL},                      // p, P, DLE
+  {ACTION_NONE,                                    0,    0, NULL},                      // 0, )
+  {ACTION_SEND,                                    0x1f, 0, NULL},                      // -, _, US
+  {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
+  {ACTION_NONE,                                    0,    0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_CRtn},            // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
 };
 
 // Half duplex uppercase key action table.
 const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = { 
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '\\',  &ascii_print_bslash},       // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND | ACTION_PRINT,                      'Z',   &WW_PRINT_Z},               // z, Z, SUB
-  {ACTION_SEND | ACTION_PRINT,                      'Q',   &WW_PRINT_Q},               // q, Q, DC1/XON
-  {ACTION_SEND | ACTION_PRINT,                      '1',   &WW_PRINT_1},               // 1, !
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '`',   &ascii_print_bapostrophe},  // `, ~
-  {ACTION_SEND | ACTION_PRINT,                      'A',   &WW_PRINT_A},               // a, A, SOH
-  {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND | ACTION_PRINT,                      'X',   &WW_PRINT_X},               // x, X, CAN
-  {ACTION_SEND | ACTION_PRINT,                      'W',   &WW_PRINT_W},               // w, W, ETB
-  {ACTION_SEND | ACTION_PRINT,                      '2',   &WW_PRINT_2},               // 2, @, NUL
-  {ACTION_SEND | ACTION_PRINT,                      'S',   &WW_PRINT_S},               // s, S, DC3/XOFF
-  {ACTION_SEND | ACTION_PRINT,                      'C',   &WW_PRINT_C},               // c, C, ETX
-  {ACTION_SEND | ACTION_PRINT,                      'E',   &WW_PRINT_E},               // e, E, ENQ
-  {ACTION_SEND | ACTION_PRINT,                      '3',   &WW_PRINT_3},               // 3, #
-  {ACTION_SEND | ACTION_PRINT,                      'D',   &WW_PRINT_D},               // d, D, EOT
-  {ACTION_SEND | ACTION_PRINT,                      'B',   &WW_PRINT_B},               // b, B, STX
-  {ACTION_SEND | ACTION_PRINT,                      'V',   &WW_PRINT_V},               // v, V, SYN
-  {ACTION_SEND | ACTION_PRINT,                      'T',   &WW_PRINT_T},               // t, T, DC4
-  {ACTION_SEND | ACTION_PRINT,                      'R',   &WW_PRINT_R},               // r, R, DC2
-  {ACTION_SEND | ACTION_PRINT,                      '4',   &WW_PRINT_4},               // 4, $
-  {ACTION_SEND | ACTION_PRINT,                      '5',   &WW_PRINT_5},               // 5, %
-  {ACTION_SEND | ACTION_PRINT,                      'F',   &WW_PRINT_F},               // f, F, ACK
-  {ACTION_SEND | ACTION_PRINT,                      'G',   &WW_PRINT_G},               // g, G, BEL
-  {ACTION_SEND | ACTION_PRINT,                      'N',   &WW_PRINT_N},               // n, N, SO
-  {ACTION_SEND | ACTION_PRINT,                      'M',   &WW_PRINT_M},               // m, M, CR
-  {ACTION_SEND | ACTION_PRINT,                      'Y',   &WW_PRINT_Y},               // y, Y, EM
-  {ACTION_SEND | ACTION_PRINT,                      'U',   &WW_PRINT_U},               // u, U, NAK
-  {ACTION_SEND | ACTION_PRINT,                      '7',   &WW_PRINT_7},               // 7, &
-  {ACTION_SEND | ACTION_PRINT,                      '6',   &WW_PRINT_6},               // 6, ^, RS
-  {ACTION_SEND | ACTION_PRINT,                      'J',   &WW_PRINT_J},               // j, J, LF
-  {ACTION_SEND | ACTION_PRINT,                      'H',   &WW_PRINT_H},               // h, H, BS
-  {ACTION_SEND | ACTION_PRINT,                      ',',   &WW_PRINT_COMMA},           // ,, <
-  {ACTION_SEND | ACTION_PRINT,                      ']',   &WW_PRINT_RBRACKET},        // ], }, GS
-  {ACTION_SEND | ACTION_PRINT,                      'I',   &WW_PRINT_I},               // i, I, TAB
-  {ACTION_SEND | ACTION_PRINT,                      '8',   &WW_PRINT_8},               // 8, *
-  {ACTION_SEND | ACTION_PRINT,                      '=',   &WW_PRINT_EQUAL},           // =, +
-  {ACTION_SEND | ACTION_PRINT,                      'K',   &WW_PRINT_K},               // k, K, VT
-  {ACTION_SEND | ACTION_PRINT,                      '.',   &WW_PRINT_PERIOD},          // ., >
-  {ACTION_SEND | ACTION_PRINT,                      'O',   &WW_PRINT_O},               // o, O, SI
-  {ACTION_SEND | ACTION_PRINT,                      '9',   &WW_PRINT_9},               // 9, (
-  {ACTION_SEND | ACTION_PRINT,                      'L',   &WW_PRINT_L},               // l, L, FF
-  {ACTION_SEND | ACTION_PRINT,                      '/',   &WW_PRINT_SLASH},           // /, ?
-  {ACTION_SEND | ACTION_PRINT,                      '[',   &WW_PRINT_LBRACKET},        // [, {, ESC
-  {ACTION_SEND | ACTION_PRINT,                      'P',   &WW_PRINT_P},               // p, P, DLE
-  {ACTION_SEND | ACTION_PRINT,                      '0',   &WW_PRINT_0},               // 0, )
-  {ACTION_SEND | ACTION_PRINT,                      '-',   &WW_PRINT_HYPHEN},          // -, _, US
-  {ACTION_SEND | ACTION_PRINT,                      ';',   &WW_PRINT_SEMICOLON},       // ;, :
-  {ACTION_SEND | ACTION_PRINT,                      '\'',  &WW_PRINT_APOSTROPHE},      // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      0x08,  &WW_PRINT_Backspace},       // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      0x09,  &WW_PRINT_Tab},             // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '\\', 0, &ASCII_PRINT_BSLASH},       // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'Z',  0, &WW_PRINT_Z},               // z, Z, SUB
+  {ACTION_SEND | ACTION_PRINT,                     'Q',  0, &WW_PRINT_Q},               // q, Q, DC1/XON
+  {ACTION_SEND | ACTION_PRINT,                     '1',  0, &WW_PRINT_1},               // 1, !
+  {ACTION_SEND | ACTION_PRINT,                     '`',  0, &ASCII_PRINT_BAPOSTROPHE},  // `, ~
+  {ACTION_SEND | ACTION_PRINT,                     'A',  0, &WW_PRINT_A},               // a, A, SOH
+  {ACTION_SEND | ACTION_PRINT,                     ' ',  0, &WW_PRINT_SPACE},           // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},             // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND | ACTION_PRINT,                     'X',  0, &WW_PRINT_X},               // x, X, CAN
+  {ACTION_SEND | ACTION_PRINT,                     'W',  0, &WW_PRINT_W},               // w, W, ETB
+  {ACTION_SEND | ACTION_PRINT,                     '2',  0, &WW_PRINT_2},               // 2, @, NUL
+  {ACTION_SEND | ACTION_PRINT,                     'S',  0, &WW_PRINT_S},               // s, S, DC3/XOFF
+  {ACTION_SEND | ACTION_PRINT,                     'C',  0, &WW_PRINT_C},               // c, C, ETX
+  {ACTION_SEND | ACTION_PRINT,                     'E',  0, &WW_PRINT_E},               // e, E, ENQ
+  {ACTION_SEND | ACTION_PRINT,                     '3',  0, &WW_PRINT_3},               // 3, #
+  {ACTION_SEND | ACTION_PRINT,                     'D',  0, &WW_PRINT_D},               // d, D, EOT
+  {ACTION_SEND | ACTION_PRINT,                     'B',  0, &WW_PRINT_B},               // b, B, STX
+  {ACTION_SEND | ACTION_PRINT,                     'V',  0, &WW_PRINT_V},               // v, V, SYN
+  {ACTION_SEND | ACTION_PRINT,                     'T',  0, &WW_PRINT_T},               // t, T, DC4
+  {ACTION_SEND | ACTION_PRINT,                     'R',  0, &WW_PRINT_R},               // r, R, DC2
+  {ACTION_SEND | ACTION_PRINT,                     '4',  0, &WW_PRINT_4},               // 4, $
+  {ACTION_SEND | ACTION_PRINT,                     '5',  0, &WW_PRINT_5},               // 5, %
+  {ACTION_SEND | ACTION_PRINT,                     'F',  0, &WW_PRINT_F},               // f, F, ACK
+  {ACTION_SEND | ACTION_PRINT,                     'G',  0, &WW_PRINT_G},               // g, G, BEL
+  {ACTION_SEND | ACTION_PRINT,                     'N',  0, &WW_PRINT_N},               // n, N, SO
+  {ACTION_SEND | ACTION_PRINT,                     'M',  0, &WW_PRINT_M},               // m, M, CR
+  {ACTION_SEND | ACTION_PRINT,                     'Y',  0, &WW_PRINT_Y},               // y, Y, EM
+  {ACTION_SEND | ACTION_PRINT,                     'U',  0, &WW_PRINT_U},               // u, U, NAK
+  {ACTION_SEND | ACTION_PRINT,                     '7',  0, &WW_PRINT_7},               // 7, &
+  {ACTION_SEND | ACTION_PRINT,                     '6',  0, &WW_PRINT_6},               // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT,                     'J',  0, &WW_PRINT_J},               // j, J, LF
+  {ACTION_SEND | ACTION_PRINT,                     'H',  0, &WW_PRINT_H},               // h, H, BS
+  {ACTION_SEND | ACTION_PRINT,                     ',',  0, &WW_PRINT_COMMA},           // ,, <
+  {ACTION_SEND | ACTION_PRINT,                     ']',  0, &WW_PRINT_RBRACKET},        // ], }, GS
+  {ACTION_SEND | ACTION_PRINT,                     'I',  0, &WW_PRINT_I},               // i, I, TAB
+  {ACTION_SEND | ACTION_PRINT,                     '8',  0, &WW_PRINT_8},               // 8, *
+  {ACTION_SEND | ACTION_PRINT,                     '=',  0, &WW_PRINT_EQUAL},           // =, +
+  {ACTION_SEND | ACTION_PRINT,                     'K',  0, &WW_PRINT_K},               // k, K, VT
+  {ACTION_SEND | ACTION_PRINT,                     '.',  0, &WW_PRINT_PERIOD},          // ., >
+  {ACTION_SEND | ACTION_PRINT,                     'O',  0, &WW_PRINT_O},               // o, O, SI
+  {ACTION_SEND | ACTION_PRINT,                     '9',  0, &WW_PRINT_9},               // 9, (
+  {ACTION_SEND | ACTION_PRINT,                     'L',  0, &WW_PRINT_L},               // l, L, FF
+  {ACTION_SEND | ACTION_PRINT,                     '/',  0, &WW_PRINT_SLASH},           // /, ?
+  {ACTION_SEND | ACTION_PRINT,                     '[',  0, &WW_PRINT_LBRACKET},        // [, {, ESC
+  {ACTION_SEND | ACTION_PRINT,                     'P',  0, &WW_PRINT_P},               // p, P, DLE
+  {ACTION_SEND | ACTION_PRINT,                     '0',  0, &WW_PRINT_0},               // 0, )
+  {ACTION_SEND | ACTION_PRINT,                     '-',  0, &WW_PRINT_HYPHEN},          // -, _, US
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_SEMICOLON},       // ;, :
+  {ACTION_SEND | ACTION_PRINT,                     '\'', 0, &WW_PRINT_APOSTROPHE},      // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     0x08, 0, &WW_PRINT_Backspace},       // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     0x09, 0, &WW_PRINT_Tab},             // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '|',   &ascii_print_bar},          // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND | ACTION_PRINT,                      'Z',   &WW_PRINT_Z},               // z, Z, SUB
-  {ACTION_SEND | ACTION_PRINT,                      'Q',   &WW_PRINT_Q},               // q, Q, DC1/XON
-  {ACTION_SEND | ACTION_PRINT,                      '!',   &WW_PRINT_EXCLAMATION},     // 1, !
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '~',   &ascii_print_tilde},        // `, ~
-  {ACTION_SEND | ACTION_PRINT,                      'A',   &WW_PRINT_A},               // a, A, SOH
-  {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND | ACTION_PRINT,                      'X',   &WW_PRINT_X},               // x, X, CAN
-  {ACTION_SEND | ACTION_PRINT,                      'W',   &WW_PRINT_W},               // w, W, ETB
-  {ACTION_SEND | ACTION_PRINT,                      '@',   &WW_PRINT_AT},              // 2, @, NUL
-  {ACTION_SEND | ACTION_PRINT,                      'S',   &WW_PRINT_S},               // s, S, DC3/XOFF
-  {ACTION_SEND | ACTION_PRINT,                      'C',   &WW_PRINT_C},               // c, C, ETX
-  {ACTION_SEND | ACTION_PRINT,                      'E',   &WW_PRINT_E},               // e, E, ENQ
-  {ACTION_SEND | ACTION_PRINT,                      '#',   &WW_PRINT_POUND},           // 3, #
-  {ACTION_SEND | ACTION_PRINT,                      'D',   &WW_PRINT_D},               // d, D, EOT
-  {ACTION_SEND | ACTION_PRINT,                      'B',   &WW_PRINT_B},               // b, B, STX
-  {ACTION_SEND | ACTION_PRINT,                      'V',   &WW_PRINT_V},               // v, V, SYN
-  {ACTION_SEND | ACTION_PRINT,                      'T',   &WW_PRINT_T},               // t, T, DC4
-  {ACTION_SEND | ACTION_PRINT,                      'R',   &WW_PRINT_R},               // r, R, DC2
-  {ACTION_SEND | ACTION_PRINT,                      '$',   &WW_PRINT_DOLLAR},          // 4, $
-  {ACTION_SEND | ACTION_PRINT,                      '%',   &WW_PRINT_PERCENT},         // 5, %
-  {ACTION_SEND | ACTION_PRINT,                      'F',   &WW_PRINT_F},               // f, F, ACK
-  {ACTION_SEND | ACTION_PRINT,                      'G',   &WW_PRINT_G},               // g, G, BEL
-  {ACTION_SEND | ACTION_PRINT,                      'N',   &WW_PRINT_N},               // n, N, SO
-  {ACTION_SEND | ACTION_PRINT,                      'M',   &WW_PRINT_M},               // m, M, CR
-  {ACTION_SEND | ACTION_PRINT,                      'Y',   &WW_PRINT_Y},               // y, Y, EM
-  {ACTION_SEND | ACTION_PRINT,                      'U',   &WW_PRINT_U},               // u, U, NAK
-  {ACTION_SEND | ACTION_PRINT,                      '&',   &WW_PRINT_AMPERSAND},       // 7, &
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '^',   &ascii_print_caret},        // 6, ^, RS
-  {ACTION_SEND | ACTION_PRINT,                      'J',   &WW_PRINT_J},               // j, J, LF
-  {ACTION_SEND | ACTION_PRINT,                      'H',   &WW_PRINT_H},               // h, H, BS
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '<',   &ascii_print_less},         // ,, <
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '}',   &ascii_print_rbrace},       // ], }, GS
-  {ACTION_SEND | ACTION_PRINT,                      'I',   &WW_PRINT_I},               // i, I, TAB
-  {ACTION_SEND | ACTION_PRINT,                      '*',   &WW_PRINT_ASTERISK},        // 8, *
-  {ACTION_SEND | ACTION_PRINT,                      '+',   &WW_PRINT_PLUS},            // =, +
-  {ACTION_SEND | ACTION_PRINT,                      'K',   &WW_PRINT_K},               // k, K, VT
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '>',   &ascii_print_greater},      // ., >
-  {ACTION_SEND | ACTION_PRINT,                      'O',   &WW_PRINT_O},               // o, O, SI
-  {ACTION_SEND | ACTION_PRINT,                      '(',   &WW_PRINT_LPAREN},          // 9, (
-  {ACTION_SEND | ACTION_PRINT,                      'L',   &WW_PRINT_L},               // l, L, FF
-  {ACTION_SEND | ACTION_PRINT,                      '?',   &WW_PRINT_QUESTION},        // /, ?
-  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '{',   &ascii_print_lbrace},       // [, {, ESC
-  {ACTION_SEND | ACTION_PRINT,                      'P',   &WW_PRINT_P},               // p, P, DLE
-  {ACTION_SEND | ACTION_PRINT,                      ')',   &WW_PRINT_RPAREN},          // 0, )
-  {ACTION_SEND | ACTION_PRINT,                      '_',   &WW_PRINT_UNDERSCORE},      // -, _, US
-  {ACTION_SEND | ACTION_PRINT,                      ':',   &WW_PRINT_COLON},           // ;, :
-  {ACTION_SEND | ACTION_PRINT,                      '"',   &WW_PRINT_QUOTE},           // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      0x08,  &WW_PRINT_Backspace},       // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND | ACTION_PRINT,                      0x09,  &WW_PRINT_Tab},             // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     '|',  0, &ASCII_PRINT_BAR},          // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'Z',  0, &WW_PRINT_Z},               // z, Z, SUB
+  {ACTION_SEND | ACTION_PRINT,                     'Q',  0, &WW_PRINT_Q},               // q, Q, DC1/XON
+  {ACTION_SEND | ACTION_PRINT,                     '!',  0, &WW_PRINT_EXCLAMATION},     // 1, !
+  {ACTION_SEND | ACTION_PRINT,                     '~',  0, &ASCII_PRINT_TILDE},        // `, ~
+  {ACTION_SEND | ACTION_PRINT,                     'A',  0, &WW_PRINT_A},               // a, A, SOH
+  {ACTION_SEND | ACTION_PRINT,                     ' ',  0, &WW_PRINT_SPACE},           // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},            // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND | ACTION_PRINT,                     'X',  0, &WW_PRINT_X},               // x, X, CAN
+  {ACTION_SEND | ACTION_PRINT,                     'W',  0, &WW_PRINT_W},               // w, W, ETB
+  {ACTION_SEND | ACTION_PRINT,                     '@',  0, &WW_PRINT_AT},              // 2, @, NUL
+  {ACTION_SEND | ACTION_PRINT,                     'S',  0, &WW_PRINT_S},               // s, S, DC3/XOFF
+  {ACTION_SEND | ACTION_PRINT,                     'C',  0, &WW_PRINT_C},               // c, C, ETX
+  {ACTION_SEND | ACTION_PRINT,                     'E',  0, &WW_PRINT_E},               // e, E, ENQ
+  {ACTION_SEND | ACTION_PRINT,                     '#',  0, &WW_PRINT_POUND},           // 3, #
+  {ACTION_SEND | ACTION_PRINT,                     'D',  0, &WW_PRINT_D},               // d, D, EOT
+  {ACTION_SEND | ACTION_PRINT,                     'B',  0, &WW_PRINT_B},               // b, B, STX
+  {ACTION_SEND | ACTION_PRINT,                     'V',  0, &WW_PRINT_V},               // v, V, SYN
+  {ACTION_SEND | ACTION_PRINT,                     'T',  0, &WW_PRINT_T},               // t, T, DC4
+  {ACTION_SEND | ACTION_PRINT,                     'R',  0, &WW_PRINT_R},               // r, R, DC2
+  {ACTION_SEND | ACTION_PRINT,                     '$',  0, &WW_PRINT_DOLLAR},          // 4, $
+  {ACTION_SEND | ACTION_PRINT,                     '%',  0, &WW_PRINT_PERCENT},         // 5, %
+  {ACTION_SEND | ACTION_PRINT,                     'F',  0, &WW_PRINT_F},               // f, F, ACK
+  {ACTION_SEND | ACTION_PRINT,                     'G',  0, &WW_PRINT_G},               // g, G, BEL
+  {ACTION_SEND | ACTION_PRINT,                     'N',  0, &WW_PRINT_N},               // n, N, SO
+  {ACTION_SEND | ACTION_PRINT,                     'M',  0, &WW_PRINT_M},               // m, M, CR
+  {ACTION_SEND | ACTION_PRINT,                     'Y',  0, &WW_PRINT_Y},               // y, Y, EM
+  {ACTION_SEND | ACTION_PRINT,                     'U',  0, &WW_PRINT_U},               // u, U, NAK
+  {ACTION_SEND | ACTION_PRINT,                     '&',  0, &WW_PRINT_AMPERSAND},       // 7, &
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &ASCII_PRINT_CARET},        // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT,                     'J',  0, &WW_PRINT_J},               // j, J, LF
+  {ACTION_SEND | ACTION_PRINT,                     'H',  0, &WW_PRINT_H},               // h, H, BS
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &ASCII_PRINT_LESS},         // ,, <
+  {ACTION_SEND | ACTION_PRINT,                     '}',  0, &ASCII_PRINT_RBRACE},       // ], }, GS
+  {ACTION_SEND | ACTION_PRINT,                     'I',  0, &WW_PRINT_I},               // i, I, TAB
+  {ACTION_SEND | ACTION_PRINT,                     '*',  0, &WW_PRINT_ASTERISK},        // 8, *
+  {ACTION_SEND | ACTION_PRINT,                     '+',  0, &WW_PRINT_PLUS},            // =, +
+  {ACTION_SEND | ACTION_PRINT,                     'K',  0, &WW_PRINT_K},               // k, K, VT
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &ASCII_PRINT_GREATER},      // ., >
+  {ACTION_SEND | ACTION_PRINT,                     'O',  0, &WW_PRINT_O},               // o, O, SI
+  {ACTION_SEND | ACTION_PRINT,                     '(',  0, &WW_PRINT_LPAREN},          // 9, (
+  {ACTION_SEND | ACTION_PRINT,                     'L',  0, &WW_PRINT_L},               // l, L, FF
+  {ACTION_SEND | ACTION_PRINT,                     '?',  0, &WW_PRINT_QUESTION},        // /, ?
+  {ACTION_SEND | ACTION_PRINT,                     '{',  0, &ASCII_PRINT_LBRACE},       // [, {, ESC
+  {ACTION_SEND | ACTION_PRINT,                     'P',  0, &WW_PRINT_P},               // p, P, DLE
+  {ACTION_SEND | ACTION_PRINT,                     ')',  0, &WW_PRINT_RPAREN},          // 0, )
+  {ACTION_SEND | ACTION_PRINT,                     '_',  0, &WW_PRINT_UNDERSCORE},      // -, _, US
+  {ACTION_SEND | ACTION_PRINT,                     ':',  0, &WW_PRINT_COLON},           // ;, :
+  {ACTION_SEND | ACTION_PRINT,                     '"',  0, &WW_PRINT_QUOTE},           // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND | ACTION_PRINT,                     0x08, 0, &WW_PRINT_Backspace},       // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND | ACTION_PRINT,                     0x09, 0, &WW_PRINT_Tab},             // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Control.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_SETUP,                              0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_SEND,                                     0x1a,  NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     0x11,  NULL},                      // q, Q, DC1/XON
-  {ACTION_NONE,                                     0,     NULL},                      // 1, !
-  {ACTION_NONE,                                     0,     NULL},                      // `, ~
-  {ACTION_SEND,                                     0x01,  NULL},                      // a, A, SOH
-  {ACTION_NONE,                                     0,     NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LMar},            // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TClr},            // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     0x18,  NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     0x17,  NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     0x00,  NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     0x13,  NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     0x03,  NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     0x05,  NULL},                      // e, E, ENQ
-  {ACTION_NONE,                                     0,     NULL},                      // 3, #
-  {ACTION_SEND,                                     0x04,  NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     0x02,  NULL},                      // b, B, STX
-  {ACTION_SEND,                                     0x16,  NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     0x14,  NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     0x12,  NULL},                      // r, R, DC2
-  {ACTION_NONE,                                     0,     NULL},                      // 4, $
-  {ACTION_NONE,                                     0,     NULL},                      // 5, %
-  {ACTION_SEND,                                     0x06,  NULL},                      // f, F, ACK
-  {ACTION_SEND | ACTION_PRINT,                      0x07,  &WW_PRINT_BEEP},            // g, G, BEL
-  {ACTION_SEND,                                     0x0e,  NULL},                      // n, N, SO
-  {ACTION_SEND | ACTION_PRINT,                      0x0d,  &ASCII_PRINT_CR},           // m, M, CR
-  {ACTION_SEND,                                     0x19,  NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     0x15,  NULL},                      // u, U, NAK
-  {ACTION_NONE,                                     0,     NULL},                      // 7, &
-  {ACTION_SEND,                                     0x1e,  NULL},                      // 6, ^, RS
-  {ACTION_SEND | ACTION_PRINT,                      0x0a,  &ASCII_PRINT_LF},           // j, J, LF
-  {ACTION_SEND | ACTION_PRINT,                      0x08,  &WW_PRINT_Backspace},       // h, H, BS
-  {ACTION_NONE,                                     0,     NULL},                      // ,, <
-  {ACTION_SEND,                                     0x1d,  NULL},                      // ], }, GS
-  {ACTION_SEND | ACTION_PRINT,                      0x09,  &WW_PRINT_Tab},             // i, I, TAB
-  {ACTION_NONE,                                     0,     NULL},                      // 8, *
-  {ACTION_NONE,                                     0,     NULL},                      // =, +
-  {ACTION_SEND,                                     0x0b,  NULL},                      // k, K, VT
-  {ACTION_NONE,                                     0,     NULL},                      // ., >
-  {ACTION_SEND,                                     0x0f,  NULL},                      // o, O, SI
-  {ACTION_NONE,                                     0,     NULL},                      // 9, (
-  {ACTION_SEND,                                     0x0c,  NULL},                      // l, L, FF
-  {ACTION_NONE,                                     0,     NULL},                      // /, ?
-  {ACTION_SEND,                                     0x1b,  NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     0x10,  NULL},                      // p, P, DLE
-  {ACTION_NONE,                                     0,     NULL},                      // 0, )
-  {ACTION_SEND,                                     0x1f,  NULL},                      // -, _, US
-  {ACTION_NONE,                                     0,     NULL},                      // ;, :
-  {ACTION_NONE,                                     0,     NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RMar},            // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_MarRel},          // <margin release>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TSet},            // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                       // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
+  {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
+  {ACTION_NONE,                                    0,    0, NULL},                      // `, ~
+  {ACTION_SEND,                                    0x01, 0, NULL},                      // a, A, SOH
+  {ACTION_NONE,                                    0,    0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_SETTOPOFFORM},    // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClrAll},         // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    0x18, 0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    0x17, 0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    0x00, 0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    0x13, 0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    0x03, 0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    0x05, 0, NULL},                      // e, E, ENQ
+  {ACTION_NONE,                                    0,    0, NULL},                      // 3, #
+  {ACTION_SEND,                                    0x04, 0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    0x02, 0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    0x16, 0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    0x14, 0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    0x12, 0, NULL},                      // r, R, DC2
+  {ACTION_NONE,                                    0,    0, NULL},                      // 4, $
+  {ACTION_NONE,                                    0,    0, NULL},                      // 5, %
+  {ACTION_SEND,                                    0x06, 0, NULL},                      // f, F, ACK
+  {ACTION_SEND | ACTION_PRINT,                     0x07, 0, &WW_PRINT_BEEP},            // g, G, BEL
+  {ACTION_SEND,                                    0x0e, 0, NULL},                      // n, N, SO
+  {ACTION_SEND | ACTION_PRINT,                     0x0d, 0, &ASCII_PRINT_CR},           // m, M, CR
+  {ACTION_SEND,                                    0x19, 0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    0x15, 0, NULL},                      // u, U, NAK
+  {ACTION_NONE,                                    0,    0, NULL},                      // 7, &
+  {ACTION_SEND,                                    0x1e, 0, NULL},                      // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT,                     0x0a, 0, &ASCII_PRINT_LF},           // j, J, LF
+  {ACTION_SEND | ACTION_PRINT,                     0x08, 0, &WW_PRINT_Backspace},       // h, H, BS
+  {ACTION_NONE,                                    0,    0, NULL},                      // ,, <
+  {ACTION_SEND,                                    0x1d, 0, NULL},                      // ], }, GS
+  {ACTION_SEND | ACTION_PRINT,                     0x09, 0, &WW_PRINT_Tab},             // i, I, TAB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 8, *
+  {ACTION_NONE,                                    0,    0, NULL},                      // =, +
+  {ACTION_SEND,                                    0x0b, 0, NULL},                      // k, K, VT
+  {ACTION_NONE,                                    0,    0, NULL},                      // ., >
+  {ACTION_SEND,                                    0x0f, 0, NULL},                      // o, O, SI
+  {ACTION_NONE,                                    0,    0, NULL},                      // 9, (
+  {ACTION_SEND,                                    0x0c, 0, NULL},                      // l, L, FF
+  {ACTION_NONE,                                    0,    0, NULL},                      // /, ?
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    0x10, 0, NULL},                      // p, P, DLE
+  {ACTION_NONE,                                    0,    0, NULL},                      // 0, )
+  {ACTION_SEND,                                    0x1f, 0, NULL},                      // -, _, US
+  {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
+  {ACTION_NONE,                                    0,    0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_CRtn},            // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
 };
 
 // Full duplex key action table.
 const struct key_action ASCII_ACTIONS_FULL[3 * NUM_WW_KEYS] = { 
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     '\\',  NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND,                                     'z',   NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     'q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_SEND,                                     '1',   NULL},                      // 1, !
-  {ACTION_SEND,                                     '`',   NULL},                      // `, ~
-  {ACTION_SEND,                                     'a',   NULL},                      // a, A, SOH
-  {ACTION_SEND,                                     ' ',   NULL},                      // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     'x',   NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     'w',   NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     '2',   NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     's',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     'c',   NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     'e',   NULL},                      // e, E, ENQ
-  {ACTION_SEND,                                     '3',   NULL},                      // 3, #
-  {ACTION_SEND,                                     'd',   NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     'b',   NULL},                      // b, B, STX
-  {ACTION_SEND,                                     'v',   NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     't',   NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     'r',   NULL},                      // r, R, DC2
-  {ACTION_SEND,                                     '4',   NULL},                      // 4, $
-  {ACTION_SEND,                                     '5',   NULL},                      // 5, %
-  {ACTION_SEND,                                     'f',   NULL},                      // f, F, ACK
-  {ACTION_SEND,                                     'g',   NULL},                      // g, G, BEL
-  {ACTION_SEND,                                     'n',   NULL},                      // n, N, SO
-  {ACTION_SEND,                                     'm',   NULL},                      // m, M, CR
-  {ACTION_SEND,                                     'y',   NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     'u',   NULL},                      // u, U, NAK
-  {ACTION_SEND,                                     '7',   NULL},                      // 7, &
-  {ACTION_SEND,                                     '6',   NULL},                      // 6, ^, RS
-  {ACTION_SEND,                                     'j',   NULL},                      // j, J, LF
-  {ACTION_SEND,                                     'h',   NULL},                      // h, H, BS
-  {ACTION_SEND,                                     ',',   NULL},                      // ,, <
-  {ACTION_SEND,                                     ']',   NULL},                      // ], }, GS
-  {ACTION_SEND,                                     'i',   NULL},                      // i, I, TAB
-  {ACTION_SEND,                                     '8',   NULL},                      // 8, *
-  {ACTION_SEND,                                     '=',   NULL},                      // =, +
-  {ACTION_SEND,                                     'k',   NULL},                      // k, K, VT
-  {ACTION_SEND,                                     '.',   NULL},                      // ., >
-  {ACTION_SEND,                                     'o',   NULL},                      // o, O, SI
-  {ACTION_SEND,                                     '9',   NULL},                      // 9, (
-  {ACTION_SEND,                                     'l',   NULL},                      // l, L, FF
-  {ACTION_SEND,                                     '/',   NULL},                      // /, ?
-  {ACTION_SEND,                                     '[',   NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     'p',   NULL},                      // p, P, DLE
-  {ACTION_SEND,                                     '0',   NULL},                      // 0, )
-  {ACTION_SEND,                                     '-',   NULL},                      // -, _, US
-  {ACTION_SEND,                                     ';',   NULL},                      // ;, :
-  {ACTION_SEND,                                     '\'',  NULL},                      // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     0x08,  NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND,                                     0x09,  NULL},                      // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    '\\', 0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND,                                    'z',  0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    'q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_SEND,                                    '1',  0, NULL},                      // 1, !
+  {ACTION_SEND,                                    '`',  0, NULL},                      // `, ~
+  {ACTION_SEND,                                    'a',  0, NULL},                      // a, A, SOH
+  {ACTION_SEND,                                    ' ',  0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},            // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    'x',  0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    'w',  0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    '2',  0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    's',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    'c',  0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    'e',  0, NULL},                      // e, E, ENQ
+  {ACTION_SEND,                                    '3',  0, NULL},                      // 3, #
+  {ACTION_SEND,                                    'd',  0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    'b',  0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    'v',  0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    't',  0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    'r',  0, NULL},                      // r, R, DC2
+  {ACTION_SEND,                                    '4',  0, NULL},                      // 4, $
+  {ACTION_SEND,                                    '5',  0, NULL},                      // 5, %
+  {ACTION_SEND,                                    'f',  0, NULL},                      // f, F, ACK
+  {ACTION_SEND,                                    'g',  0, NULL},                      // g, G, BEL
+  {ACTION_SEND,                                    'n',  0, NULL},                      // n, N, SO
+  {ACTION_SEND,                                    'm',  0, NULL},                      // m, M, CR
+  {ACTION_SEND,                                    'y',  0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    'u',  0, NULL},                      // u, U, NAK
+  {ACTION_SEND,                                    '7',  0, NULL},                      // 7, &
+  {ACTION_SEND,                                    '6',  0, NULL},                      // 6, ^, RS
+  {ACTION_SEND,                                    'j',  0, NULL},                      // j, J, LF
+  {ACTION_SEND,                                    'h',  0, NULL},                      // h, H, BS
+  {ACTION_SEND,                                    ',',  0, NULL},                      // ,, <
+  {ACTION_SEND,                                    ']',  0, NULL},                      // ], }, GS
+  {ACTION_SEND,                                    'i',  0, NULL},                      // i, I, TAB
+  {ACTION_SEND,                                    '8',  0, NULL},                      // 8, *
+  {ACTION_SEND,                                    '=',  0, NULL},                      // =, +
+  {ACTION_SEND,                                    'k',  0, NULL},                      // k, K, VT
+  {ACTION_SEND,                                    '.',  0, NULL},                      // ., >
+  {ACTION_SEND,                                    'o',  0, NULL},                      // o, O, SI
+  {ACTION_SEND,                                    '9',  0, NULL},                      // 9, (
+  {ACTION_SEND,                                    'l',  0, NULL},                      // l, L, FF
+  {ACTION_SEND,                                    '/',  0, NULL},                      // /, ?
+  {ACTION_SEND,                                    '[',  0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    'p',  0, NULL},                      // p, P, DLE
+  {ACTION_SEND,                                    '0',  0, NULL},                      // 0, )
+  {ACTION_SEND,                                    '-',  0, NULL},                      // -, _, US
+  {ACTION_SEND,                                    ';',  0, NULL},                      // ;, :
+  {ACTION_SEND,                                    '\'', 0, NULL},                      // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    0x08, 0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND,                                    0x09, 0, NULL},                      // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     '|',   NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND,                                     'Z',   NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     'Q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_SEND,                                     '!',   NULL},                      // 1, !
-  {ACTION_SEND,                                     '~',   NULL},                      // `, ~
-  {ACTION_SEND,                                     'A',   NULL},                      // a, A, SOH
-  {ACTION_SEND,                                     ' ',   NULL},                      // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     'X',   NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     'W',   NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     '@',   NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     'S',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     'C',   NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     'E',   NULL},                      // e, E, ENQ
-  {ACTION_SEND,                                     '#',   NULL},                      // 3, #
-  {ACTION_SEND,                                     'D',   NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     'B',   NULL},                      // b, B, STX
-  {ACTION_SEND,                                     'V',   NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     'T',   NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     'R',   NULL},                      // r, R, DC2
-  {ACTION_SEND,                                     '$',   NULL},                      // 4, $
-  {ACTION_SEND,                                     '%',   NULL},                      // 5, %
-  {ACTION_SEND,                                     'F',   NULL},                      // f, F, ACK
-  {ACTION_SEND,                                     'G',   NULL},                      // g, G, BEL
-  {ACTION_SEND,                                     'N',   NULL},                      // n, N, SO
-  {ACTION_SEND,                                     'M',   NULL},                      // m, M, CR
-  {ACTION_SEND,                                     'Y',   NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     'U',   NULL},                      // u, U, NAK
-  {ACTION_SEND,                                     '&',   NULL},                      // 7, &
-  {ACTION_SEND,                                     '^',   NULL},                      // 6, ^, RS
-  {ACTION_SEND,                                     'J',   NULL},                      // j, J, LF
-  {ACTION_SEND,                                     'H',   NULL},                      // h, H, BS
-  {ACTION_SEND,                                     '<',   NULL},                      // ,, <
-  {ACTION_SEND,                                     '}',   NULL},                      // ], }, GS
-  {ACTION_SEND,                                     'I',   NULL},                      // i, I, TAB
-  {ACTION_SEND,                                     '*',   NULL},                      // 8, *
-  {ACTION_SEND,                                     '+',   NULL},                      // =, +
-  {ACTION_SEND,                                     'K',   NULL},                      // k, K, VT
-  {ACTION_SEND,                                     '>',   NULL},                      // ., >
-  {ACTION_SEND,                                     'O',   NULL},                      // o, O, SI
-  {ACTION_SEND,                                     '(',   NULL},                      // 9, (
-  {ACTION_SEND,                                     'L',   NULL},                      // l, L, FF
-  {ACTION_SEND,                                     '?',   NULL},                      // /, ?
-  {ACTION_SEND,                                     '{',   NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     'P',   NULL},                      // p, P, DLE
-  {ACTION_SEND,                                     ')',   NULL},                      // 0, )
-  {ACTION_SEND,                                     '_',   NULL},                      // -, _, US
-  {ACTION_SEND,                                     ':',   NULL},                      // ;, :
-  {ACTION_SEND,                                     '"',   NULL},                      // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     0x08,  NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND,                                     0x09,  NULL},                      // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    '|',  0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND,                                    'Z',  0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    'Q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_SEND,                                    '!',  0, NULL},                      // 1, !
+  {ACTION_SEND,                                    '~',  0, NULL},                      // `, ~
+  {ACTION_SEND,                                    'A',  0, NULL},                      // a, A, SOH
+  {ACTION_SEND,                                    ' ',  0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},            // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    'X',  0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    'W',  0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    '@',  0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    'S',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    'C',  0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    'E',  0, NULL},                      // e, E, ENQ
+  {ACTION_SEND,                                    '#',  0, NULL},                      // 3, #
+  {ACTION_SEND,                                    'D',  0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    'B',  0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    'V',  0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    'T',  0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    'R',  0, NULL},                      // r, R, DC2
+  {ACTION_SEND,                                    '$',  0, NULL},                      // 4, $
+  {ACTION_SEND,                                    '%',  0, NULL},                      // 5, %
+  {ACTION_SEND,                                    'F',  0, NULL},                      // f, F, ACK
+  {ACTION_SEND,                                    'G',  0, NULL},                      // g, G, BEL
+  {ACTION_SEND,                                    'N',  0, NULL},                      // n, N, SO
+  {ACTION_SEND,                                    'M',  0, NULL},                      // m, M, CR
+  {ACTION_SEND,                                    'Y',  0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    'U',  0, NULL},                      // u, U, NAK
+  {ACTION_SEND,                                    '&',  0, NULL},                      // 7,0,   &
+  {ACTION_SEND,                                    '^',  0, NULL},                      // 6, ^, RS
+  {ACTION_SEND,                                    'J',  0, NULL},                      // j, J, LF
+  {ACTION_SEND,                                    'H',  0, NULL},                      // h, H, BS
+  {ACTION_SEND,                                    '<',  0, NULL},                      // ,, <
+  {ACTION_SEND,                                    '}',  0, NULL},                      // ], }, GS
+  {ACTION_SEND,                                    'I',  0, NULL},                      // i, I, TAB
+  {ACTION_SEND,                                    '*',  0, NULL},                      // 8, *
+  {ACTION_SEND,                                    '+',  0, NULL},                      // =, +
+  {ACTION_SEND,                                    'K',  0, NULL},                      // k, K, VT
+  {ACTION_SEND,                                    '>',  0, NULL},                      // ., >
+  {ACTION_SEND,                                    'O',  0, NULL},                      // o, O, SI
+  {ACTION_SEND,                                    '(',  0, NULL},                      // 9, (
+  {ACTION_SEND,                                    'L',  0, NULL},                      // l, L, FF
+  {ACTION_SEND,                                    '?',  0, NULL},                      // /, ?
+  {ACTION_SEND,                                    '{',  0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    'P',  0, NULL},                      // p, P, DLE
+  {ACTION_SEND,                                    ')',  0, NULL},                      // 0, )
+  {ACTION_SEND,                                    '_',  0, NULL},                      // -, _, US
+  {ACTION_SEND,                                    ':',  0, NULL},                      // ;, :
+  {ACTION_SEND,                                    '"',  0, NULL},                      // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    0x08, 0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND,                                    0x09, 0, NULL},                      // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Control.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_SETUP,                              0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_SEND,                                     0x1a,  NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     0x11,  NULL},                      // q, Q, DC1/XON
-  {ACTION_NONE,                                     0,     NULL},                      // 1, !
-  {ACTION_NONE,                                     0,     NULL},                      // `, ~
-  {ACTION_SEND,                                     0x01,  NULL},                      // a, A, SOH
-  {ACTION_NONE,                                     0,     NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LMar},            // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TClr},            // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     0x18,  NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     0x17,  NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     0x00,  NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     0x13,  NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     0x03,  NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     0x05,  NULL},                      // e, E, ENQ
-  {ACTION_NONE,                                     0,     NULL},                      // 3, #
-  {ACTION_SEND,                                     0x04,  NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     0x02,  NULL},                      // b, B, STX
-  {ACTION_SEND,                                     0x16,  NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     0x14,  NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     0x12,  NULL},                      // r, R, DC2
-  {ACTION_NONE,                                     0,     NULL},                      // 4, $
-  {ACTION_NONE,                                     0,     NULL},                      // 5, %
-  {ACTION_SEND,                                     0x06,  NULL},                      // f, F, ACK
-  {ACTION_SEND,                                     0x07,  NULL},                      // g, G, BEL
-  {ACTION_SEND,                                     0x0e,  NULL},                      // n, N, SO
-  {ACTION_SEND,                                     0x0d,  NULL},                      // m, M, CR
-  {ACTION_SEND,                                     0x19,  NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     0x15,  NULL},                      // u, U, NAK
-  {ACTION_NONE,                                     0,     NULL},                      // 7, &
-  {ACTION_SEND,                                     0x1e,  NULL},                      // 6, ^, RS
-  {ACTION_SEND,                                     0x0a,  NULL},                      // j, J, LF
-  {ACTION_SEND,                                     0x08,  NULL},                      // h, H, BS
-  {ACTION_NONE,                                     0,     NULL},                      // ,, <
-  {ACTION_SEND,                                     0x1d,  NULL},                      // ], }, GS
-  {ACTION_SEND,                                     0x09,  NULL},                      // i, I, TAB
-  {ACTION_NONE,                                     0,     NULL},                      // 8, *
-  {ACTION_NONE,                                     0,     NULL},                      // =, +
-  {ACTION_SEND,                                     0x0b,  NULL},                      // k, K, VT
-  {ACTION_NONE,                                     0,     NULL},                      // ., >
-  {ACTION_SEND,                                     0x0f,  NULL},                      // o, O, SI
-  {ACTION_NONE,                                     0,     NULL},                      // 9, (
-  {ACTION_SEND,                                     0x0c,  NULL},                      // l, L, FF
-  {ACTION_NONE,                                     0,     NULL},                      // /, ?
-  {ACTION_SEND,                                     0x1b,  NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     0x10,  NULL},                      // p, P, DLE
-  {ACTION_NONE,                                     0,     NULL},                      // 0, )
-  {ACTION_SEND,                                     0x1f,  NULL},                      // -, _, US
-  {ACTION_NONE,                                     0,     NULL},                      // ;, :
-  {ACTION_NONE,                                     0,     NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RMar},            // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_MarRel},          // <margin release>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TSet},            // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                       // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
+  {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
+  {ACTION_NONE,                                    0,    0, NULL},                      // `, ~
+  {ACTION_SEND,                                    0x01, 0, NULL},                      // a, A, SOH
+  {ACTION_NONE,                                    0,    0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_SETTOPOFFORM},    // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClrAll},         // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    0x18, 0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    0x17, 0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    0x00, 0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    0x13, 0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    0x03, 0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    0x05, 0, NULL},                      // e, E, ENQ
+  {ACTION_NONE,                                    0,    0, NULL},                      // 3, #
+  {ACTION_SEND,                                    0x04, 0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    0x02, 0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    0x16, 0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    0x14, 0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    0x12, 0, NULL},                      // r, R, DC2
+  {ACTION_NONE,                                    0,    0, NULL},                      // 4, $
+  {ACTION_NONE,                                    0,    0, NULL},                      // 5, %
+  {ACTION_SEND,                                    0x06, 0, NULL},                      // f, F, ACK
+  {ACTION_SEND,                                    0x07, 0, NULL},                      // g, G, BEL
+  {ACTION_SEND,                                    0x0e, 0, NULL},                      // n, N, SO
+  {ACTION_SEND,                                    0x0d, 0, NULL},                      // m, M, CR
+  {ACTION_SEND,                                    0x19, 0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    0x15, 0, NULL},                      // u, U, NAK
+  {ACTION_NONE,                                    0,    0, NULL},                      // 7, &
+  {ACTION_SEND,                                    0x1e, 0, NULL},                      // 6, ^, RS
+  {ACTION_SEND,                                    0x0a, 0, NULL},                      // j, J, LF
+  {ACTION_SEND,                                    0x08, 0, NULL},                      // h, H, BS
+  {ACTION_NONE,                                    0,    0, NULL},                      // ,, <
+  {ACTION_SEND,                                    0x1d, 0, NULL},                      // ], }, GS
+  {ACTION_SEND,                                    0x09, 0, NULL},                      // i, I, TAB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 8, *
+  {ACTION_NONE,                                    0,    0, NULL},                      // =, +
+  {ACTION_SEND,                                    0x0b, 0, NULL},                      // k, K, VT
+  {ACTION_NONE,                                    0,    0, NULL},                      // ., >
+  {ACTION_SEND,                                    0x0f, 0, NULL},                      // o, O, SI
+  {ACTION_NONE,                                    0,    0, NULL},                      // 9, (
+  {ACTION_SEND,                                    0x0c, 0, NULL},                      // l, L, FF
+  {ACTION_NONE,                                    0,    0, NULL},                      // /, ?
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    0x10, 0, NULL},                      // p, P, DLE
+  {ACTION_NONE,                                    0,    0, NULL},                      // 0, )
+  {ACTION_SEND,                                    0x1f, 0, NULL},                      // -, _, US
+  {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
+  {ACTION_NONE,                                    0,    0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_CRtn},            // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
 };
 
 // Full duplex uppercase key action table.
 const struct key_action ASCII_ACTIONS_FULL_UPPERCASE[3 * NUM_WW_KEYS] = { 
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     '\\',  NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND,                                     'Z',   NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     'Q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_SEND,                                     '1',   NULL},                      // 1, !
-  {ACTION_SEND,                                     '`',   NULL},                      // `, ~
-  {ACTION_SEND,                                     'A',   NULL},                      // a, A, SOH
-  {ACTION_SEND,                                     ' ',   NULL},                      // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     'X',   NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     'W',   NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     '2',   NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     'S',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     'C',   NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     'E',   NULL},                      // e, E, ENQ
-  {ACTION_SEND,                                     '3',   NULL},                      // 3, #
-  {ACTION_SEND,                                     'D',   NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     'B',   NULL},                      // b, B, STX
-  {ACTION_SEND,                                     'V',   NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     'T',   NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     'R',   NULL},                      // r, R, DC2
-  {ACTION_SEND,                                     '4',   NULL},                      // 4, $
-  {ACTION_SEND,                                     '5',   NULL},                      // 5, %
-  {ACTION_SEND,                                     'F',   NULL},                      // f, F, ACK
-  {ACTION_SEND,                                     'G',   NULL},                      // g, G, BEL
-  {ACTION_SEND,                                     'N',   NULL},                      // n, N, SO
-  {ACTION_SEND,                                     'M',   NULL},                      // m, M, CR
-  {ACTION_SEND,                                     'Y',   NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     'U',   NULL},                      // u, U, NAK
-  {ACTION_SEND,                                     '7',   NULL},                      // 7, &
-  {ACTION_SEND,                                     '6',   NULL},                      // 6, ^, RS
-  {ACTION_SEND,                                     'J',   NULL},                      // j, J, LF
-  {ACTION_SEND,                                     'H',   NULL},                      // h, H, BS
-  {ACTION_SEND,                                     ',',   NULL},                      // ,, <
-  {ACTION_SEND,                                     ']',   NULL},                      // ], }, GS
-  {ACTION_SEND,                                     'I',   NULL},                      // i, I, TAB
-  {ACTION_SEND,                                     '8',   NULL},                      // 8, *
-  {ACTION_SEND,                                     '=',   NULL},                      // =, +
-  {ACTION_SEND,                                     'K',   NULL},                      // k, K, VT
-  {ACTION_SEND,                                     '.',   NULL},                      // ., >
-  {ACTION_SEND,                                     'O',   NULL},                      // o, O, SI
-  {ACTION_SEND,                                     '9',   NULL},                      // 9, (
-  {ACTION_SEND,                                     'L',   NULL},                      // l, L, FF
-  {ACTION_SEND,                                     '/',   NULL},                      // /, ?
-  {ACTION_SEND,                                     '[',   NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     'P',   NULL},                      // p, P, DLE
-  {ACTION_SEND,                                     '0',   NULL},                      // 0, )
-  {ACTION_SEND,                                     '-',   NULL},                      // -, _, US
-  {ACTION_SEND,                                     ';',   NULL},                      // ;, :
-  {ACTION_SEND,                                     '\'',  NULL},                      // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     0x08,  NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND,                                     0x09,  NULL},                      // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    '\\', 0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND,                                    'Z',  0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    'Q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_SEND,                                    '1',  0, NULL},                      // 1, !
+  {ACTION_SEND,                                    '`',  0, NULL},                      // `, ~
+  {ACTION_SEND,                                    'A',  0, NULL},                      // a, A, SOH
+  {ACTION_SEND,                                    ' ',  0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},            // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    'X',  0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    'W',  0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    '2',  0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    'S',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    'C',  0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    'E',  0, NULL},                      // e, E, ENQ
+  {ACTION_SEND,                                    '3',  0, NULL},                      // 3, #
+  {ACTION_SEND,                                    'D',  0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    'B',  0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    'V',  0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    'T',  0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    'R',  0, NULL},                      // r, R, DC2
+  {ACTION_SEND,                                    '4',  0, NULL},                      // 4, $
+  {ACTION_SEND,                                    '5',  0, NULL},                      // 5, %
+  {ACTION_SEND,                                    'F',  0, NULL},                      // f, F, ACK
+  {ACTION_SEND,                                    'G',  0, NULL},                      // g, G, BEL
+  {ACTION_SEND,                                    'N',  0, NULL},                      // n, N, SO
+  {ACTION_SEND,                                    'M',  0, NULL},                      // m, M, CR
+  {ACTION_SEND,                                    'Y',  0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    'U',  0, NULL},                      // u, U, NAK
+  {ACTION_SEND,                                    '7',  0, NULL},                      // 7, &
+  {ACTION_SEND,                                    '6',  0, NULL},                      // 6, ^, RS
+  {ACTION_SEND,                                    'J',  0, NULL},                      // j, J, LF
+  {ACTION_SEND,                                    'H',  0, NULL},                      // h, H, BS
+  {ACTION_SEND,                                    ',',  0, NULL},                      // ,, <
+  {ACTION_SEND,                                    ']',  0, NULL},                      // ], }, GS
+  {ACTION_SEND,                                    'I',  0, NULL},                      // i, I, TAB
+  {ACTION_SEND,                                    '8',  0, NULL},                      // 8, *
+  {ACTION_SEND,                                    '=',  0, NULL},                      // =, +
+  {ACTION_SEND,                                    'K',  0, NULL},                      // k, K, VT
+  {ACTION_SEND,                                    '.',  0, NULL},                      // ., >
+  {ACTION_SEND,                                    'O',  0, NULL},                      // o, O, SI
+  {ACTION_SEND,                                    '9',  0, NULL},                      // 9, (
+  {ACTION_SEND,                                    'L',  0, NULL},                      // l, L, FF
+  {ACTION_SEND,                                    '/',  0, NULL},                      // /, ?
+  {ACTION_SEND,                                    '[',  0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    'P',  0, NULL},                      // p, P, DLE
+  {ACTION_SEND,                                    '0',  0, NULL},                      // 0, )
+  {ACTION_SEND,                                    '-',  0, NULL},                      // -, _, US
+  {ACTION_SEND,                                    ';',  0, NULL},                      // ;, :
+  {ACTION_SEND,                                    '\'', 0, NULL},                      // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    0x08, 0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND,                                    0x09, 0, NULL},                      // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     '|',   NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_PRINT,                                    0,     &WW_PRINT_DARROW},          // <down arrow>
-  {ACTION_SEND,                                     'Z',   NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     'Q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_SEND,                                     '!',   NULL},                      // 1, !
-  {ACTION_SEND,                                     '~',   NULL},                      // `, ~
-  {ACTION_SEND,                                     'A',   NULL},                      // a, A, SOH
-  {ACTION_SEND,                                     ' ',   NULL},                      // <space>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     'X',   NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     'W',   NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     '@',   NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     'S',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     'C',   NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     'E',   NULL},                      // e, E, ENQ
-  {ACTION_SEND,                                     '#',   NULL},                      // 3, #
-  {ACTION_SEND,                                     'D',   NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     'B',   NULL},                      // b, B, STX
-  {ACTION_SEND,                                     'V',   NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     'T',   NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     'R',   NULL},                      // r, R, DC2
-  {ACTION_SEND,                                     '$',   NULL},                      // 4, $
-  {ACTION_SEND,                                     '%',   NULL},                      // 5, %
-  {ACTION_SEND,                                     'F',   NULL},                      // f, F, ACK
-  {ACTION_SEND,                                     'G',   NULL},                      // g, G, BEL
-  {ACTION_SEND,                                     'N',   NULL},                      // n, N, SO
-  {ACTION_SEND,                                     'M',   NULL},                      // m, M, CR
-  {ACTION_SEND,                                     'Y',   NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     'U',   NULL},                      // u, U, NAK
-  {ACTION_SEND,                                     '&',   NULL},                      // 7, &
-  {ACTION_SEND,                                     '^',   NULL},                      // 6, ^, RS
-  {ACTION_SEND,                                     'J',   NULL},                      // j, J, LF
-  {ACTION_SEND,                                     'H',   NULL},                      // h, H, BS
-  {ACTION_SEND,                                     '<',   NULL},                      // ,, <
-  {ACTION_SEND,                                     '}',   NULL},                      // ], }, GS
-  {ACTION_SEND,                                     'I',   NULL},                      // i, I, TAB
-  {ACTION_SEND,                                     '*',   NULL},                      // 8, *
-  {ACTION_SEND,                                     '+',   NULL},                      // =, +
-  {ACTION_SEND,                                     'K',   NULL},                      // k, K, VT
-  {ACTION_SEND,                                     '>',   NULL},                      // ., >
-  {ACTION_SEND,                                     'O',   NULL},                      // o, O, SI
-  {ACTION_SEND,                                     '(',   NULL},                      // 9, (
-  {ACTION_SEND,                                     'L',   NULL},                      // l, L, FF
-  {ACTION_SEND,                                     '?',   NULL},                      // /, ?
-  {ACTION_SEND,                                     '{',   NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     'P',   NULL},                      // p, P, DLE
-  {ACTION_SEND,                                     ')',   NULL},                      // 0, )
-  {ACTION_SEND,                                     '_',   NULL},                      // -, _, US
-  {ACTION_SEND,                                     ':',   NULL},                      // ;, :
-  {ACTION_SEND,                                     '"',   NULL},                      // ', "
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LARROW},          // <left arrow>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_UARROW},          // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND,                                     0x08,  NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_RETURN,                             0,     NULL},                      // <return>
-  {ACTION_SEND,                                     0x7f,  NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_SEND,                                     0x09,  NULL},                      // <tab>
-  {ACTION_SEND,                                     0x1b,  NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RIGHTARROW},      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    '|',  0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DOWNARROW},       // <down arrow>
+  {ACTION_SEND,                                    'Z',  0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    'Q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_SEND,                                    '!',  0, NULL},                      // 1, !
+  {ACTION_SEND,                                    '~',  0, NULL},                      // `, ~
+  {ACTION_SEND,                                    'A',  0, NULL},                      // a, A, SOH
+  {ACTION_SEND,                                    ' ',  0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},       // <load paper>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LMar},            // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClr},            // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    'X',  0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    'W',  0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    '@',  0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    'S',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    'C',  0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    'E',  0, NULL},                      // e, E, ENQ
+  {ACTION_SEND,                                    '#',  0, NULL},                      // 3, #
+  {ACTION_SEND,                                    'D',  0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    'B',  0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    'V',  0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    'T',  0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    'R',  0, NULL},                      // r, R, DC2
+  {ACTION_SEND,                                    '$',  0, NULL},                      // 4, $
+  {ACTION_SEND,                                    '%',  0, NULL},                      // 5, %
+  {ACTION_SEND,                                    'F',  0, NULL},                      // f, F, ACK
+  {ACTION_SEND,                                    'G',  0, NULL},                      // g, G, BEL
+  {ACTION_SEND,                                    'N',  0, NULL},                      // n, N, SO
+  {ACTION_SEND,                                    'M',  0, NULL},                      // m, M, CR
+  {ACTION_SEND,                                    'Y',  0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    'U',  0, NULL},                      // u, U, NAK
+  {ACTION_SEND,                                    '&',  0, NULL},                      // 7, &
+  {ACTION_SEND,                                    '^',  0, NULL},                      // 6, ^, RS
+  {ACTION_SEND,                                    'J',  0, NULL},                      // j, J, LF
+  {ACTION_SEND,                                    'H',  0, NULL},                      // h, H, BS
+  {ACTION_SEND,                                    '<',  0, NULL},                      // ,, <
+  {ACTION_SEND,                                    '}',  0, NULL},                      // ], }, GS
+  {ACTION_SEND,                                    'I',  0, NULL},                      // i, I, TAB
+  {ACTION_SEND,                                    '*',  0, NULL},                      // 8, *
+  {ACTION_SEND,                                    '+',  0, NULL},                      // =, +
+  {ACTION_SEND,                                    'K',  0, NULL},                      // k, K, VT
+  {ACTION_SEND,                                    '>',  0, NULL},                      // ., >
+  {ACTION_SEND,                                    'O',  0, NULL},                      // o, O, SI
+  {ACTION_SEND,                                    '(',  0, NULL},                      // 9, (
+  {ACTION_SEND,                                    'L',  0, NULL},                      // l, L, FF
+  {ACTION_SEND,                                    '?',  0, NULL},                      // /, ?
+  {ACTION_SEND,                                    '{',  0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    'P',  0, NULL},                      // p, P, DLE
+  {ACTION_SEND,                                    ')',  0, NULL},                      // 0, )
+  {ACTION_SEND,                                    '_',  0, NULL},                      // -, _, US
+  {ACTION_SEND,                                    ':',  0, NULL},                      // ;, :
+  {ACTION_SEND,                                    '"',  0, NULL},                      // ', "
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LEFTARROW},       // <left arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UPARROW},         // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_SEND,                                    0x08, 0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_RETURN,                            0,    0, NULL},                      // <return>
+  {ACTION_SEND,                                    0x7f, 0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_RMar},            // <right margin>
+  {ACTION_SEND,                                    0x09, 0, NULL},                      // <tab>
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // <escape>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TSet},            // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Control.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_ASCII_SETUP,                              0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_SEND,                                     0x1a,  NULL},                      // z, Z, SUB
-  {ACTION_SEND,                                     0x11,  NULL},                      // q, Q, DC1/XON
-  {ACTION_NONE,                                     0,     NULL},                      // 1, !
-  {ACTION_NONE,                                     0,     NULL},                      // `, ~
-  {ACTION_SEND,                                     0x01,  NULL},                      // a, A, SOH
-  {ACTION_NONE,                                     0,     NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_LMar},            // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TClr},            // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_SEND,                                     0x18,  NULL},                      // x, X, CAN
-  {ACTION_SEND,                                     0x17,  NULL},                      // w, W, ETB
-  {ACTION_SEND,                                     0x00,  NULL},                      // 2, @, NUL
-  {ACTION_SEND,                                     0x13,  NULL},                      // s, S, DC3/XOFF
-  {ACTION_SEND,                                     0x03,  NULL},                      // c, C, ETX
-  {ACTION_SEND,                                     0x05,  NULL},                      // e, E, ENQ
-  {ACTION_NONE,                                     0,     NULL},                      // 3, #
-  {ACTION_SEND,                                     0x04,  NULL},                      // d, D, EOT
-  {ACTION_SEND,                                     0x02,  NULL},                      // b, B, STX
-  {ACTION_SEND,                                     0x16,  NULL},                      // v, V, SYN
-  {ACTION_SEND,                                     0x14,  NULL},                      // t, T, DC4
-  {ACTION_SEND,                                     0x12,  NULL},                      // r, R, DC2
-  {ACTION_NONE,                                     0,     NULL},                      // 4, $
-  {ACTION_NONE,                                     0,     NULL},                      // 5, %
-  {ACTION_SEND,                                     0x06,  NULL},                      // f, F, ACK
-  {ACTION_SEND,                                     0x07,  NULL},                      // g, G, BEL
-  {ACTION_SEND,                                     0x0e,  NULL},                      // n, N, SO
-  {ACTION_SEND,                                     0x0d,  NULL},                      // m, M, CR
-  {ACTION_SEND,                                     0x19,  NULL},                      // y, Y, EM
-  {ACTION_SEND,                                     0x15,  NULL},                      // u, U, NAK
-  {ACTION_NONE,                                     0,     NULL},                      // 7, &
-  {ACTION_SEND,                                     0x1e,  NULL},                      // 6, ^, RS
-  {ACTION_SEND,                                     0x0a,  NULL},                      // j, J, LF
-  {ACTION_SEND,                                     0x08,  NULL},                      // h, H, BS
-  {ACTION_NONE,                                     0,     NULL},                      // ,, <
-  {ACTION_SEND,                                     0x1d,  NULL},                      // ], }, GS
-  {ACTION_SEND,                                     0x09,  NULL},                      // i, I, TAB
-  {ACTION_NONE,                                     0,     NULL},                      // 8, *
-  {ACTION_NONE,                                     0,     NULL},                      // =, +
-  {ACTION_SEND,                                     0x0b,  NULL},                      // k, K, VT
-  {ACTION_NONE,                                     0,     NULL},                      // ., >
-  {ACTION_SEND,                                     0x0f,  NULL},                      // o, O, SI
-  {ACTION_NONE,                                     0,     NULL},                      // 9, (
-  {ACTION_SEND,                                     0x0c,  NULL},                      // l, L, FF
-  {ACTION_NONE,                                     0,     NULL},                      // /, ?
-  {ACTION_SEND,                                     0x1b,  NULL},                      // [, {, ESC
-  {ACTION_SEND,                                     0x10,  NULL},                      // p, P, DLE
-  {ACTION_NONE,                                     0,     NULL},                      // 0, )
-  {ACTION_SEND,                                     0x1f,  NULL},                      // -, _, US
-  {ACTION_NONE,                                     0,     NULL},                      // ;, :
-  {ACTION_NONE,                                     0,     NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_RMar},            // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_MarRel},          // <margin release>
-  {ACTION_PRINT,                                    0,     &WW_PRINT_TSet},            // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                       // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
+  {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
+  {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
+  {ACTION_NONE,                                    0,    0, NULL},                      // `, ~
+  {ACTION_SEND,                                    0x01, 0, NULL},                      // a, A, SOH
+  {ACTION_NONE,                                    0,    0, NULL},                      // <space>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_SETTOPOFFORM},    // <set top of form>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_TClrAll},         // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_SEND,                                    0x18, 0, NULL},                      // x, X, CAN
+  {ACTION_SEND,                                    0x17, 0, NULL},                      // w, W, ETB
+  {ACTION_SEND,                                    0x00, 0, NULL},                      // 2, @, NUL
+  {ACTION_SEND,                                    0x13, 0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_SEND,                                    0x03, 0, NULL},                      // c, C, ETX
+  {ACTION_SEND,                                    0x05, 0, NULL},                      // e, E, ENQ
+  {ACTION_NONE,                                    0,    0, NULL},                      // 3, #
+  {ACTION_SEND,                                    0x04, 0, NULL},                      // d, D, EOT
+  {ACTION_SEND,                                    0x02, 0, NULL},                      // b, B, STX
+  {ACTION_SEND,                                    0x16, 0, NULL},                      // v, V, SYN
+  {ACTION_SEND,                                    0x14, 0, NULL},                      // t, T, DC4
+  {ACTION_SEND,                                    0x12, 0, NULL},                      // r, R, DC2
+  {ACTION_NONE,                                    0,    0, NULL},                      // 4, $
+  {ACTION_NONE,                                    0,    0, NULL},                      // 5, %
+  {ACTION_SEND,                                    0x06, 0, NULL},                      // f, F, ACK
+  {ACTION_SEND,                                    0x07, 0, NULL},                      // g, G, BEL
+  {ACTION_SEND,                                    0x0e, 0, NULL},                      // n, N, SO
+  {ACTION_SEND,                                    0x0d, 0, NULL},                      // m, M, CR
+  {ACTION_SEND,                                    0x19, 0, NULL},                      // y, Y, EM
+  {ACTION_SEND,                                    0x15, 0, NULL},                      // u, U, NAK
+  {ACTION_NONE,                                    0,    0, NULL},                      // 7,0,   &
+  {ACTION_SEND,                                    0x1e, 0, NULL},                      // 6, ^, RS
+  {ACTION_SEND,                                    0x0a, 0, NULL},                      // j, J, LF
+  {ACTION_SEND,                                    0x08, 0, NULL},                      // h, H, BS
+  {ACTION_NONE,                                    0,    0, NULL},                      // ,, <
+  {ACTION_SEND,                                    0x1d, 0, NULL},                      // ], }, GS
+  {ACTION_SEND,                                    0x09, 0, NULL},                      // i, I, TAB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 8, *
+  {ACTION_NONE,                                    0,    0, NULL},                      // =, +
+  {ACTION_SEND,                                    0x0b, 0, NULL},                      // k, K, VT
+  {ACTION_NONE,                                    0,    0, NULL},                      // ., >
+  {ACTION_SEND,                                    0x0f, 0, NULL},                      // o, O, SI
+  {ACTION_NONE,                                    0,    0, NULL},                      // 9, (
+  {ACTION_SEND,                                    0x0c, 0, NULL},                      // l, L, FF
+  {ACTION_NONE,                                    0,    0, NULL},                      // /, ?
+  {ACTION_SEND,                                    0x1b, 0, NULL},                      // [, {, ESC
+  {ACTION_SEND,                                    0x10, 0, NULL},                      // p, P, DLE
+  {ACTION_NONE,                                    0,    0, NULL},                      // 0, )
+  {ACTION_SEND,                                    0x1f, 0, NULL},                      // -, _, US
+  {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
+  {ACTION_NONE,                                    0,    0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_CRtn},            // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
 };
 
 // Setup key action table.
 const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  '\\',  NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_COMMAND,                                  'z',   NULL},                      // z, Z, SUB
-  {ACTION_COMMAND,                                  'q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_COMMAND,                                  '1',   NULL},                      // 1, !
-  {ACTION_COMMAND,                                  '`',   NULL},                      // `, ~
-  {ACTION_COMMAND,                                  'a',   NULL},                      // a, A, SOH
-  {ACTION_COMMAND,                                  ' ',   NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_COMMAND,                                  'x',   NULL},                      // x, X, CAN
-  {ACTION_COMMAND,                                  'w',   NULL},                      // w, W, ETB
-  {ACTION_COMMAND,                                  '2',   NULL},                      // 2, @, NUL
-  {ACTION_COMMAND,                                  's',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_COMMAND,                                  'c',   NULL},                      // c, C, ETX
-  {ACTION_COMMAND,                                  'e',   NULL},                      // e, E, ENQ
-  {ACTION_COMMAND,                                  '3',   NULL},                      // 3, #
-  {ACTION_COMMAND,                                  'd',   NULL},                      // d, D, EOT
-  {ACTION_COMMAND,                                  'b',   NULL},                      // b, B, STX
-  {ACTION_COMMAND,                                  'v',   NULL},                      // v, V, SYN
-  {ACTION_COMMAND,                                  't',   NULL},                      // t, T, DC4
-  {ACTION_COMMAND,                                  'r',   NULL},                      // r, R, DC2
-  {ACTION_COMMAND,                                  '4',   NULL},                      // 4, $
-  {ACTION_COMMAND,                                  '5',   NULL},                      // 5, %
-  {ACTION_COMMAND,                                  'f',   NULL},                      // f, F, ACK
-  {ACTION_COMMAND,                                  'g',   NULL},                      // g, G, BEL
-  {ACTION_COMMAND,                                  'n',   NULL},                      // n, N, SO
-  {ACTION_COMMAND,                                  'm',   NULL},                      // m, M, CR
-  {ACTION_COMMAND,                                  'y',   NULL},                      // y, Y, EM
-  {ACTION_COMMAND,                                  'u',   NULL},                      // u, U, NAK
-  {ACTION_COMMAND,                                  '7',   NULL},                      // 7, &
-  {ACTION_COMMAND,                                  '6',   NULL},                      // 6, ^, RS
-  {ACTION_COMMAND,                                  'j',   NULL},                      // j, J, LF
-  {ACTION_COMMAND,                                  'h',   NULL},                      // h, H, BS
-  {ACTION_COMMAND,                                  ',',   NULL},                      // ,, <
-  {ACTION_COMMAND,                                  ']',   NULL},                      // ], }, GS
-  {ACTION_COMMAND,                                  'i',   NULL},                      // i, I, TAB
-  {ACTION_COMMAND,                                  '8',   NULL},                      // 8, *
-  {ACTION_COMMAND,                                  '=',   NULL},                      // =, +
-  {ACTION_COMMAND,                                  'k',   NULL},                      // k, K, VT
-  {ACTION_COMMAND,                                  '.',   NULL},                      // ., >
-  {ACTION_COMMAND,                                  'o',   NULL},                      // o, O, SI
-  {ACTION_COMMAND,                                  '9',   NULL},                      // 9, (
-  {ACTION_COMMAND,                                  'l',   NULL},                      // l, L, FF
-  {ACTION_COMMAND,                                  '/',   NULL},                      // /, ?
-  {ACTION_COMMAND,                                  '[',   NULL},                      // [, {, ESC
-  {ACTION_COMMAND,                                  'p',   NULL},                      // p, P, DLE
-  {ACTION_COMMAND,                                  '0',   NULL},                      // 0, )
-  {ACTION_COMMAND,                                  '-',   NULL},                      // -, _, US
-  {ACTION_COMMAND,                                  ';',   NULL},                      // ;, :
-  {ACTION_COMMAND,                                  '\'',  NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  0x0d,  NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_NONE,                                     0,     NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 '\\', 0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_COMMAND,                                 'z',  0, NULL},                      // z, Z, SUB
+  {ACTION_COMMAND,                                 'q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_COMMAND,                                 '1',  0, NULL},                      // 1, !
+  {ACTION_COMMAND,                                 '`',  0, NULL},                      // `, ~
+  {ACTION_COMMAND,                                 'a',  0, NULL},                      // a, A, SOH
+  {ACTION_COMMAND,                                 ' ',  0, NULL},                      // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_COMMAND,                                 'x',  0, NULL},                      // x, X, CAN
+  {ACTION_COMMAND,                                 'w',  0, NULL},                      // w, W, ETB
+  {ACTION_COMMAND,                                 '2',  0, NULL},                      // 2, @, NUL
+  {ACTION_COMMAND,                                 's',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_COMMAND,                                 'c',  0, NULL},                      // c, C, ETX
+  {ACTION_COMMAND,                                 'e',  0, NULL},                      // e, E, ENQ
+  {ACTION_COMMAND,                                 '3',  0, NULL},                      // 3, #
+  {ACTION_COMMAND,                                 'd',  0, NULL},                      // d, D, EOT
+  {ACTION_COMMAND,                                 'b',  0, NULL},                      // b, B, STX
+  {ACTION_COMMAND,                                 'v',  0, NULL},                      // v, V, SYN
+  {ACTION_COMMAND,                                 't',  0, NULL},                      // t, T, DC4
+  {ACTION_COMMAND,                                 'r',  0, NULL},                      // r, R, DC2
+  {ACTION_COMMAND,                                 '4',  0, NULL},                      // 4, $
+  {ACTION_COMMAND,                                 '5',  0, NULL},                      // 5, %
+  {ACTION_COMMAND,                                 'f',  0, NULL},                      // f, F, ACK
+  {ACTION_COMMAND,                                 'g',  0, NULL},                      // g, G, BEL
+  {ACTION_COMMAND,                                 'n',  0, NULL},                      // n, N, SO
+  {ACTION_COMMAND,                                 'm',  0, NULL},                      // m, M, CR
+  {ACTION_COMMAND,                                 'y',  0, NULL},                      // y, Y, EM
+  {ACTION_COMMAND,                                 'u',  0, NULL},                      // u, U, NAK
+  {ACTION_COMMAND,                                 '7',  0, NULL},                      // 7,0,   &
+  {ACTION_COMMAND,                                 '6',  0, NULL},                      // 6, ^, RS
+  {ACTION_COMMAND,                                 'j',  0, NULL},                      // j, J, LF
+  {ACTION_COMMAND,                                 'h',  0, NULL},                      // h, H, BS
+  {ACTION_COMMAND,                                 ',',  0, NULL},                      // ,, <
+  {ACTION_COMMAND,                                 ']',  0, NULL},                      // ], }, GS
+  {ACTION_COMMAND,                                 'i',  0, NULL},                      // i, I, TAB
+  {ACTION_COMMAND,                                 '8',  0, NULL},                      // 8, *
+  {ACTION_COMMAND,                                 '=',  0, NULL},                      // =, +
+  {ACTION_COMMAND,                                 'k',  0, NULL},                      // k, K, VT
+  {ACTION_COMMAND,                                 '.',  0, NULL},                      // ., >
+  {ACTION_COMMAND,                                 'o',  0, NULL},                      // o, O, SI
+  {ACTION_COMMAND,                                 '9',  0, NULL},                      // 9, (
+  {ACTION_COMMAND,                                 'l',  0, NULL},                      // l, L, FF
+  {ACTION_COMMAND,                                 '/',  0, NULL},                      // /, ?
+  {ACTION_COMMAND,                                 '[',  0, NULL},                      // [, {, ESC
+  {ACTION_COMMAND,                                 'p',  0, NULL},                      // p, P, DLE
+  {ACTION_COMMAND,                                 '0',  0, NULL},                      // 0, )
+  {ACTION_COMMAND,                                 '-',  0, NULL},                      // -, _, US
+  {ACTION_COMMAND,                                 ';',  0, NULL},                      // ;, :
+  {ACTION_COMMAND,                                 '\'', 0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 0x0d, 0, NULL},                      // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <escape>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  '|',   NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_COMMAND,                                  'Z',   NULL},                      // z, Z, SUB
-  {ACTION_COMMAND,                                  'Q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_COMMAND,                                  '!',   NULL},                      // 1, !
-  {ACTION_COMMAND,                                  '~',   NULL},                      // `, ~
-  {ACTION_COMMAND,                                  'A',   NULL},                      // a, A, SOH
-  {ACTION_COMMAND,                                  ' ',   NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_COMMAND,                                  'X',   NULL},                      // x, X, CAN
-  {ACTION_COMMAND,                                  'W',   NULL},                      // w, W, ETB
-  {ACTION_COMMAND,                                  '@',   NULL},                      // 2, @, NUL
-  {ACTION_COMMAND,                                  'S',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_COMMAND,                                  'C',   NULL},                      // c, C, ETX
-  {ACTION_COMMAND,                                  'E',   NULL},                      // e, E, ENQ
-  {ACTION_COMMAND,                                  '#',   NULL},                      // 3, #
-  {ACTION_COMMAND,                                  'D',   NULL},                      // d, D, EOT
-  {ACTION_COMMAND,                                  'B',   NULL},                      // b, B, STX
-  {ACTION_COMMAND,                                  'V',   NULL},                      // v, V, SYN
-  {ACTION_COMMAND,                                  'T',   NULL},                      // t, T, DC4
-  {ACTION_COMMAND,                                  'R',   NULL},                      // r, R, DC2
-  {ACTION_COMMAND,                                  '$',   NULL},                      // 4, $
-  {ACTION_COMMAND,                                  '%',   NULL},                      // 5, %
-  {ACTION_COMMAND,                                  'F',   NULL},                      // f, F, ACK
-  {ACTION_COMMAND,                                  'G',   NULL},                      // g, G, BEL
-  {ACTION_COMMAND,                                  'N',   NULL},                      // n, N, SO
-  {ACTION_COMMAND,                                  'M',   NULL},                      // m, M, CR
-  {ACTION_COMMAND,                                  'Y',   NULL},                      // y, Y, EM
-  {ACTION_COMMAND,                                  'U',   NULL},                      // u, U, NAK
-  {ACTION_COMMAND,                                  '&',   NULL},                      // 7, &
-  {ACTION_COMMAND,                                  '^',   NULL},                      // 6, ^, RS
-  {ACTION_COMMAND,                                  'J',   NULL},                      // j, J, LF
-  {ACTION_COMMAND,                                  'H',   NULL},                      // h, H, BS
-  {ACTION_COMMAND,                                  '<',   NULL},                      // ,, <
-  {ACTION_COMMAND,                                  '}',   NULL},                      // ], }, GS
-  {ACTION_COMMAND,                                  'I',   NULL},                      // i, I, TAB
-  {ACTION_COMMAND,                                  '*',   NULL},                      // 8, *
-  {ACTION_COMMAND,                                  '+',   NULL},                      // =, +
-  {ACTION_COMMAND,                                  'K',   NULL},                      // k, K, VT
-  {ACTION_COMMAND,                                  '>',   NULL},                      // ., >
-  {ACTION_COMMAND,                                  'O',   NULL},                      // o, O, SI
-  {ACTION_COMMAND,                                  '(',   NULL},                      // 9, (
-  {ACTION_COMMAND,                                  'L',   NULL},                      // l, L, FF
-  {ACTION_COMMAND,                                  '?',   NULL},                      // /, ?
-  {ACTION_COMMAND,                                  '{',   NULL},                      // [, {, ESC
-  {ACTION_COMMAND,                                  'P',   NULL},                      // p, P, DLE
-  {ACTION_COMMAND,                                  ')',   NULL},                      // 0, )
-  {ACTION_COMMAND,                                  '_',   NULL},                      // -, _, US
-  {ACTION_COMMAND,                                  ':',   NULL},                      // ;, :
-  {ACTION_COMMAND,                                  '"',   NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  0x0d,  NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_NONE,                                     0,     NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 '|',  0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_COMMAND,                                 'Z',  0, NULL},                      // z, Z, SUB
+  {ACTION_COMMAND,                                 'Q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_COMMAND,                                 '!',  0, NULL},                      // 1, !
+  {ACTION_COMMAND,                                 '~',  0, NULL},                      // `, ~
+  {ACTION_COMMAND,                                 'A',  0, NULL},                      // a, A, SOH
+  {ACTION_COMMAND,                                 ' ',  0, NULL},                      // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_COMMAND,                                 'X',  0, NULL},                      // x, X, CAN
+  {ACTION_COMMAND,                                 'W',  0, NULL},                      // w, W, ETB
+  {ACTION_COMMAND,                                 '@',  0, NULL},                      // 2, @, NUL
+  {ACTION_COMMAND,                                 'S',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_COMMAND,                                 'C',  0, NULL},                      // c, C, ETX
+  {ACTION_COMMAND,                                 'E',  0, NULL},                      // e, E, ENQ
+  {ACTION_COMMAND,                                 '#',  0, NULL},                      // 3, #
+  {ACTION_COMMAND,                                 'D',  0, NULL},                      // d, D, EOT
+  {ACTION_COMMAND,                                 'B',  0, NULL},                      // b, B, STX
+  {ACTION_COMMAND,                                 'V',  0, NULL},                      // v, V, SYN
+  {ACTION_COMMAND,                                 'T',  0, NULL},                      // t, T, DC4
+  {ACTION_COMMAND,                                 'R',  0, NULL},                      // r, R, DC2
+  {ACTION_COMMAND,                                 '$',  0, NULL},                      // 4, $
+  {ACTION_COMMAND,                                 '%',  0, NULL},                      // 5, %
+  {ACTION_COMMAND,                                 'F',  0, NULL},                      // f, F, ACK
+  {ACTION_COMMAND,                                 'G',  0, NULL},                      // g, G, BEL
+  {ACTION_COMMAND,                                 'N',  0, NULL},                      // n, N, SO
+  {ACTION_COMMAND,                                 'M',  0, NULL},                      // m, M, CR
+  {ACTION_COMMAND,                                 'Y',  0, NULL},                      // y, Y, EM
+  {ACTION_COMMAND,                                 'U',  0, NULL},                      // u, U, NAK
+  {ACTION_COMMAND,                                 '&',  0, NULL},                      // 7,0,   &
+  {ACTION_COMMAND,                                 '^',  0, NULL},                      // 6, ^, RS
+  {ACTION_COMMAND,                                 'J',  0, NULL},                      // j, J, LF
+  {ACTION_COMMAND,                                 'H',  0, NULL},                      // h, H, BS
+  {ACTION_COMMAND,                                 '<',  0, NULL},                      // ,, <
+  {ACTION_COMMAND,                                 '}',  0, NULL},                      // ], }, GS
+  {ACTION_COMMAND,                                 'I',  0, NULL},                      // i, I, TAB
+  {ACTION_COMMAND,                                 '*',  0, NULL},                      // 8, *
+  {ACTION_COMMAND,                                 '+',  0, NULL},                      // =, +
+  {ACTION_COMMAND,                                 'K',  0, NULL},                      // k, K, VT
+  {ACTION_COMMAND,                                 '>',  0, NULL},                      // ., >
+  {ACTION_COMMAND,                                 'O',  0, NULL},                      // o, O, SI
+  {ACTION_COMMAND,                                 '(',  0, NULL},                      // 9, (
+  {ACTION_COMMAND,                                 'L',  0, NULL},                      // l, L, FF
+  {ACTION_COMMAND,                                 '?',  0, NULL},                      // /, ?
+  {ACTION_COMMAND,                                 '{',  0, NULL},                      // [, {, ESC
+  {ACTION_COMMAND,                                 'P',  0, NULL},                      // p, P, DLE
+  {ACTION_COMMAND,                                 ')',  0, NULL},                      // 0, )
+  {ACTION_COMMAND,                                 '_',  0, NULL},                      // -, _, US
+  {ACTION_COMMAND,                                 ':',  0, NULL},                      // ;, :
+  {ACTION_COMMAND,                                 '"',  0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 0x0d, 0, NULL},                      // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <escape>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Control.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // z, Z, SUB
-  {ACTION_NONE,                                     0,     NULL},                      // q, Q, DC1/XON
-  {ACTION_NONE,                                     0,     NULL},                      // 1, !
-  {ACTION_NONE,                                     0,     NULL},                      // `, ~
-  {ACTION_NONE,                                     0,     NULL},                      // a, A, SOH
-  {ACTION_NONE,                                     0,     NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_NONE,                                     0,     NULL},                      // x, X, CAN
-  {ACTION_NONE,                                     0,     NULL},                      // w, W, ETB
-  {ACTION_NONE,                                     0,     NULL},                      // 2, @, NUL
-  {ACTION_NONE,                                     0,     NULL},                      // s, S, DC3/XOFF
-  {ACTION_NONE,                                     0,     NULL},                      // c, C, ETX
-  {ACTION_NONE,                                     0,     NULL},                      // e, E, ENQ
-  {ACTION_NONE,                                     0,     NULL},                      // 3, #
-  {ACTION_COMMAND,                                  0x04,  NULL},                      // d, D, EOT
-  {ACTION_NONE,                                     0,     NULL},                      // b, B, STX
-  {ACTION_NONE,                                     0,     NULL},                      // v, V, SYN
-  {ACTION_NONE,                                     0,     NULL},                      // t, T, DC4
-  {ACTION_NONE,                                     0,     NULL},                      // r, R, DC2
-  {ACTION_NONE,                                     0,     NULL},                      // 4, $
-  {ACTION_NONE,                                     0,     NULL},                      // 5, %
-  {ACTION_NONE,                                     0,     NULL},                      // f, F, ACK
-  {ACTION_NONE,                                     0,     NULL},                      // g, G, BEL
-  {ACTION_NONE,                                     0,     NULL},                      // n, N, SO
-  {ACTION_NONE,                                     0,     NULL},                      // m, M, CR
-  {ACTION_NONE,                                     0,     NULL},                      // y, Y, EM
-  {ACTION_NONE,                                     0,     NULL},                      // u, U, NAK
-  {ACTION_NONE,                                     0,     NULL},                      // 7, &
-  {ACTION_NONE,                                     0,     NULL},                      // 6, ^, RS
-  {ACTION_NONE,                                     0,     NULL},                      // j, J, LF
-  {ACTION_NONE,                                     0,     NULL},                      // h, H, BS
-  {ACTION_NONE,                                     0,     NULL},                      // ,, <
-  {ACTION_NONE,                                     0,     NULL},                      // ], }, GS
-  {ACTION_NONE,                                     0,     NULL},                      // i, I, TAB
-  {ACTION_NONE,                                     0,     NULL},                      // 8, *
-  {ACTION_NONE,                                     0,     NULL},                      // =, +
-  {ACTION_NONE,                                     0,     NULL},                      // k, K, VT
-  {ACTION_NONE,                                     0,     NULL},                      // ., >
-  {ACTION_NONE,                                     0,     NULL},                      // o, O, SI
-  {ACTION_NONE,                                     0,     NULL},                      // 9, (
-  {ACTION_NONE,                                     0,     NULL},                      // l, L, FF
-  {ACTION_NONE,                                     0,     NULL},                      // /, ?
-  {ACTION_NONE,                                     0,     NULL},                      // [, {, ESC
-  {ACTION_NONE,                                     0,     NULL},                      // p, P, DLE
-  {ACTION_NONE,                                     0,     NULL},                      // 0, )
-  {ACTION_NONE,                                     0,     NULL},                      // -, _, US
-  {ACTION_NONE,                                     0,     NULL},                      // ;, :
-  {ACTION_NONE,                                     0,     NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_NONE,                                     0,     NULL},                      // <margin release>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                       // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // z, Z, SUB
+  {ACTION_NONE,                                    0,    0, NULL},                      // q, Q, DC1/XON
+  {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
+  {ACTION_NONE,                                    0,    0, NULL},                      // `, ~
+  {ACTION_NONE,                                    0,    0, NULL},                      // a, A, SOH
+  {ACTION_NONE,                                    0,    0, NULL},                      // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear all>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_NONE,                                    0,    0, NULL},                      // x, X, CAN
+  {ACTION_NONE,                                    0,    0, NULL},                      // w, W, ETB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 2, @, NUL
+  {ACTION_NONE,                                    0,    0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_NONE,                                    0,    0, NULL},                      // c, C, ETX
+  {ACTION_NONE,                                    0,    0, NULL},                      // e, E, ENQ
+  {ACTION_NONE,                                    0,    0, NULL},                      // 3, #
+  {ACTION_COMMAND,                                 0x04, 0, NULL},                      // d, D, EOT
+  {ACTION_NONE,                                    0,    0, NULL},                      // b, B, STX
+  {ACTION_NONE,                                    0,    0, NULL},                      // v, V, SYN
+  {ACTION_NONE,                                    0,    0, NULL},                      // t, T, DC4
+  {ACTION_NONE,                                    0,    0, NULL},                      // r, R, DC2
+  {ACTION_NONE,                                    0,    0, NULL},                      // 4, $
+  {ACTION_NONE,                                    0,    0, NULL},                      // 5, %
+  {ACTION_NONE,                                    0,    0, NULL},                      // f, F, ACK
+  {ACTION_NONE,                                    0,    0, NULL},                      // g, G, BEL
+  {ACTION_NONE,                                    0,    0, NULL},                      // n, N, SO
+  {ACTION_NONE,                                    0,    0, NULL},                      // m, M, CR
+  {ACTION_NONE,                                    0,    0, NULL},                      // y, Y, EM
+  {ACTION_NONE,                                    0,    0, NULL},                      // u, U, NAK
+  {ACTION_NONE,                                    0,    0, NULL},                      // 7, &
+  {ACTION_NONE,                                    0,    0, NULL},                      // 6, ^, RS
+  {ACTION_NONE,                                    0,    0, NULL},                      // j, J, LF
+  {ACTION_NONE,                                    0,    0, NULL},                      // h, H, BS
+  {ACTION_NONE,                                    0,    0, NULL},                      // ,, <
+  {ACTION_NONE,                                    0,    0, NULL},                      // ], }, GS
+  {ACTION_NONE,                                    0,    0, NULL},                      // i, I, TAB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 8, *
+  {ACTION_NONE,                                    0,    0, NULL},                      // =, +
+  {ACTION_NONE,                                    0,    0, NULL},                      // k, K, VT
+  {ACTION_NONE,                                    0,    0, NULL},                      // ., >
+  {ACTION_NONE,                                    0,    0, NULL},                      // o, O, SI
+  {ACTION_NONE,                                    0,    0, NULL},                      // 9, (
+  {ACTION_NONE,                                    0,    0, NULL},                      // l, L, FF
+  {ACTION_NONE,                                    0,    0, NULL},                      // /, ?
+  {ACTION_NONE,                                    0,    0, NULL},                      // [, {, ESC
+  {ACTION_NONE,                                    0,    0, NULL},                      // p, P, DLE
+  {ACTION_NONE,                                    0,    0, NULL},                      // 0, )
+  {ACTION_NONE,                                    0,    0, NULL},                      // -, _, US
+  {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
+  {ACTION_NONE,                                    0,    0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <margin release>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
 };
 
 
@@ -6352,7 +6505,7 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
 //
 //**********************************************************************************************************************
 
-void Setup_ASCII () {
+void Setup_ASCII (void) {
 
   // Initialize variables.
   if (duplex == DUPLEX_HALF) {
@@ -6371,6 +6524,8 @@ void Setup_ASCII () {
   serial_actions = &ASCII_SERIAL_ACTIONS;
   flow_on = CHAR_ASCII_XON;
   flow_off = CHAR_ASCII_XOFF;
+
+  // Initialize dynamic print elements.
   if (asciiwheel == SETTING_TRUE) {
     ascii_print_less = &ASCII_PRINT_LESS_APW;
     ascii_print_greater = &ASCII_PRINT_GREATER_APW;
@@ -6402,13 +6557,13 @@ void Setup_ASCII () {
 //**********************************************************************************************************************
 
 // Print ASCII Terminal setup title.
-void Print_ASCII_setup_title () {
+void Print_ASCII_setup_title (void) {
 
-  Print_characters ("\r\r---- Cadetwriter: " ASCII_VERSION " Setup\r\r");
+  (void)Print_string ("\r\r---- Cadetwriter: " ASCII_VERSION " Setup\r\r");
 }
 
 // Update ASCII Terminal settings.
-void Update_ASCII_settings () {
+void Update_ASCII_settings (void) {
   byte obattery = battery;
   byte oserial = serial;
   byte oparity = parity;
@@ -6419,7 +6574,7 @@ void Update_ASCII_settings () {
   byte ohwflow = hwflow;
 
   // Query new settings.
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   errors = Read_truefalse_setting ("record errors", errors);
   warnings = Read_truefalse_setting ("record warnings", warnings);
   battery = Read_truefalse_setting ("batteries installed", battery);
@@ -6479,7 +6634,7 @@ void Update_ASCII_settings () {
   escapesequence = Read_escapesequence_setting ("escape sequences", escapesequence);
   length = Read_integer_setting ("line length", length, LENGTH_MINIMUM, LENGTH_MAXIMUM);
   offset = Read_integer_setting ("line offset", offset, 1, 10);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
 
   // Reset right margin if length changed.
   if (olength != length) {
@@ -6492,6 +6647,8 @@ void Update_ASCII_settings () {
     Write_EEPROM (EEPROM_ERRORS, errors);
     Write_EEPROM (EEPROM_WARNINGS, warnings);
     Write_EEPROM (EEPROM_BATTERY, battery);
+    Write_EEPROM (EEPROM_OFFSET, offset);
+    Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     Write_EEPROM (EEPROM_SERIAL, serial);
     Write_EEPROM (EEPROM_DUPLEX, duplex);
     Write_EEPROM (EEPROM_BAUD, baud);
@@ -6499,16 +6656,14 @@ void Update_ASCII_settings () {
     Write_EEPROM (EEPROM_DPS, dps);
     Write_EEPROM (EEPROM_SWFLOW, swflow);
     Write_EEPROM (EEPROM_HWFLOW, hwflow);
-    Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     Write_EEPROM (EEPROM_UPPERCASE, uppercase);
     Write_EEPROM (EEPROM_AUTORETURN, autoreturn);
     Write_EEPROM (EEPROM_TRANSMITEOL, transmiteol);
     Write_EEPROM (EEPROM_RECEIVEEOL, receiveeol);
     Write_EEPROM (EEPROM_ESCAPESEQUENCE, escapesequence);
     Write_EEPROM (EEPROM_LENGTH, length);
-    Write_EEPROM (EEPROM_OFFSET, offset);
   }
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
 
   // Reset communications if any communication changes.
   if ((oserial != serial) || (oparity != parity) || (obaud != baud) || (odps != dps) || (ohwflow != hwflow)) {
@@ -6527,40 +6682,53 @@ void Update_ASCII_settings () {
 // Print ASCII Terminal character set.
 void Print_ASCII_character_set ()  {
 
-  Print_string (&WW_PRINT_CRtn);  Print_string (&WW_PRINT_SPACE);  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_A);  Print_string (&WW_PRINT_B);  Print_string (&WW_PRINT_C);  Print_string (&WW_PRINT_D);
-  Print_string (&WW_PRINT_E);  Print_string (&WW_PRINT_F);  Print_string (&WW_PRINT_G);  Print_string (&WW_PRINT_H);
-  Print_string (&WW_PRINT_I);  Print_string (&WW_PRINT_J);  Print_string (&WW_PRINT_K);  Print_string (&WW_PRINT_L);
-  Print_string (&WW_PRINT_M);  Print_string (&WW_PRINT_N);  Print_string (&WW_PRINT_O);  Print_string (&WW_PRINT_P);
-  Print_string (&WW_PRINT_Q);  Print_string (&WW_PRINT_R);  Print_string (&WW_PRINT_S);  Print_string (&WW_PRINT_T);
-  Print_string (&WW_PRINT_U);  Print_string (&WW_PRINT_V);  Print_string (&WW_PRINT_W);  Print_string (&WW_PRINT_X);
-  Print_string (&WW_PRINT_Y);  Print_string (&WW_PRINT_Z);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_a);  Print_string (&WW_PRINT_b);  Print_string (&WW_PRINT_c);  Print_string (&WW_PRINT_d);
-  Print_string (&WW_PRINT_e);  Print_string (&WW_PRINT_f);  Print_string (&WW_PRINT_g);  Print_string (&WW_PRINT_h);
-  Print_string (&WW_PRINT_i);  Print_string (&WW_PRINT_j);  Print_string (&WW_PRINT_k);  Print_string (&WW_PRINT_l);
-  Print_string (&WW_PRINT_m);  Print_string (&WW_PRINT_n);  Print_string (&WW_PRINT_o);  Print_string (&WW_PRINT_p);
-  Print_string (&WW_PRINT_q);  Print_string (&WW_PRINT_r);  Print_string (&WW_PRINT_s);  Print_string (&WW_PRINT_t);
-  Print_string (&WW_PRINT_u);  Print_string (&WW_PRINT_v);  Print_string (&WW_PRINT_w);  Print_string (&WW_PRINT_x);
-  Print_string (&WW_PRINT_y);  Print_string (&WW_PRINT_z);
-  Print_string (&WW_PRINT_CRtn);  Print_string (&WW_PRINT_SPACE);  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_0);  Print_string (&WW_PRINT_1);  Print_string (&WW_PRINT_2);  Print_string (&WW_PRINT_3);
-  Print_string (&WW_PRINT_4);  Print_string (&WW_PRINT_5);  Print_string (&WW_PRINT_6);  Print_string (&WW_PRINT_7);
-  Print_string (&WW_PRINT_8);  Print_string (&WW_PRINT_9);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_EXCLAMATION);  Print_string (&WW_PRINT_QUOTE);      Print_string (&WW_PRINT_POUND);
-  Print_string (&WW_PRINT_DOLLAR);       Print_string (&WW_PRINT_PERCENT);    Print_string (&WW_PRINT_AMPERSAND);
-  Print_string (&WW_PRINT_APOSTROPHE);   Print_string (&WW_PRINT_LPAREN);     Print_string (&WW_PRINT_RPAREN);
-  Print_string (&WW_PRINT_ASTERISK);     Print_string (&WW_PRINT_PLUS);       Print_string (&WW_PRINT_COMMA);
-  Print_string (&WW_PRINT_HYPHEN);       Print_string (&WW_PRINT_PERIOD);     Print_string (&WW_PRINT_SLASH);
-  Print_string (&WW_PRINT_COLON);        Print_string (&WW_PRINT_SEMICOLON);  Print_string (ascii_print_less);
-  Print_string (&WW_PRINT_EQUAL);        Print_string (ascii_print_greater);  Print_string (&WW_PRINT_QUESTION);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_AT);             Print_string (&WW_PRINT_LBRACKET);  Print_string (ascii_print_bslash);
-  Print_string (&WW_PRINT_RBRACKET);       Print_string (ascii_print_caret);   Print_string (&WW_PRINT_UNDERSCORE);
-  Print_string (ascii_print_bapostrophe);  Print_string (ascii_print_lbrace);  Print_string (ascii_print_bar);
-  Print_string (ascii_print_rbrace);       Print_string (ascii_print_tilde);
-  Print_string (&WW_PRINT_CRtn);  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_SPACE);  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_A);  (void)Print_element (&WW_PRINT_B);  (void)Print_element (&WW_PRINT_C);
+  (void)Print_element (&WW_PRINT_D);  (void)Print_element (&WW_PRINT_E);  (void)Print_element (&WW_PRINT_F);
+  (void)Print_element (&WW_PRINT_G);  (void)Print_element (&WW_PRINT_H);  (void)Print_element (&WW_PRINT_I);
+  (void)Print_element (&WW_PRINT_J);  (void)Print_element (&WW_PRINT_K);  (void)Print_element (&WW_PRINT_L);
+  (void)Print_element (&WW_PRINT_M);  (void)Print_element (&WW_PRINT_N);  (void)Print_element (&WW_PRINT_O);
+  (void)Print_element (&WW_PRINT_P);  (void)Print_element (&WW_PRINT_Q);  (void)Print_element (&WW_PRINT_R);
+  (void)Print_element (&WW_PRINT_S);  (void)Print_element (&WW_PRINT_T);  (void)Print_element (&WW_PRINT_U);
+  (void)Print_element (&WW_PRINT_V);  (void)Print_element (&WW_PRINT_W);  (void)Print_element (&WW_PRINT_X);
+  (void)Print_element (&WW_PRINT_Y);  (void)Print_element (&WW_PRINT_Z);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_a);  (void)Print_element (&WW_PRINT_b);  (void)Print_element (&WW_PRINT_c);
+  (void)Print_element (&WW_PRINT_d);  (void)Print_element (&WW_PRINT_e);  (void)Print_element (&WW_PRINT_f);
+  (void)Print_element (&WW_PRINT_g);  (void)Print_element (&WW_PRINT_h);  (void)Print_element (&WW_PRINT_i);
+  (void)Print_element (&WW_PRINT_j);  (void)Print_element (&WW_PRINT_k);  (void)Print_element (&WW_PRINT_l);
+  (void)Print_element (&WW_PRINT_m);  (void)Print_element (&WW_PRINT_n);  (void)Print_element (&WW_PRINT_o);
+  (void)Print_element (&WW_PRINT_p);  (void)Print_element (&WW_PRINT_q);  (void)Print_element (&WW_PRINT_r);
+  (void)Print_element (&WW_PRINT_s);  (void)Print_element (&WW_PRINT_t);  (void)Print_element (&WW_PRINT_u);
+  (void)Print_element (&WW_PRINT_v);  (void)Print_element (&WW_PRINT_w);  (void)Print_element (&WW_PRINT_x);
+  (void)Print_element (&WW_PRINT_y);  (void)Print_element (&WW_PRINT_z);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_SPACE);  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_0);  (void)Print_element (&WW_PRINT_1);  (void)Print_element (&WW_PRINT_2);
+  (void)Print_element (&WW_PRINT_3);  (void)Print_element (&WW_PRINT_4);  (void)Print_element (&WW_PRINT_5);
+  (void)Print_element (&WW_PRINT_6);  (void)Print_element (&WW_PRINT_7);  (void)Print_element (&WW_PRINT_8);
+  (void)Print_element (&WW_PRINT_9);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_EXCLAMATION);  (void)Print_element (&WW_PRINT_QUOTE);
+  (void)Print_element (&WW_PRINT_POUND);        (void)Print_element (&WW_PRINT_DOLLAR);
+  (void)Print_element (&WW_PRINT_PERCENT);      (void)Print_element (&WW_PRINT_AMPERSAND);
+  (void)Print_element (&WW_PRINT_APOSTROPHE);   (void)Print_element (&WW_PRINT_LPAREN);
+  (void)Print_element (&WW_PRINT_RPAREN);       (void)Print_element (&WW_PRINT_ASTERISK);
+  (void)Print_element (&WW_PRINT_PLUS);         (void)Print_element (&WW_PRINT_COMMA);
+  (void)Print_element (&WW_PRINT_HYPHEN);       (void)Print_element (&WW_PRINT_PERIOD);
+  (void)Print_element (&WW_PRINT_SLASH);        (void)Print_element (&WW_PRINT_COLON);
+  (void)Print_element (&WW_PRINT_SEMICOLON);    (void)Print_element (&ASCII_PRINT_LESS);
+  (void)Print_element (&WW_PRINT_EQUAL);        (void)Print_element (&ASCII_PRINT_GREATER);
+  (void)Print_element (&WW_PRINT_QUESTION);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_AT);              (void)Print_element (&WW_PRINT_LBRACKET);
+  (void)Print_element (&ASCII_PRINT_BSLASH);       (void)Print_element (&WW_PRINT_RBRACKET);
+  (void)Print_element (&ASCII_PRINT_CARET);        (void)Print_element (&WW_PRINT_UNDERSCORE);
+  (void)Print_element (&ASCII_PRINT_BAPOSTROPHE);  (void)Print_element (&ASCII_PRINT_LBRACE);
+  (void)Print_element (&ASCII_PRINT_BAR);          (void)Print_element (&ASCII_PRINT_RBRACE);
+  (void)Print_element (&ASCII_PRINT_TILDE);
+  (void)Print_element (&WW_PRINT_CRtn);  (void)Print_element (&WW_PRINT_CRtn);
 }
 
 
@@ -6652,9 +6820,9 @@ const struct serial_action FUTURE_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,         &WW_PRINT_9},               // 9
   {CMD_PRINT,         &WW_PRINT_COLON},           // :
   {CMD_PRINT,         &WW_PRINT_SEMICOLON},       // ;
-  {CMD_PRINT_SPECIAL, &ascii_print_less},         // <
+  {CMD_PRINT,         &ASCII_PRINT_LESS},         // <
   {CMD_PRINT,         &WW_PRINT_EQUAL},           // =
-  {CMD_PRINT_SPECIAL, &ascii_print_greater},      // >
+  {CMD_PRINT,         &ASCII_PRINT_GREATER},      // >
   {CMD_PRINT,         &WW_PRINT_QUESTION},        // ?
   {CMD_PRINT,         &WW_PRINT_AT},              // @
   {CMD_PRINT,         &WW_PRINT_A},               // A
@@ -6684,11 +6852,11 @@ const struct serial_action FUTURE_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,         &WW_PRINT_Y},               // Y
   {CMD_PRINT,         &WW_PRINT_Z},               // Z
   {CMD_PRINT,         &WW_PRINT_LBRACKET},        // [
-  {CMD_PRINT_SPECIAL, &ascii_print_bslash},       // <backslash>
+  {CMD_PRINT,         &ASCII_PRINT_BSLASH},       // <backslash>
   {CMD_PRINT,         &WW_PRINT_RBRACKET},        // ]
-  {CMD_PRINT_SPECIAL, &ascii_print_caret},        // ^
+  {CMD_PRINT,         &ASCII_PRINT_CARET},        // ^
   {CMD_PRINT,         &WW_PRINT_UNDERSCORE},      // _
-  {CMD_PRINT_SPECIAL, &ascii_print_bapostrophe},  // `
+  {CMD_PRINT,         &ASCII_PRINT_BAPOSTROPHE},  // `
   {CMD_PRINT,         &WW_PRINT_a},               // a
   {CMD_PRINT,         &WW_PRINT_b},               // b
   {CMD_PRINT,         &WW_PRINT_c},               // c
@@ -6715,10 +6883,10 @@ const struct serial_action FUTURE_SERIAL_ACTIONS[128] = {
   {CMD_PRINT,         &WW_PRINT_x},               // x
   {CMD_PRINT,         &WW_PRINT_y},               // y
   {CMD_PRINT,         &WW_PRINT_z},               // z
-  {CMD_PRINT_SPECIAL, &ascii_print_lbrace},       // {
-  {CMD_PRINT_SPECIAL, &ascii_print_bar},          // |
-  {CMD_PRINT_SPECIAL, &ascii_print_rbrace},       // }
-  {CMD_PRINT_SPECIAL, &ascii_print_tilde},        // ~
+  {CMD_PRINT,         &ASCII_PRINT_LBRACE},       // {
+  {CMD_PRINT,         &ASCII_PRINT_BAR},          // |
+  {CMD_PRINT,         &ASCII_PRINT_RBRACE},       // }
+  {CMD_PRINT,         &ASCII_PRINT_TILDE},        // ~
   {CMD_NONE,          NULL}                       // DEL
 };
 
@@ -6732,247 +6900,247 @@ const struct serial_action FUTURE_SERIAL_ACTIONS[128] = {
 // Stup key action table.
 const struct key_action FUTURE_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   // Unshifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  '\\',  NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_COMMAND,                                  'z',   NULL},                      // z, Z, SUB
-  {ACTION_COMMAND,                                  'q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_COMMAND,                                  '1',   NULL},                      // 1, !
-  {ACTION_COMMAND,                                  '`',   NULL},                      // `, ~
-  {ACTION_COMMAND,                                  'a',   NULL},                      // a, A, SOH
-  {ACTION_COMMAND,                                  ' ',   NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_COMMAND,                                  'x',   NULL},                      // x, X, CAN
-  {ACTION_COMMAND,                                  'w',   NULL},                      // w, W, ETB
-  {ACTION_COMMAND,                                  '2',   NULL},                      // 2, @, NUL
-  {ACTION_COMMAND,                                  's',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_COMMAND,                                  'c',   NULL},                      // c, C, ETX
-  {ACTION_COMMAND,                                  'e',   NULL},                      // e, E, ENQ
-  {ACTION_COMMAND,                                  '3',   NULL},                      // 3, #
-  {ACTION_COMMAND,                                  'd',   NULL},                      // d, D, EOT
-  {ACTION_COMMAND,                                  'b',   NULL},                      // b, B, STX
-  {ACTION_COMMAND,                                  'v',   NULL},                      // v, V, SYN
-  {ACTION_COMMAND,                                  't',   NULL},                      // t, T, DC4
-  {ACTION_COMMAND,                                  'r',   NULL},                      // r, R, DC2
-  {ACTION_COMMAND,                                  '4',   NULL},                      // 4, $
-  {ACTION_COMMAND,                                  '5',   NULL},                      // 5, %
-  {ACTION_COMMAND,                                  'f',   NULL},                      // f, F, ACK
-  {ACTION_COMMAND,                                  'g',   NULL},                      // g, G, BEL
-  {ACTION_COMMAND,                                  'n',   NULL},                      // n, N, SO
-  {ACTION_COMMAND,                                  'm',   NULL},                      // m, M, CR
-  {ACTION_COMMAND,                                  'y',   NULL},                      // y, Y, EM
-  {ACTION_COMMAND,                                  'u',   NULL},                      // u, U, NAK
-  {ACTION_COMMAND,                                  '7',   NULL},                      // 7, &
-  {ACTION_COMMAND,                                  '6',   NULL},                      // 6, ^, RS
-  {ACTION_COMMAND,                                  'j',   NULL},                      // j, J, LF
-  {ACTION_COMMAND,                                  'h',   NULL},                      // h, H, BS
-  {ACTION_COMMAND,                                  ',',   NULL},                      // ,, <
-  {ACTION_COMMAND,                                  ']',   NULL},                      // ], }, GS
-  {ACTION_COMMAND,                                  'i',   NULL},                      // i, I, TAB
-  {ACTION_COMMAND,                                  '8',   NULL},                      // 8, *
-  {ACTION_COMMAND,                                  '=',   NULL},                      // =, +
-  {ACTION_COMMAND,                                  'k',   NULL},                      // k, K, VT
-  {ACTION_COMMAND,                                  '.',   NULL},                      // ., >
-  {ACTION_COMMAND,                                  'o',   NULL},                      // o, O, SI
-  {ACTION_COMMAND,                                  '9',   NULL},                      // 9, (
-  {ACTION_COMMAND,                                  'l',   NULL},                      // l, L, FF
-  {ACTION_COMMAND,                                  '/',   NULL},                      // /, ?
-  {ACTION_COMMAND,                                  '[',   NULL},                      // [, {, ESC
-  {ACTION_COMMAND,                                  'p',   NULL},                      // p, P, DLE
-  {ACTION_COMMAND,                                  '0',   NULL},                      // 0, )
-  {ACTION_COMMAND,                                  '-',   NULL},                      // -, _, US
-  {ACTION_COMMAND,                                  ';',   NULL},                      // ;, :
-  {ACTION_COMMAND,                                  '\'',  NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  0x0d,  NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_NONE,                                     0,     NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 '\\', 0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_COMMAND,                                 'z',  0, NULL},                      // z, Z, SUB
+  {ACTION_COMMAND,                                 'q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_COMMAND,                                 '1',  0, NULL},                      // 1, !
+  {ACTION_COMMAND,                                 '`',  0, NULL},                      // `, ~
+  {ACTION_COMMAND,                                 'a',  0, NULL},                      // a, A, SOH
+  {ACTION_COMMAND,                                 ' ',  0, NULL},                      // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_COMMAND,                                 'x',  0, NULL},                      // x, X, CAN
+  {ACTION_COMMAND,                                 'w',  0, NULL},                      // w, W, ETB
+  {ACTION_COMMAND,                                 '2',  0, NULL},                      // 2, @, NUL
+  {ACTION_COMMAND,                                 's',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_COMMAND,                                 'c',  0, NULL},                      // c, C, ETX
+  {ACTION_COMMAND,                                 'e',  0, NULL},                      // e, E, ENQ
+  {ACTION_COMMAND,                                 '3',  0, NULL},                      // 3, #
+  {ACTION_COMMAND,                                 'd',  0, NULL},                      // d, D, EOT
+  {ACTION_COMMAND,                                 'b',  0, NULL},                      // b, B, STX
+  {ACTION_COMMAND,                                 'v',  0, NULL},                      // v, V, SYN
+  {ACTION_COMMAND,                                 't',  0, NULL},                      // t, T, DC4
+  {ACTION_COMMAND,                                 'r',  0, NULL},                      // r, R, DC2
+  {ACTION_COMMAND,                                 '4',  0, NULL},                      // 4, $
+  {ACTION_COMMAND,                                 '5',  0, NULL},                      // 5, %
+  {ACTION_COMMAND,                                 'f',  0, NULL},                      // f, F, ACK
+  {ACTION_COMMAND,                                 'g',  0, NULL},                      // g, G, BEL
+  {ACTION_COMMAND,                                 'n',  0, NULL},                      // n, N, SO
+  {ACTION_COMMAND,                                 'm',  0, NULL},                      // m, M, CR
+  {ACTION_COMMAND,                                 'y',  0, NULL},                      // y, Y, EM
+  {ACTION_COMMAND,                                 'u',  0, NULL},                      // u, U, NAK
+  {ACTION_COMMAND,                                 '7',  0, NULL},                      // 7, &
+  {ACTION_COMMAND,                                 '6',  0, NULL},                      // 6, ^, RS
+  {ACTION_COMMAND,                                 'j',  0, NULL},                      // j, J, LF
+  {ACTION_COMMAND,                                 'h',  0, NULL},                      // h, H, BS
+  {ACTION_COMMAND,                                 ',',  0, NULL},                      // ,, <
+  {ACTION_COMMAND,                                 ']',  0, NULL},                      // ], }, GS
+  {ACTION_COMMAND,                                 'i',  0, NULL},                      // i, I, TAB
+  {ACTION_COMMAND,                                 '8',  0, NULL},                      // 8, *
+  {ACTION_COMMAND,                                 '=',  0, NULL},                      // =, +
+  {ACTION_COMMAND,                                 'k',  0, NULL},                      // k, K, VT
+  {ACTION_COMMAND,                                 '.',  0, NULL},                      // ., >
+  {ACTION_COMMAND,                                 'o',  0, NULL},                      // o, O, SI
+  {ACTION_COMMAND,                                 '9',  0, NULL},                      // 9, (
+  {ACTION_COMMAND,                                 'l',  0, NULL},                      // l, L, FF
+  {ACTION_COMMAND,                                 '/',  0, NULL},                      // /, ?
+  {ACTION_COMMAND,                                 '[',  0, NULL},                      // [, {, ESC
+  {ACTION_COMMAND,                                 'p',  0, NULL},                      // p, P, DLE
+  {ACTION_COMMAND,                                 '0',  0, NULL},                      // 0, )
+  {ACTION_COMMAND,                                 '-',  0, NULL},                      // -, _, US
+  {ACTION_COMMAND,                                 ';',  0, NULL},                      // ;, :
+  {ACTION_COMMAND,                                 '\'', 0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 0x0d, 0, NULL},                      // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <escape>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Shifted.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  '|',   NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_COMMAND,                                  'Z',   NULL},                      // z, Z, SUB
-  {ACTION_COMMAND,                                  'Q',   NULL},                      // q, Q, DC1/XON
-  {ACTION_COMMAND,                                  '!',   NULL},                      // 1, !
-  {ACTION_COMMAND,                                  '~',   NULL},                      // `, ~
-  {ACTION_COMMAND,                                  'A',   NULL},                      // a, A, SOH
-  {ACTION_COMMAND,                                  ' ',   NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_COMMAND,                                  'X',   NULL},                      // x, X, CAN
-  {ACTION_COMMAND,                                  'W',   NULL},                      // w, W, ETB
-  {ACTION_COMMAND,                                  '@',   NULL},                      // 2, @, NUL
-  {ACTION_COMMAND,                                  'S',   NULL},                      // s, S, DC3/XOFF
-  {ACTION_COMMAND,                                  'C',   NULL},                      // c, C, ETX
-  {ACTION_COMMAND,                                  'E',   NULL},                      // e, E, ENQ
-  {ACTION_COMMAND,                                  '#',   NULL},                      // 3, #
-  {ACTION_COMMAND,                                  'D',   NULL},                      // d, D, EOT
-  {ACTION_COMMAND,                                  'B',   NULL},                      // b, B, STX
-  {ACTION_COMMAND,                                  'V',   NULL},                      // v, V, SYN
-  {ACTION_COMMAND,                                  'T',   NULL},                      // t, T, DC4
-  {ACTION_COMMAND,                                  'R',   NULL},                      // r, R, DC2
-  {ACTION_COMMAND,                                  '$',   NULL},                      // 4, $
-  {ACTION_COMMAND,                                  '%',   NULL},                      // 5, %
-  {ACTION_COMMAND,                                  'F',   NULL},                      // f, F, ACK
-  {ACTION_COMMAND,                                  'G',   NULL},                      // g, G, BEL
-  {ACTION_COMMAND,                                  'N',   NULL},                      // n, N, SO
-  {ACTION_COMMAND,                                  'M',   NULL},                      // m, M, CR
-  {ACTION_COMMAND,                                  'Y',   NULL},                      // y, Y, EM
-  {ACTION_COMMAND,                                  'U',   NULL},                      // u, U, NAK
-  {ACTION_COMMAND,                                  '&',   NULL},                      // 7, &
-  {ACTION_COMMAND,                                  '^',   NULL},                      // 6, ^, RS
-  {ACTION_COMMAND,                                  'J',   NULL},                      // j, J, LF
-  {ACTION_COMMAND,                                  'H',   NULL},                      // h, H, BS
-  {ACTION_COMMAND,                                  '<',   NULL},                      // ,, <
-  {ACTION_COMMAND,                                  '}',   NULL},                      // ], }, GS
-  {ACTION_COMMAND,                                  'I',   NULL},                      // i, I, TAB
-  {ACTION_COMMAND,                                  '*',   NULL},                      // 8, *
-  {ACTION_COMMAND,                                  '+',   NULL},                      // =, +
-  {ACTION_COMMAND,                                  'K',   NULL},                      // k, K, VT
-  {ACTION_COMMAND,                                  '>',   NULL},                      // ., >
-  {ACTION_COMMAND,                                  'O',   NULL},                      // o, O, SI
-  {ACTION_COMMAND,                                  '(',   NULL},                      // 9, (
-  {ACTION_COMMAND,                                  'L',   NULL},                      // l, L, FF
-  {ACTION_COMMAND,                                  '?',   NULL},                      // /, ?
-  {ACTION_COMMAND,                                  '{',   NULL},                      // [, {, ESC
-  {ACTION_COMMAND,                                  'P',   NULL},                      // p, P, DLE
-  {ACTION_COMMAND,                                  ')',   NULL},                      // 0, )
-  {ACTION_COMMAND,                                  '_',   NULL},                      // -, _, US
-  {ACTION_COMMAND,                                  ':',   NULL},                      // ;, :
-  {ACTION_COMMAND,                                  '"',   NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_COMMAND,                                  0x0d,  NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_NONE,                                     0,     NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 '|',  0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_COMMAND,                                 'Z',  0, NULL},                      // z, Z, SUB
+  {ACTION_COMMAND,                                 'Q',  0, NULL},                      // q, Q, DC1/XON
+  {ACTION_COMMAND,                                 '!',  0, NULL},                      // 1, !
+  {ACTION_COMMAND,                                 '~',  0, NULL},                      // `, ~
+  {ACTION_COMMAND,                                 'A',  0, NULL},                      // a, A, SOH
+  {ACTION_COMMAND,                                 ' ',  0, NULL},                      // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_COMMAND,                                 'X',  0, NULL},                      // x, X, CAN
+  {ACTION_COMMAND,                                 'W',  0, NULL},                      // w, W, ETB
+  {ACTION_COMMAND,                                 '@',  0, NULL},                      // 2, @, NUL
+  {ACTION_COMMAND,                                 'S',  0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_COMMAND,                                 'C',  0, NULL},                      // c, C, ETX
+  {ACTION_COMMAND,                                 'E',  0, NULL},                      // e, E, ENQ
+  {ACTION_COMMAND,                                 '#',  0, NULL},                      // 3, #
+  {ACTION_COMMAND,                                 'D',  0, NULL},                      // d, D, EOT
+  {ACTION_COMMAND,                                 'B',  0, NULL},                      // b, B, STX
+  {ACTION_COMMAND,                                 'V',  0, NULL},                      // v, V, SYN
+  {ACTION_COMMAND,                                 'T',  0, NULL},                      // t, T, DC4
+  {ACTION_COMMAND,                                 'R',  0, NULL},                      // r, R, DC2
+  {ACTION_COMMAND,                                 '$',  0, NULL},                      // 4, $
+  {ACTION_COMMAND,                                 '%',  0, NULL},                      // 5, %
+  {ACTION_COMMAND,                                 'F',  0, NULL},                      // f, F, ACK
+  {ACTION_COMMAND,                                 'G',  0, NULL},                      // g, G, BEL
+  {ACTION_COMMAND,                                 'N',  0, NULL},                      // n, N, SO
+  {ACTION_COMMAND,                                 'M',  0, NULL},                      // m, M, CR
+  {ACTION_COMMAND,                                 'Y',  0, NULL},                      // y, Y, EM
+  {ACTION_COMMAND,                                 'U',  0, NULL},                      // u, U, NAK
+  {ACTION_COMMAND,                                 '&',  0, NULL},                      // 7, &
+  {ACTION_COMMAND,                                 '^',  0, NULL},                      // 6, ^, RS
+  {ACTION_COMMAND,                                 'J',  0, NULL},                      // j, J, LF
+  {ACTION_COMMAND,                                 'H',  0, NULL},                      // h, H, BS
+  {ACTION_COMMAND,                                 '<',  0, NULL},                      // ,, <
+  {ACTION_COMMAND,                                 '}',  0, NULL},                      // ], }, GS
+  {ACTION_COMMAND,                                 'I',  0, NULL},                      // i, I, TAB
+  {ACTION_COMMAND,                                 '*',  0, NULL},                      // 8, *
+  {ACTION_COMMAND,                                 '+',  0, NULL},                      // =, +
+  {ACTION_COMMAND,                                 'K',  0, NULL},                      // k, K, VT
+  {ACTION_COMMAND,                                 '>',  0, NULL},                      // ., >
+  {ACTION_COMMAND,                                 'O',  0, NULL},                      // o, O, SI
+  {ACTION_COMMAND,                                 '(',  0, NULL},                      // 9, (
+  {ACTION_COMMAND,                                 'L',  0, NULL},                      // l, L, FF
+  {ACTION_COMMAND,                                 '?',  0, NULL},                      // /, ?
+  {ACTION_COMMAND,                                 '{',  0, NULL},                      // [, {, ESC
+  {ACTION_COMMAND,                                 'P',  0, NULL},                      // p, P, DLE
+  {ACTION_COMMAND,                                 ')',  0, NULL},                      // 0, )
+  {ACTION_COMMAND,                                 '_',  0, NULL},                      // -, _, US
+  {ACTION_COMMAND,                                 ':',  0, NULL},                      // ;, :
+  {ACTION_COMMAND,                                 '"',  0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_COMMAND,                                 0x0d, 0, NULL},                      // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <escape>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Control.
-  {ACTION_NONE,                                     0,     NULL},                      // <left shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right shift>
-  {ACTION_NONE,                                     0,     NULL},                      // <right arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // \, |
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <setup>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // <down arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // z, Z, SUB
-  {ACTION_NONE,                                     0,     NULL},                      // q, Q, DC1/XON
-  {ACTION_NONE,                                     0,     NULL},                      // 1, !
-  {ACTION_NONE,                                     0,     NULL},                      // `, ~
-  {ACTION_NONE,                                     0,     NULL},                      // a, A, SOH
-  {ACTION_NONE,                                     0,     NULL},                      // <space>
-  {ACTION_NONE,                                     0,     NULL},                      //
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <left margin>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <tab clear>
-  {ACTION_NONE,                                     0,     NULL},                      // <control>
-  {ACTION_NONE,                                     0,     NULL},                      // x, X, CAN
-  {ACTION_NONE,                                     0,     NULL},                      // w, W, ETB
-  {ACTION_NONE,                                     0,     NULL},                      // 2, @, NUL
-  {ACTION_NONE,                                     0,     NULL},                      // s, S, DC3/XOFF
-  {ACTION_NONE,                                     0,     NULL},                      // c, C, ETX
-  {ACTION_NONE,                                     0,     NULL},                      // e, E, ENQ
-  {ACTION_NONE,                                     0,     NULL},                      // 3, #
-  {ACTION_COMMAND,                                  0x04,  NULL},                      // d, D, EOT
-  {ACTION_NONE,                                     0,     NULL},                      // b, B, STX
-  {ACTION_NONE,                                     0,     NULL},                      // v, V, SYN
-  {ACTION_NONE,                                     0,     NULL},                      // t, T, DC4
-  {ACTION_NONE,                                     0,     NULL},                      // r, R, DC2
-  {ACTION_NONE,                                     0,     NULL},                      // 4, $
-  {ACTION_NONE,                                     0,     NULL},                      // 5, %
-  {ACTION_NONE,                                     0,     NULL},                      // f, F, ACK
-  {ACTION_NONE,                                     0,     NULL},                      // g, G, BEL
-  {ACTION_NONE,                                     0,     NULL},                      // n, N, SO
-  {ACTION_NONE,                                     0,     NULL},                      // m, M, CR
-  {ACTION_NONE,                                     0,     NULL},                      // y, Y, EM
-  {ACTION_NONE,                                     0,     NULL},                      // u, U, NAK
-  {ACTION_NONE,                                     0,     NULL},                      // 7, &
-  {ACTION_NONE,                                     0,     NULL},                      // 6, ^, RS
-  {ACTION_NONE,                                     0,     NULL},                      // j, J, LF
-  {ACTION_NONE,                                     0,     NULL},                      // h, H, BS
-  {ACTION_NONE,                                     0,     NULL},                      // ,, <
-  {ACTION_NONE,                                     0,     NULL},                      // ], }, GS
-  {ACTION_NONE,                                     0,     NULL},                      // i, I, TAB
-  {ACTION_NONE,                                     0,     NULL},                      // 8, *
-  {ACTION_NONE,                                     0,     NULL},                      // =, +
-  {ACTION_NONE,                                     0,     NULL},                      // k, K, VT
-  {ACTION_NONE,                                     0,     NULL},                      // ., >
-  {ACTION_NONE,                                     0,     NULL},                      // o, O, SI
-  {ACTION_NONE,                                     0,     NULL},                      // 9, (
-  {ACTION_NONE,                                     0,     NULL},                      // l, L, FF
-  {ACTION_NONE,                                     0,     NULL},                      // /, ?
-  {ACTION_NONE,                                     0,     NULL},                      // [, {, ESC
-  {ACTION_NONE,                                     0,     NULL},                      // p, P, DLE
-  {ACTION_NONE,                                     0,     NULL},                      // 0, )
-  {ACTION_NONE,                                     0,     NULL},                      // -, _, US
-  {ACTION_NONE,                                     0,     NULL},                      // ;, :
-  {ACTION_NONE,                                     0,     NULL},                      // ', "
-  {ACTION_NONE,                                     0,     NULL},                      // <left arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // <up arrow>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <backspace>
-  {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                     0,     NULL},                      // <return>
-  {ACTION_NONE,                                     0,     NULL},                      // <delete>
-  {ACTION_NONE,                                     0,     NULL},                      // <shift lock>
-  {ACTION_NONE,                                     0,     NULL},                      // <right margin>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab>
-  {ACTION_NONE,                                     0,     NULL},                      // <escape>
-  {ACTION_NONE,                                     0,     NULL},                      // <tab set>
-  {ACTION_NONE,                                     0,     NULL}                       // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // \, |
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // z, Z, SUB
+  {ACTION_NONE,                                    0,    0, NULL},                      // q, Q, DC1/XON
+  {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
+  {ACTION_NONE,                                    0,    0, NULL},                      // `, ~
+  {ACTION_NONE,                                    0,    0, NULL},                      // a, A, SOH
+  {ACTION_NONE,                                    0,    0, NULL},                      // <space>
+  {ACTION_NONE,                                    0,    0, NULL},                      //
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <control>
+  {ACTION_NONE,                                    0,    0, NULL},                      // x, X, CAN
+  {ACTION_NONE,                                    0,    0, NULL},                      // w, W, ETB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 2, @, NUL
+  {ACTION_NONE,                                    0,    0, NULL},                      // s, S, DC3/XOFF
+  {ACTION_NONE,                                    0,    0, NULL},                      // c, C, ETX
+  {ACTION_NONE,                                    0,    0, NULL},                      // e, E, ENQ
+  {ACTION_NONE,                                    0,    0, NULL},                      // 3, #
+  {ACTION_COMMAND,                                 0x04, 0, NULL},                      // d, D, EOT
+  {ACTION_NONE,                                    0,    0, NULL},                      // b, B, STX
+  {ACTION_NONE,                                    0,    0, NULL},                      // v, V, SYN
+  {ACTION_NONE,                                    0,    0, NULL},                      // t, T, DC4
+  {ACTION_NONE,                                    0,    0, NULL},                      // r, R, DC2
+  {ACTION_NONE,                                    0,    0, NULL},                      // 4, $
+  {ACTION_NONE,                                    0,    0, NULL},                      // 5, %
+  {ACTION_NONE,                                    0,    0, NULL},                      // f, F, ACK
+  {ACTION_NONE,                                    0,    0, NULL},                      // g, G, BEL
+  {ACTION_NONE,                                    0,    0, NULL},                      // n, N, SO
+  {ACTION_NONE,                                    0,    0, NULL},                      // m, M, CR
+  {ACTION_NONE,                                    0,    0, NULL},                      // y, Y, EM
+  {ACTION_NONE,                                    0,    0, NULL},                      // u, U, NAK
+  {ACTION_NONE,                                    0,    0, NULL},                      // 7, &
+  {ACTION_NONE,                                    0,    0, NULL},                      // 6, ^, RS
+  {ACTION_NONE,                                    0,    0, NULL},                      // j, J, LF
+  {ACTION_NONE,                                    0,    0, NULL},                      // h, H, BS
+  {ACTION_NONE,                                    0,    0, NULL},                      // ,, <
+  {ACTION_NONE,                                    0,    0, NULL},                      // ], }, GS
+  {ACTION_NONE,                                    0,    0, NULL},                      // i, I, TAB
+  {ACTION_NONE,                                    0,    0, NULL},                      // 8, *
+  {ACTION_NONE,                                    0,    0, NULL},                      // =, +
+  {ACTION_NONE,                                    0,    0, NULL},                      // k, K, VT
+  {ACTION_NONE,                                    0,    0, NULL},                      // ., >
+  {ACTION_NONE,                                    0,    0, NULL},                      // o, O, SI
+  {ACTION_NONE,                                    0,    0, NULL},                      // 9, (
+  {ACTION_NONE,                                    0,    0, NULL},                      // l, L, FF
+  {ACTION_NONE,                                    0,    0, NULL},                      // /, ?
+  {ACTION_NONE,                                    0,    0, NULL},                      // [, {, ESC
+  {ACTION_NONE,                                    0,    0, NULL},                      // p, P, DLE
+  {ACTION_NONE,                                    0,    0, NULL},                      // 0, )
+  {ACTION_NONE,                                    0,    0, NULL},                      // -, _, US
+  {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
+  {ACTION_NONE,                                    0,    0, NULL},                      // ', "
+  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
+  {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
+  {ACTION_NONE,                                    0,    0, NULL},                      // <return>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <escape>
+  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
 };
 
 
@@ -6989,7 +7157,7 @@ const struct key_action FUTURE_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
 //
 //**********************************************************************************************************************
 
-void Setup_FUTURE () {
+void Setup_FUTURE (void) {
   // key_actions = &FUTURE_ACTIONS_
   // serial_actions = &FUTURE_SERIAL_ACTIONS;
   // flow_on = CHAR_ASCII_XON;
@@ -7011,15 +7179,15 @@ void Setup_FUTURE () {
 //
 //======================================================================================================================
 
-void Setup_STANDALONE () {
+void Setup_STANDALONE (void) {
   // Nothing to be done here.  All setup is done by the master setup routine.
 }
 
-void Loop_STANDALONE () {
+void Loop_STANDALONE (void) {
   // Nothing to be done here.  All work is done in the Interrupt Service Routine.
 }
 
-void ISR_STANDALONE () {
+void ISR_STANDALONE (void) {
 
   // Do not process column scan interrupts while the firmware is initializing.
   if (run_mode == MODE_INITIALIZING) return;
@@ -7079,7 +7247,7 @@ void ISR_STANDALONE () {
 //
 //======================================================================================================================
 
-void setup () {
+void setup (void) {
 
   // Set the typewriter run mode to initializing.
   run_mode = MODE_INITIALIZING;
@@ -7230,8 +7398,8 @@ void setup () {
 
   // Initialize typewriter if the batteries are not installed.
   if ((emulation != EMULATION_STANDALONE) && (battery == SETTING_FALSE)) {
-    Print_string (&WW_PRINT_POWERWISE_OFF);
-    Print_string (&WW_PRINT_SPELL_CHECK);
+    (void)Print_element (&WW_PRINT_POWERWISE_OFF);
+    (void)Print_element (&WW_PRINT_SPELL_CHECK);
   }
 
   // Complete the emulation setup.
@@ -7257,7 +7425,7 @@ void setup () {
   }
 }
 
-void loop () {
+void loop (void) {
 
   // Special case for Standalone Typewriter.
   if (emulation == EMULATION_STANDALONE) {
@@ -7388,7 +7556,7 @@ void loop () {
 
   // Print all transferred print strings.
   while (tb_count > 0) {
-    if (!Print_string ((const struct print_info *)(transfer_buffer[tb_read]))) break;
+    if (!Print_element ((const struct print_info *)(transfer_buffer[tb_read]))) break;
     if (++tb_read >= SIZE_TRANSFER_BUFFER) tb_read = 0;
     Update_counter (&tb_count, -1);
   }
@@ -7442,46 +7610,42 @@ void loop () {
         break;
 
       case CMD_PRINT:
-        Print_string ((*serial_actions)[chr].print);
-        break;
-
-      case CMD_PRINT_SPECIAL:
-        Print_string (*((*serial_actions)[chr].prints));
+        (void)Print_element ((*serial_actions)[chr].element);
         break;
 
       // IBM 1620 Jr. specific actions.
 
       case CMD_IBM_MODE_0:
         key_actions = &IBM_ACTIONS_MODE0;
-        if (artn_IBM) { Print_string (&WW_PRINT_ARtn);  artn_IBM = FALSE; }   // Turn off A Rtn light.
-        if (bold_IBM) { Print_string (&WW_PRINT_Bold);  bold_IBM = FALSE; }   // Turn off Bold light.
-        if (!lock_IBM) { Print_string (&WW_PRINT_Lock);  lock_IBM = TRUE;  }  // Turn on Lock light.
+        if (artn_IBM) { (void)Print_element (&WW_PRINT_ARtn);  artn_IBM = FALSE; }   // Turn off A Rtn light.
+        if (bold_IBM) { (void)Print_element (&WW_PRINT_Bold);  bold_IBM = FALSE; }   // Turn off Bold light.
+        if (!lock_IBM) { (void)Print_element (&WW_PRINT_Lock);  lock_IBM = TRUE; }   // Turn on Lock light.
         send_ack_IBM = TRUE;
         break;
 
       case CMD_IBM_MODE_1:
         key_actions = &IBM_ACTIONS_MODE1;
-        if (!artn_IBM) { Print_string (&WW_PRINT_ARtn);  artn_IBM = TRUE; }    // Turn on A Rtn light.
-        if ((bold == SETTING_TRUE) && !bold_IBM) { Print_string (&WW_PRINT_Bold);  bold_IBM = TRUE; }
-                                                                               // Turn on Bold light.
-        if (lock_IBM) { Print_string (&WW_PRINT_LShift);  lock_IBM = FALSE; }  // Turn off Lock light.
+        if (!artn_IBM) { (void)Print_element (&WW_PRINT_ARtn);  artn_IBM = TRUE; }    // Turn on A Rtn light.
+        if ((bold == SETTING_TRUE) && !bold_IBM) { (void)Print_element (&WW_PRINT_Bold);  bold_IBM = TRUE; }
+                                                                                      // Turn on Bold light.
+        if (lock_IBM) { (void)Print_element (&WW_PRINT_LShift);  lock_IBM = FALSE; }  // Turn off Lock light.
         send_ack_IBM = TRUE;
         break;
 
       case CMD_IBM_MODE_2:
         key_actions = &IBM_ACTIONS_MODE2;
-        if (artn_IBM) { Print_string (&WW_PRINT_ARtn);  artn_IBM = FALSE; }    // Turn off A Rtn light.
-        if ((bold == SETTING_TRUE) && !bold_IBM) { Print_string (&WW_PRINT_Bold);  bold_IBM = TRUE; }
-                                                                               // Turn on Bold light.
-        if (lock_IBM) { Print_string (&WW_PRINT_LShift);  lock_IBM = FALSE; }  // Turn off Lock light.
+        if (artn_IBM) { (void)Print_element (&WW_PRINT_ARtn);  artn_IBM = FALSE; }    // Turn off A Rtn light.
+        if ((bold == SETTING_TRUE) && !bold_IBM) { (void)Print_element (&WW_PRINT_Bold);  bold_IBM = TRUE; }
+                                                                                      // Turn on Bold light.
+        if (lock_IBM) { (void)Print_element (&WW_PRINT_LShift);  lock_IBM = FALSE; }  // Turn off Lock light.
         send_ack_IBM = TRUE;
         break;
 
       case CMD_IBM_MODE_3:
         key_actions = &IBM_ACTIONS_MODE3;
-        if (artn_IBM) { Print_string (&WW_PRINT_ARtn);  artn_IBM = FALSE; }    // Turn off A Rtn light.
-        if (bold_IBM) { Print_string (&WW_PRINT_Bold);  bold_IBM = FALSE; }    // Turn off Bold light.
-        if (lock_IBM) { Print_string (&WW_PRINT_LShift);  lock_IBM = FALSE; }  // Turn off Lock light.
+        if (artn_IBM) { (void)Print_element (&WW_PRINT_ARtn);  artn_IBM = FALSE; }    // Turn off A Rtn light.
+        if (bold_IBM) { (void)Print_element (&WW_PRINT_Bold);  bold_IBM = FALSE; }    // Turn off Bold light.
+        if (lock_IBM) { (void)Print_element (&WW_PRINT_LShift);  lock_IBM = FALSE; }  // Turn off Lock light.
         send_ack_IBM = TRUE;
         break;
 
@@ -7512,9 +7676,9 @@ void loop () {
         flow_in_on = TRUE;
         flow_out_on = TRUE;
         Set_margins_tabs (TRUE);
-        if (artn_IBM) { Print_string (&WW_PRINT_ARtn);  artn_IBM = FALSE; }
-        if (bold_IBM) { Print_string (&WW_PRINT_Bold);  bold_IBM = FALSE; }
-        if (!lock_IBM) { Print_string (&WW_PRINT_Lock);  lock_IBM = TRUE; }
+        if (artn_IBM) { (void)Print_element (&WW_PRINT_ARtn);  artn_IBM = FALSE; }
+        if (bold_IBM) { (void)Print_element (&WW_PRINT_Bold);  bold_IBM = FALSE; }
+        if (!lock_IBM) { (void)Print_element (&WW_PRINT_Lock);  lock_IBM = TRUE; }
         send_ack_IBM = TRUE;
         break;
 
@@ -7530,16 +7694,16 @@ void loop () {
 
       case CMD_ASCII_CR:
         if (receiveeol == EOL_CR) {
-          Print_string (&WW_PRINT_CRtn);
+          (void)Print_element (&WW_PRINT_CRtn);
         } else if (receiveeol == EOL_CRLF) {
           pending_lf = TRUE;
         } else if (receiveeol == EOL_LF) {
-          Print_string (&ASCII_PRINT_CR);
+          (void)Print_element (&ASCII_PRINT_CR);
         } else /* receiveeol == EOL_LFCR */ {
           if (pending_cr) {
-            Print_string (&WW_PRINT_CRtn);
+            (void)Print_element (&WW_PRINT_CRtn);
           } else {
-            Print_string (&ASCII_PRINT_CR);
+            (void)Print_element (&ASCII_PRINT_CR);
           }
         }
         pending_cr = FALSE;
@@ -7547,15 +7711,15 @@ void loop () {
 
       case CMD_ASCII_LF:
         if (receiveeol == EOL_CR) {
-          Print_string (&ASCII_PRINT_LF);
+          (void)Print_element (&ASCII_PRINT_LF);
         } else if (receiveeol == EOL_CRLF) {
           if (pending_lf) {
-            Print_string (&WW_PRINT_CRtn);
+            (void)Print_element (&WW_PRINT_CRtn);
           } else {
-            Print_string (&ASCII_PRINT_LF);
+            (void)Print_element (&ASCII_PRINT_LF);
           }
         } else if (receiveeol == EOL_LF) {
-          Print_string (&WW_PRINT_CRtn);
+          (void)Print_element (&WW_PRINT_CRtn);
         } else /* receiveeol == EOL_LFCR */ {
           pending_cr = TRUE;
         }
@@ -7594,19 +7758,19 @@ void loop () {
       Initialize_configuration_settings (TRUE);
       digitalWriteFast (ORANGE_LED_PIN, LOW);
       digitalWriteFast (BLUE_LED_PIN, blue_led_off);
-      if (artn_IBM) Print_string (&WW_PRINT_ARtn);
-      if (bold_IBM) Print_string (&WW_PRINT_Bold);
-      if (lock_IBM) Print_string (&WW_PRINT_LShift);
+      if (artn_IBM) (void)Print_element (&WW_PRINT_ARtn);
+      if (bold_IBM) (void)Print_element (&WW_PRINT_Bold);
+      if (lock_IBM) (void)Print_element (&WW_PRINT_LShift);
       Setup_IBM ();
       run_mode = MODE_RUNNING;
-      Print_characters ("---- All settings reset to factory defaults.\r\r");
+      (void)Print_string ("---- All settings reset to factory defaults.\r\r");
       Wait_print_buffer_empty (3000);
 
     // Interactive setup.
     } else {
-      if (artn_IBM) Print_string (&WW_PRINT_ARtn);
-      if (bold_IBM) Print_string (&WW_PRINT_Bold);
-      if (lock_IBM) Print_string (&WW_PRINT_LShift);
+      if (artn_IBM) (void)Print_element (&WW_PRINT_ARtn);
+      if (bold_IBM) (void)Print_element (&WW_PRINT_Bold);
+      if (lock_IBM) (void)Print_element (&WW_PRINT_LShift);
       Print_IBM_setup_title ();
       while (TRUE) {
         char cmd = Read_setup_command ();
@@ -7622,9 +7786,9 @@ void loop () {
           break;
         }
       }
-      if (artn_IBM) Print_string (&WW_PRINT_ARtn);
-      if (bold_IBM) Print_string (&WW_PRINT_Bold);
-      if (lock_IBM) Print_string (&WW_PRINT_Lock);
+      if (artn_IBM) (void)Print_element (&WW_PRINT_ARtn);
+      if (bold_IBM) (void)Print_element (&WW_PRINT_Bold);
+      if (lock_IBM) (void)Print_element (&WW_PRINT_Lock);
       key_actions = key_actions_save;
       run_mode = MODE_RUNNING;
     }
@@ -7661,7 +7825,7 @@ void loop () {
       digitalWriteFast (BLUE_LED_PIN, blue_led_off);
       Setup_ASCII ();
       run_mode = MODE_RUNNING;
-      Print_characters ("---- All settings reset to factory defaults.\r\r");
+      (void)Print_string ("---- All settings reset to factory defaults.\r\r");
       Wait_print_buffer_empty (3000);
 
     // Interactive setup.
@@ -7722,7 +7886,7 @@ void loop () {
       digitalWriteFast (BLUE_LED_PIN, blue_led_off);
       Setup_FUTURE ();
       run_mode = MODE_RUNNING;
-      Print_characters ("---- All settings reset to factory defaults.\r\r");
+      (void)Print_string ("---- All settings reset to factory defaults.\r\r");
       Wait_print_buffer_empty (3000);
 
     // Interactive setup.
@@ -7824,7 +7988,7 @@ void loop () {
 //**********************************************************************************************************************
 
 
-void ISR_common () {
+void ISR_common (void) {
 
   // Do not process column scan interrupts while the firmware is initializing.
   if (run_mode == MODE_INITIALIZING) return;
@@ -8006,7 +8170,7 @@ void ISR_common () {
 //
 // Column 1 ISR for keys:  <left shift>, <right shift>
 //
-inline void ISR_column_1 () {
+inline void ISR_column_1 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8023,7 +8187,7 @@ inline void ISR_column_1 () {
 // Column 2 ISR for keys:  <right arrow>, <right word>, Paper Down, <down micro>, Paper Up, <up micro>, Reloc, Line
 //                         Space, <down arrow>, <down line>
 //
-inline void ISR_column_2 () {
+inline void ISR_column_2 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8032,20 +8196,23 @@ inline void ISR_column_2 () {
   (void)Test_print (WW_COLUMN_2);
 
   // Accounting for bounce shadow, if any keyboard row is asserted take appropriate action.
-  if (interrupt_time >= key_shadow_times[WW_KEY_RARROW_Word]) Process_repeating_key (ROW_IN_1_PIN, WW_KEY_RARROW_Word);
+  if (interrupt_time >= key_shadow_times[WW_KEY_RIGHTARROW_RightWord])
+                                                      Process_repeating_key (ROW_IN_1_PIN, WW_KEY_RIGHTARROW_RightWord);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X33_22]) Process_key (ROW_IN_2_PIN, WW_KEY_X33_22);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X32_23]) Process_key (ROW_IN_3_PIN, WW_KEY_X32_23);
-  if (interrupt_time >= key_shadow_times[WW_KEY_PaperDown_Micro]) Process_key (ROW_IN_4_PIN, WW_KEY_PaperDown_Micro);
+  if (interrupt_time >= key_shadow_times[WW_KEY_PaperDown_DownMicro])
+                                                                 Process_key (ROW_IN_4_PIN, WW_KEY_PaperDown_DownMicro);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X31_25]) Process_key (ROW_IN_5_PIN, WW_KEY_X31_25);
-  if (interrupt_time >= key_shadow_times[WW_KEY_PaperUp_Micro]) Process_key (ROW_IN_6_PIN, WW_KEY_PaperUp_Micro);
+  if (interrupt_time >= key_shadow_times[WW_KEY_PaperUp_UpMicro]) Process_key (ROW_IN_6_PIN, WW_KEY_PaperUp_UpMicro);
   if (interrupt_time >= key_shadow_times[WW_KEY_Reloc_LineSpace]) Process_key (ROW_IN_7_PIN, WW_KEY_Reloc_LineSpace);
-  if (interrupt_time >= key_shadow_times[WW_KEY_DARROW_Line]) Process_repeating_key (ROW_IN_8_PIN, WW_KEY_DARROW_Line);
+  if (interrupt_time >= key_shadow_times[WW_KEY_DOWNARROW_DownLine])
+                                                        Process_repeating_key (ROW_IN_8_PIN, WW_KEY_DOWNARROW_DownLine);
 }
 
 //
 // Column 3 ISR for keys:  z, Z, q, Q, Impr, 1, !, Spell, +/-, <degree>, a, A
 //
-inline void ISR_column_3 () {
+inline void ISR_column_3 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8072,7 +8239,7 @@ inline void ISR_column_3 () {
 //
 // Column 4 ISR for keys:  <space>, <required space>, <load paper>, L Mar, T Clr
 //
-inline void ISR_column_4 () {
+inline void ISR_column_4 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8089,19 +8256,20 @@ inline void ISR_column_4 () {
   // Accounting for bounce shadow, if any keyboard row is asserted take appropriate action.
   if (interrupt_time >= key_shadow_times[WW_KEY_SPACE_REQSPACE])
                                                             Process_repeating_key (ROW_IN_1_PIN, WW_KEY_SPACE_REQSPACE);
-  if (interrupt_time >= key_shadow_times[WW_KEY_LOADPAPER]) Process_key (ROW_IN_2_PIN, WW_KEY_LOADPAPER);
+  if (interrupt_time >= key_shadow_times[WW_KEY_LOADPAPER_SETTOPOFFORM])
+                                                              Process_key (ROW_IN_2_PIN, WW_KEY_LOADPAPER_SETTOPOFFORM);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X13_43]) Process_key (ROW_IN_3_PIN, WW_KEY_X13_43);
   if (interrupt_time >= key_shadow_times[WW_KEY_LMar]) Process_key (ROW_IN_4_PIN, WW_KEY_LMar);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X12_45]) Process_key (ROW_IN_5_PIN, WW_KEY_X12_45);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X11_46]) Process_key (ROW_IN_6_PIN, WW_KEY_X11_46);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X14_47]) Process_key (ROW_IN_7_PIN, WW_KEY_X14_47);
-  if (interrupt_time >= key_shadow_times[WW_KEY_TClr]) Process_key (ROW_IN_8_PIN, WW_KEY_TClr);
+  if (interrupt_time >= key_shadow_times[WW_KEY_TClr_TClrAll]) Process_key (ROW_IN_8_PIN, WW_KEY_TClr_TClrAll);
 }
 
 //
 // Column 5 ISR for keys:  Code
 //
-inline void ISR_column_5 () {
+inline void ISR_column_5 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8116,7 +8284,7 @@ inline void ISR_column_5 () {
 //
 // Column 6 ISR for keys:  x, X, <power wise>, w, W, 2, @, Add, s, S
 //
-inline void ISR_column_6 () {
+inline void ISR_column_6 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8134,7 +8302,7 @@ inline void ISR_column_6 () {
 //
 // Column 7 ISR for keys:  c, C, Ctr, e, E, 3, #, Del, d, D, Dec T
 //
-inline void ISR_column_7 () {
+inline void ISR_column_7 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8152,7 +8320,7 @@ inline void ISR_column_7 () {
 //
 // Column 8 ISR for keys:  b, B, Bold, v, V, t, T, r, R, A Rtn, 4, $, Vol, 5, %, f, F, g, G
 //
-inline void ISR_column_8 () {
+inline void ISR_column_8 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8183,7 +8351,7 @@ inline void ISR_column_8 () {
 //
 // Column 9 ISR for keys:  n, N, Caps, m, M, y, Y, <1/2 up>, u, U, Cont, 7, &, 6, <cent>, j, J, h, H, <1/2 down>
 //
-inline void ISR_column_9 () {
+inline void ISR_column_9 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8205,7 +8373,7 @@ inline void ISR_column_9 () {
 //
 // Column 10 ISR for keys:  ,, ], [, <superscript 3>, i, I, Word, 8, *, =, +, k, K
 //
-inline void ISR_column_10 () {
+inline void ISR_column_10 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8226,7 +8394,7 @@ inline void ISR_column_10 () {
 //
 // Column 11 ISR for keys:  ., o, O, R Flsh, 9, (, Stop, l, L, Lang
 //
-inline void ISR_column_11 () {
+inline void ISR_column_11 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8245,7 +8413,7 @@ inline void ISR_column_11 () {
 // Column 12 ISR for keys:  /, ?, <half>, <quarter>, <superscript 2>, p, P, 0, ), -, _, ;, :, <section>, ', ",
 //                         <paragraph>
 //
-inline void ISR_column_12 () {
+inline void ISR_column_12 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8270,7 +8438,7 @@ inline void ISR_column_12 () {
 //
 // Column 13 ISR for keys:  <left arrow>, <left word>, <up arrow>, <up line>, Backspace, Bksp 1, C Rtn, Ind Clr
 //
-inline void ISR_column_13 () {
+inline void ISR_column_13 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8279,8 +8447,10 @@ inline void ISR_column_13 () {
   (void)Test_print (WW_COLUMN_13);
 
   // Accounting for bounce shadow, if any keyboard row is asserted take appropriate action.
-  if (interrupt_time >= key_shadow_times[WW_KEY_LARROW_Word]) Process_repeating_key (ROW_IN_1_PIN, WW_KEY_LARROW_Word);
-  if (interrupt_time >= key_shadow_times[WW_KEY_UARROW_Line]) Process_repeating_key (ROW_IN_2_PIN, WW_KEY_UARROW_Line);
+  if (interrupt_time >= key_shadow_times[WW_KEY_LEFTARROW_LeftWord])
+                                                        Process_repeating_key (ROW_IN_1_PIN, WW_KEY_LEFTARROW_LeftWord);
+  if (interrupt_time >= key_shadow_times[WW_KEY_UPARROW_UpLine])
+                                                            Process_repeating_key (ROW_IN_2_PIN, WW_KEY_UPARROW_UpLine);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X22_134]) Process_key (ROW_IN_4_PIN, WW_KEY_X22_134);
   // if (interrupt_time >= key_shadow_times[WW_KEY_X21_135]) Process_key (ROW_IN_5_PIN, WW_KEY_X21_135);
   if (interrupt_time >= key_shadow_times[WW_KEY_Backspace_Bksp1])
@@ -8290,9 +8460,9 @@ inline void ISR_column_13 () {
 }
 
 //
-// Column 14 ISR for keys:  <back X>, <back word>, Lock, R Mar, Tab, IndL, Mar Rel, RePrt, T Set
+// Column 14 ISR for keys:  <back X>, <back word>, Lock, R Mar, Tab, Ind L, Mar Rel, Re Prt, T Set
 //
-inline void ISR_column_14 () {
+inline void ISR_column_14 (void) {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
@@ -8318,7 +8488,7 @@ inline void ISR_column_14 () {
 //**********************************************************************************************************************
 
 // Initialize global variables.
-void Initialize_global_variables () {
+void Initialize_global_variables (void) {
 
   shift = FALSE;
   shift_lock = FALSE;
@@ -8347,7 +8517,8 @@ void Initialize_global_variables () {
   total_warnings = 0;
 
   current_column = INITIAL_LMARGIN;
-  previous_string = NULL;
+  current_position = POSITION_INITIAL;
+  previous_element = NULL;
 
   cb_read = 0;
   cb_write = 0;
@@ -8392,6 +8563,14 @@ void Initialize_configuration_settings (boolean reset) {
   battery = INITIAL_BATTERY;
   lmargin = INITIAL_LMARGIN;
   rmargin = INITIAL_RMARGIN;
+  if (emulation == EMULATION_IBM) {
+    offset = INITIAL_IBM_OFFSET;
+  } else if (emulation == EMULATION_ASCII) {
+    offset = INITIAL_ASCII_OFFSET;
+  } else /* emulation == EMULATION_FUTURE */ {
+    offset = INITIAL_FUTURE_OFFSET;
+  } 
+  asciiwheel = INITIAL_ASCIIWHEEL;
   slash = INITIAL_SLASH;
   bold = INITIAL_BOLD;
   serial = INITIAL_SERIAL;
@@ -8401,20 +8580,12 @@ void Initialize_configuration_settings (boolean reset) {
   dps = INITIAL_DPS;
   swflow = INITIAL_SWFLOW;
   hwflow = INITIAL_HWFLOW;
-  asciiwheel = INITIAL_ASCIIWHEEL;
   uppercase = INITIAL_UPPERCASE;
   autoreturn = INITIAL_AUTORETURN;
   transmiteol = INITIAL_TRANSMITEOL;
   receiveeol = INITIAL_RECEIVEEOL;
   escapesequence = INITIAL_ESCAPESEQUENCE;
   length = INITIAL_LENGTH;
-  if (emulation == EMULATION_IBM) {
-    offset = INITIAL_IBM_OFFSET;
-  } else if (emulation == EMULATION_ASCII) {
-    offset = INITIAL_ASCII_OFFSET;
-  } else /* emulation == EMULATION_FUTURE */ {
-    offset = INITIAL_FUTURE_OFFSET;
-  } 
 
   if (reset || (EEPROM.read (EEPROM_FINGERPRINT) != FINGERPRINT)) {
 
@@ -8424,12 +8595,14 @@ void Initialize_configuration_settings (boolean reset) {
     }
     Write_EEPROM (EEPROM_FINGERPRINT, FINGERPRINT);
     Write_EEPROM (EEPROM_VERSION, VERSION);
+    Write_EEPROM (EEPROM_EMULATION, emulation);
     Write_EEPROM (EEPROM_ERRORS, errors);
     Write_EEPROM (EEPROM_WARNINGS, warnings);
     Write_EEPROM (EEPROM_BATTERY, battery);
     Write_EEPROM (EEPROM_LMARGIN, lmargin);
     Write_EEPROM (EEPROM_RMARGIN, rmargin);
-    Write_EEPROM (EEPROM_EMULATION, emulation);
+    Write_EEPROM (EEPROM_OFFSET, offset);
+    Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     Write_EEPROM (EEPROM_SLASH, slash);
     Write_EEPROM (EEPROM_BOLD, bold);
     Write_EEPROM (EEPROM_SERIAL, serial);
@@ -8439,14 +8612,12 @@ void Initialize_configuration_settings (boolean reset) {
     Write_EEPROM (EEPROM_DPS, dps);
     Write_EEPROM (EEPROM_SWFLOW, swflow);
     Write_EEPROM (EEPROM_HWFLOW, hwflow);
-    Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     Write_EEPROM (EEPROM_UPPERCASE, uppercase);
     Write_EEPROM (EEPROM_AUTORETURN, autoreturn);
     Write_EEPROM (EEPROM_TRANSMITEOL, transmiteol);
     Write_EEPROM (EEPROM_RECEIVEEOL, receiveeol);
     Write_EEPROM (EEPROM_ESCAPESEQUENCE, escapesequence);
     Write_EEPROM (EEPROM_LENGTH, length);
-    Write_EEPROM (EEPROM_OFFSET, offset);
 
     Set_margins_tabs (TRUE);
 
@@ -8473,13 +8644,15 @@ void Initialize_configuration_settings (boolean reset) {
 
     // Retrieve configuration parameters and set margins & tabs if needed.
     if (Read_EEPROM (EEPROM_VERSION, 0) != VERSION) Write_EEPROM (EEPROM_VERSION, VERSION);
+    pemulation = Read_EEPROM (EEPROM_EMULATION, emulation);
+    if (emulation != pemulation) Write_EEPROM (EEPROM_EMULATION, emulation);
     errors = Read_EEPROM (EEPROM_ERRORS, errors);
     warnings = Read_EEPROM (EEPROM_WARNINGS, warnings);
     battery = Read_EEPROM (EEPROM_BATTERY, battery);
     lmargin = Read_EEPROM (EEPROM_LMARGIN, lmargin);
     rmargin = Read_EEPROM (EEPROM_RMARGIN, rmargin);
-    pemulation = Read_EEPROM (EEPROM_EMULATION, emulation);
-    if (emulation != pemulation) Write_EEPROM (EEPROM_EMULATION, emulation);
+    offset = Read_EEPROM (EEPROM_OFFSET, offset);
+    asciiwheel = Read_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     slash = Read_EEPROM (EEPROM_SLASH, slash);
     bold = Read_EEPROM (EEPROM_BOLD, bold);
     serial = Read_EEPROM (EEPROM_SERIAL, serial);
@@ -8489,14 +8662,12 @@ void Initialize_configuration_settings (boolean reset) {
     dps = Read_EEPROM (EEPROM_DPS, dps);
     swflow = Read_EEPROM (EEPROM_SWFLOW, swflow);
     hwflow = Read_EEPROM (EEPROM_HWFLOW, hwflow);
-    asciiwheel = Read_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     uppercase = Read_EEPROM (EEPROM_UPPERCASE, uppercase);
     autoreturn = Read_EEPROM (EEPROM_AUTORETURN, autoreturn);
     transmiteol = Read_EEPROM (EEPROM_TRANSMITEOL, transmiteol);
     receiveeol = Read_EEPROM (EEPROM_RECEIVEEOL, receiveeol);
     escapesequence = Read_EEPROM (EEPROM_ESCAPESEQUENCE, escapesequence);
     length = Read_EEPROM (EEPROM_LENGTH, length);
-    offset = Read_EEPROM (EEPROM_OFFSET, offset);
 
     if (emulation == pemulation) {
       for (int i = 0; i < 200; ++i) {
@@ -8512,7 +8683,7 @@ void Initialize_configuration_settings (boolean reset) {
 }
 
 // Clear all row drive lines.
-inline void Clear_all_row_lines () {
+inline void Clear_all_row_lines (void) {
 
   digitalWriteFast (ROW_ENABLE_PIN, HIGH);
   digitalWriteFast (ROW_OUT_1_PIN, LOW);
@@ -8568,11 +8739,11 @@ inline void Process_return_key (int pin, int key) {
       key_pressed_states[key] = TRUE;
       key_shadow_times[key] = interrupt_time + KEY_RETURN_DEBOUNCE;
       key_repeat_times[key] = interrupt_time + 5 * KEY_REPEAT;
-      if (!key_pressed_states[WW_KEY_TClr]) {
+      if (!key_pressed_states[WW_KEY_TClr_TClrAll]) {
         Take_action (key_offset + key);
-      } else {  // Special case for TClr + CRtn = clear all tabs.
+      } else {  // Special case for T Clr + C Rtn = clear all tabs.
         key_repeat_times[key] = 0xffffffffUL;  // Don't allow return to auto repeat.
-        Transfer_print_string (&WW_PRINT_ClrAll);
+        Transfer_print_string (&WW_PRINT_TClrAll);
       }
     } else if (interrupt_time >= key_repeat_times[key]) {  // Repeat time elapsed?
       key_repeat_times[key] = interrupt_time + KEY_REPEAT;
@@ -8676,7 +8847,7 @@ inline boolean Transfer_print_string (const struct print_info *str) {
     if (++tb_write >= SIZE_TRANSFER_BUFFER) tb_write = 0;
     Update_counter (&tb_count, +1);
     return TRUE;
-  } else {  // Print string doesn't fit in transfer buffer.
+  } else {  // Print element doesn't fit in transfer buffer.
     Report_error (ERROR_TB_FULL);
     return FALSE;
   }
@@ -8691,20 +8862,20 @@ int Read_integer (int value) {
 
   chr = Read_setup_character_from_set ("-0123456789\r");
   if (chr == '\r') {
-    Print_integer (value, 0);
+    (void)Print_integer (value, 0);
     return value;
   } else if (chr == '-') {
-    Print_character (chr);
+    (void)Print_character (chr);
     neg = TRUE;
   } else /* chr == <digit> */ {
-    Print_character (chr);
+    (void)Print_character (chr);
     tmp = chr - '0';
   }
   
   while (tmp >= otmp) {
     chr = Read_setup_character_from_set ("0123456789\r");
     if (chr == '\r') return (neg ? - tmp : tmp);
-    Print_character (chr);
+    (void)Print_character (chr);
     otmp = tmp;
     tmp = 10 * tmp + (chr - '0');
   }
@@ -8729,9 +8900,9 @@ boolean Print_integer (int val, int wid) {
   if (val < 0) chr[idx--] = '-';
 
   if (wid > 0) {
-    return Print_characters (&chr[11 - wid]);
+    return Print_string (&chr[11 - wid]);
   } else {
-    return Print_characters (&chr[idx + 1]);
+    return Print_string (&chr[idx + 1]);
   }
 }
 
@@ -8739,74 +8910,79 @@ boolean Print_integer (int val, int wid) {
 inline boolean Print_character (char chr) {
   struct serial_action act = ASCII_SERIAL_ACTIONS[chr & 0x7f];
 
-  if (act.print != NULL) {
-    if (!Print_string (act.print)) return FALSE;  // Character doesn't fit in print buffer.
+  if (act.element != NULL) {
+    if (!Print_element (act.element)) return FALSE;  // Character doesn't fit in print buffer.
   }
   return TRUE;
 }
 
 // Print a string of characters.
-inline boolean Print_characters (const char str[]) {
+inline boolean Print_string (const char str[]) {
   const char *ptr = str;
 
   while (*ptr != 0) {
     struct serial_action act = ASCII_SERIAL_ACTIONS[*(ptr++) & 0x7f];
-    if (act.print != NULL) {
-      if (!Print_string (act.print)) return FALSE;  // Character doesn't fit in print buffer.
+    if (act.element != NULL) {
+      if (!Print_element (act.element)) return FALSE;  // Character doesn't fit in print buffer.
     }
   }
   return TRUE;
 }
 
-// Print a string of print codes.
-boolean Print_string (const struct print_info *str) {
+// Print a print element.
+boolean Print_element (const struct print_info *elem) {
   int start;
   int pbw;
   int pbc;
   int inc;
   int tab;
+  int next;
+  int temp;
+
+  // Process special print elements.
+  if (elem->type == ELEMENT_COMPOSITE) {
+    const struct print_info **ptr = elem->pelement;
+    while (*ptr != NULL) {
+      if (!Print_element (*ptr++)) return FALSE;
+    }
+    return TRUE; 
+  } else if (elem->type == ELEMENT_DYNAMIC) {
+    return Print_element (*(elem->pelement));
+  }
 
   // Inject an automatic carriage return, if enabled, when the right margin is hit and the next character isn't a
   // carriage return, left arrow, right arrow, backspace, bksp 1, set right margin, set tab, clear tab, clear all tabs,
   // or beep.  If the line overflows and automatic return is disabled, then trigger a warning, beep, and ignore the
   // character.
   if ((current_column > rmargin) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_CRtn)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_LARROW)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_RARROW)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_Backspace)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_Bksp1)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_RMar)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_TSet)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_TClr)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_ClrAll)) &&
-      (str->string != (const byte (*)[1000])(&WW_STR_BEEP))) {
+      (elem->element != (const byte (*)[1000])(&WW_STR_CRtn)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_LEFTARROW)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_RIGHTARROW)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_Backspace)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_Bksp1)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_RMar)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_TSet)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_TClr)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_TClrAll)) &&
+      (elem->element != (const byte (*)[1000])(&WW_STR_BEEP))) {
     if (autoreturn == SETTING_TRUE) {
-      if (!Print_string (&WW_PRINT_CRtn)) return FALSE;  // Carriage return doesn't fit in print buffer.
+      if (!Print_element (&WW_PRINT_CRtn)) return FALSE;  // Carriage return doesn't fit in print buffer.
     } else {
-      if (!Print_string (&WW_PRINT_BEEP)) return FALSE;  // Beep doesn't fit in print buffer.
-      return TRUE;                                       // Discard string.
+      if (!Print_element (&WW_PRINT_BEEP)) return FALSE;  // Beep doesn't fit in print buffer.
+      return TRUE;                                        // Discard element.
     }
-  }
-
-  // For IBM 1620 Jr. - Slashed zeroes are controlled by the slash state.
-  if (emulation == EMULATION_IBM) {
-    if ((str == &WW_PRINT_0) && (slash == SETTING_TRUE)) str = &IBM_PRINT_SLASH_0;
-    else if ((str == &IBM_PRINT_SLASH_0) && (slash == SETTING_FALSE)) str = &WW_PRINT_0;
-    else if ((str == &IBM_PRINT_FLAG_0) && (slash == SETTING_TRUE)) str = &IBM_PRINT_FLAG_SLASH_0;
-    else if ((str == &IBM_PRINT_FLAG_SLASH_0) && (slash == SETTING_FALSE)) str = &IBM_PRINT_FLAG_0;
   }
 
   // For ASCII Terminal - A space following '\', '{', or '}' needs special handling to print.
   if (emulation == EMULATION_ASCII) {
-    if (str == &WW_PRINT_SPACE) {
-      if (previous_string == &ASCII_PRINT_BSLASH_PG) {
-        str = &ASCII_PRINT_SPACE2;
-      } else if ((previous_string == &ASCII_PRINT_LBRACE_PG) || (previous_string == &ASCII_PRINT_RBRACE_PG)) {
-        str = &ASCII_PRINT_SPACE3;
+    if (elem == &WW_PRINT_SPACE) {
+      if (previous_element == &ASCII_PRINT_BSLASH_PG) {
+        elem = &ASCII_PRINT_SPACE2;
+      } else if ((previous_element == &ASCII_PRINT_LBRACE_PG) || (previous_element == &ASCII_PRINT_RBRACE_PG)) {
+        elem = &ASCII_PRINT_SPACE3;
       }
     }
-    previous_string = str;
+    previous_element = elem;
   }
 
   // Prepare for copying.
@@ -8815,11 +8991,11 @@ boolean Print_string (const struct print_info *str) {
   pbc = pb_count;
   inc = 0;
 
-  // Copy string print codes to buffer.
+  // Copy element print codes to buffer.
   for (int i = 0; ; ++i) {
-    byte pchr = (*str->string)[i];
+    byte pchr = (*elem->element)[i];
     if (pchr == WW_NULL) break;
-    if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // String doesn't fit in print buffer.
+    if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // Element doesn't fit in print buffer.
       Report_error (ERROR_PB_FULL);
       return FALSE;
     }
@@ -8833,16 +9009,32 @@ boolean Print_string (const struct print_info *str) {
   }
 
   // Adjust residual print time.
-  if (str->timing >= 0) {
-    residual_time += str->timing;
-  } else {  // Prorate return time based on current column position.
-    residual_time = TIME_HMOVEMENT + (current_column * (- str->timing) / length);
+  if (elem->spacing == SPACING_RETURN) {
+    residual_time += elem->timing + (current_column - lmargin) * TIME_RETURN_FACTOR;  // Prorate return time based on
+                                                                                      // current column position.
+  } else if (elem->spacing == SPACING_TAB) {
+    tab = min (current_column + 1, rmargin);
+    while ((tab < rmargin) && (tabs[tab] == SETTING_FALSE)) ++tab;
+    residual_time += elem->timing + (tab - current_column) * TIME_TAB_FACTOR;  // Prorate tab time based on number of
+                                                                               // columns to skip.
+  } else {
+    residual_time += elem->timing;
+  }
+
+  // Update spin position and adjust residual print time.
+  if (elem->position < POSITION_COUNT) {
+    next = elem->position;
+    temp = abs (next - current_position);
+    residual_time += TIME_SPIN_FACTOR * min (POSITION_COUNT - temp, temp);
+    current_position = next;
+  } else if (elem->position == POSITION_RESET) {
+    current_position = 0;
   }
 
   // Add empty full scans as needed.
   while (residual_time >= FSCAN_0_CHANGES) {
     ++inc;
-    if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // String doesn't fit in print buffer.
+    if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // Element doesn't fit in print buffer.
       Report_error (ERROR_PB_FULL);
       return FALSE;
     }
@@ -8853,7 +9045,7 @@ boolean Print_string (const struct print_info *str) {
 
   // Add null print code after print string.
   ++inc;
-  if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // String doesn't fit in print buffer.
+  if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // Element doesn't fit in print buffer.
     Report_error (ERROR_PB_FULL);
     return FALSE;
   }
@@ -8866,8 +9058,9 @@ boolean Print_string (const struct print_info *str) {
   print_buffer[start] = WW_SKIP;
 
   // Update current print position, tab stops, and margins.
-  switch (str->spacing) {
+  switch (elem->spacing) {
     case SPACING_NONE:      // No horizontal movement.
+    case SPACING_UNKNOWN:
       // Nothing to do.
       break;
     case SPACING_FORWARD:   // Forward horizontal movement.
@@ -8877,13 +9070,16 @@ boolean Print_string (const struct print_info *str) {
       if (current_column > 1) --current_column;
       break;
     case SPACING_TAB:       // Tab horizontal movement.
-      tab = current_column + 1;
-      if (tab > rmargin) tab = rmargin;
-      while ((tabs[tab] == SETTING_FALSE) && (tab < rmargin)) ++tab;
+    case SPACING_TABX:
+      tab = min (current_column + 1, rmargin);
+      while ((tab < rmargin) && (tabs[tab] == SETTING_FALSE)) ++tab;
       current_column = tab;
       break;
     case SPACING_RETURN:    // Return horizontal movement.
+    case SPACING_RETURNX:
+    case SPACING_LOADPAPER:
       current_column = lmargin;
+      residual_time = 0;
       break;
     case SPACING_LMAR:      // No horizontal movement, set left margin.
       lmargin = current_column;
@@ -8904,7 +9100,7 @@ boolean Print_string (const struct print_info *str) {
       tabs[current_column] = SETTING_FALSE;
       Write_EEPROM (EEPROM_TABS + current_column, tabs[current_column]);
       break;
-    case SPACING_CLRALL:   // No horizontal movement, clear all tabs.
+    case SPACING_TCLRALL:   // No horizontal movement, clear all tabs.
       memset ((void *)tabs, SETTING_FALSE, sizeof(tabs));
       tabs[rmargin] = SETTING_TRUE;
       for (int i = 0; i < 200; ++i) {
@@ -8919,7 +9115,7 @@ boolean Print_string (const struct print_info *str) {
 }
 
 // Test if print buffer is empty.
-inline boolean Test_print_buffer_empty () {
+inline boolean Test_print_buffer_empty (void) {
 
   return ((pb_count == 0) && (interrupt_column == WW_COLUMN_1) &&
           (last_scan_duration < LONG_SCAN_DURATION) && (last_last_scan_duration < LONG_SCAN_DURATION));
@@ -8993,10 +9189,7 @@ void Take_action (int key) {
 
   // Print character if requested.
   if (action & ACTION_PRINT) {
-    Transfer_print_string ((*key_actions)[key].print);
-  }
-  if (action & ACTION_PRINT_SPECIAL) {
-    Transfer_print_string (*((*key_actions)[key].prints));
+    Transfer_print_string ((*key_actions)[key].element);
   }
 
   // Queue command character if requested.
@@ -9213,37 +9406,38 @@ void Set_margins_tabs (boolean reset) {
   }
 
   // Set left margin.
-  Print_string (&WW_PRINT_CRtn);
-  Print_string (&WW_PRINT_MarRel);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
+  (void)Print_element (&WW_PRINT_MarRel);
   for (int i = 0; i < 20; ++i) {
-    Print_string (&WW_PRINT_Backspace);
+    (void)Print_element (&WW_PRINT_Backspace);
   }
   for (int i = 0; i < offset; ++i) {
-    Print_string (&WW_PRINT_SPACE);
+    (void)Print_element (&WW_PRINT_SPACE);
   }
   current_column = 1;
   for (int i = 1; i < lmargin; ++i) {
-    Print_string (&WW_PRINT_SPACE);
+    (void)Print_element (&WW_PRINT_SPACE);
   }
-  Print_string (&WW_PRINT_LMar);
+  (void)Print_element (&WW_PRINT_LMar);
 
   // Set tab stops.
-  Print_string (&WW_PRINT_ClrAllX);  // Special case that doesn't clear tabs[].
+  (void)Print_element (&WW_PRINT_TClrAllX);  // Special case that doesn't clear tabs[].
   for (int i = lmargin; i <= rmargin; ++i) {
-    if (tabs[i] == SETTING_TRUE) Print_string (&WW_PRINT_TSet);
-    if (i < rmargin) Print_string (&WW_PRINT_SPACE);
+    if (tabs[i] == SETTING_TRUE) (void)Print_element (&WW_PRINT_TSet);
+    if (i < rmargin) (void)Print_element (&WW_PRINT_SPACE);
   }
 
   // Set right margin.
-  Print_string (&WW_PRINT_RMar);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_RMar);
+  (void)Print_element (&WW_PRINT_CRtn);
 }
 
 // Read a setup command character.
-char Read_setup_command () {
+char Read_setup_command (void) {
 
   // Print command prompt.
-  Print_characters ("Command [settings/errors/character set/QUIT]: ");
+  (void)Print_string ("Command [settings/errors/character set/QUIT]: ");
   Space_to_column (COLUMN_COMMAND);
 
   // Read a command character.
@@ -9251,19 +9445,19 @@ char Read_setup_command () {
 
   // Return setup command.
   if ((cmd == 's') || (cmd == 'S')) {
-    Print_characters ("settings\r");
+    (void)Print_string ("settings\r");
     return 's';
   } else if ((cmd == 'e') || (cmd == 'E')) {
-    Print_characters ("errors\r");
+    (void)Print_string ("errors\r");
     return 'e';
   } else if ((cmd == 'c') || (cmd == 'C')) {
-    Print_characters ("character set\r");
+    (void)Print_string ("character set\r");
     return 'c';
   } else if (cmd == '\004') {  // Control-D
-    Print_characters ("developer\r");
+    (void)Print_string ("developer\r");
     return 'd';
   } else /* (cmd == 'q') || (cmd == 'Q') || (cmd == '\r') */ {
-    Print_characters ("quit\r\r---- End of Setup\r\r");
+    (void)Print_string ("quit\r\r---- End of Setup\r\r");
     return 'q';
   }
 }
@@ -9273,11 +9467,11 @@ boolean Ask_yesno_question (const char str[], boolean value) {
   boolean val;
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value) {
-    Print_characters (" [YES/no]? ");
+    (void)Print_string (" [YES/no]? ");
   } else /* !value */ {
-    Print_characters (" [yes/NO]? ");
+    (void)Print_string (" [yes/NO]? ");
   }
   Space_to_column (COLUMN_QUESTION);
 
@@ -9293,9 +9487,9 @@ boolean Ask_yesno_question (const char str[], boolean value) {
 
   // Print response.
   if (val) {
-    Print_characters ("yes\r");
+    (void)Print_string ("yes\r");
   } else /* !val */ {
-    Print_characters ("no\r");
+    (void)Print_string ("no\r");
   }
 
   return val;
@@ -9306,11 +9500,11 @@ byte Read_truefalse_setting (const char str[], byte value) {
   byte val;
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == SETTING_TRUE) {
-    Print_characters (" [TRUE/false]: ");
+    (void)Print_string (" [TRUE/false]: ");
   } else /* value == SETTING_FALSE */ {
-    Print_characters (" [true/FALSE]: ");
+    (void)Print_string (" [true/FALSE]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9326,9 +9520,9 @@ byte Read_truefalse_setting (const char str[], byte value) {
 
   // Print response.
   if (val == SETTING_TRUE) {
-    Print_characters ("true\r");
+    (void)Print_string ("true\r");
   } else /* val == SETTING_FALSE */ {
-    Print_characters ("false\r");
+    (void)Print_string ("false\r");
   }
 
   return val;
@@ -9339,11 +9533,11 @@ byte Read_serial_setting (const char str[], byte value) {
   byte val;
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == SERIAL_USB) {
-    Print_characters (" [USB/rs232]: ");
+    (void)Print_string (" [USB/rs232]: ");
   } else /* value == SERIAL_RS232 */ {
-    Print_characters (" [usb/RS232]: ");
+    (void)Print_string (" [usb/RS232]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9359,9 +9553,9 @@ byte Read_serial_setting (const char str[], byte value) {
 
   // Print response.
   if (val == SERIAL_USB) {
-    Print_characters ("usb\r");
+    (void)Print_string ("usb\r");
   } else /* val == SERIAL_RS232 */ {
-    Print_characters ("rs232\r");
+    (void)Print_string ("rs232\r");
   }
 
   return val;
@@ -9372,11 +9566,11 @@ byte Read_duplex_setting (const char str[], byte value) {
   byte val;
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == DUPLEX_HALF) {
-    Print_characters (" [HALF/full]: ");
+    (void)Print_string (" [HALF/full]: ");
   } else /* value == DUPLEX_FULL */ {
-    Print_characters (" [half/FULL]: ");
+    (void)Print_string (" [half/FULL]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9392,9 +9586,9 @@ byte Read_duplex_setting (const char str[], byte value) {
 
   // Print response.
   if (val == DUPLEX_HALF) {
-    Print_characters ("half\r");
+    (void)Print_string ("half\r");
   } else /* val == DUPLEX_FULL */ {
-    Print_characters ("full\r");
+    (void)Print_string ("full\r");
   }
 
   return val;
@@ -9404,105 +9598,105 @@ byte Read_duplex_setting (const char str[], byte value) {
 byte Read_baud_setting (const char str[], byte value) {
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
-  Print_characters (" [50-230400, ");  Print_integer (baud_rates[value], 0);  Print_characters ("]: ");
+  (void)Print_string ("  ");  (void)Print_string (str);
+  (void)Print_string (" [50-230400, ");  (void)Print_integer (baud_rates[value], 0);  (void)Print_string ("]: ");
   Space_to_column (COLUMN_RESPONSE);
 
   // Read and print response.
   char chr = Read_setup_character_from_set ("12345679\r");
 
   if (chr == '1') {
-    Print_character ('1');
+    (void)Print_character ('1');
     chr = Read_setup_character_from_set ("123589");
     if (chr == '1') {
-      Print_character ('1');
+      (void)Print_character ('1');
       chr = Read_setup_character_from_set ("05");
       if (chr == '0') {
-        Print_characters ("0\r");
+        (void)Print_string ("0\r");
         return BAUD_110;
       } else /* chr == '5' */ {
-        Print_characters ("5200\r");
+        (void)Print_string ("5200\r");
         return BAUD_115200;
       }
     } else if (chr == '2') {
-      Print_characters ("200\r");
+      (void)Print_string ("200\r");
       return BAUD_1200;
     } else if (chr == '3') {
-      Print_characters ("34\r");
+      (void)Print_string ("34\r");
       return BAUD_134;
     } else if (chr == '5') {
-      Print_characters ("50\r");
+      (void)Print_string ("50\r");
       return BAUD_150;
     } else if (chr == '8') {
-      Print_characters ("800\r");
+      (void)Print_string ("800\r");
       return BAUD_1800;
     } else /* chr == '9' */ {
-      Print_characters ("9200\r");
+      (void)Print_string ("9200\r");
       return BAUD_19200;
     }
 
   } else if (chr == '2') {
-    Print_character ('2');
+    (void)Print_character ('2');
     chr = Read_setup_character_from_set ("034");
     if (chr == '0') {
-      Print_characters ("00\r");
+      (void)Print_string ("00\r");
       return BAUD_200;
     } else if (chr == '3') {
-      Print_characters ("30400\r");
+      (void)Print_string ("30400\r");
       return BAUD_230400;
     } else /* chr == '4' */ {
-      Print_characters ("400\r");
+      (void)Print_string ("400\r");
       return BAUD_2400;
     }
 
   } else if (chr == '3') {
-    Print_character ('3');
+    (void)Print_character ('3');
     chr = Read_setup_character_from_set ("08");
     if (chr == '0') {
-      Print_characters ("00\r");
+      (void)Print_string ("00\r");
       return BAUD_300;
     } else /* chr == '8' */ {
-      Print_characters ("8400\r");
+      (void)Print_string ("8400\r");
       return BAUD_38400;
     }
 
   } else if (chr == '4') {
-    Print_characters ("4800\r");
+    (void)Print_string ("4800\r");
     return BAUD_4800;
 
   } else if (chr == '5') {
-    Print_character ('5');
+    (void)Print_character ('5');
     chr = Read_setup_character_from_set ("07");
     if (chr == '0') {
-      Print_characters ("0\r");
+      (void)Print_string ("0\r");
       return BAUD_50;
     } else /* chr == '7' */ {
-      Print_characters ("7600\r");
+      (void)Print_string ("7600\r");
       return BAUD_57600;
     }
 
   } else if (chr == '6') {
-    Print_characters ("600\r");
+    (void)Print_string ("600\r");
     return BAUD_600;
 
   } else if (chr == '7') {
-    Print_character ('7');
+    (void)Print_character ('7');
     chr = Read_setup_character_from_set ("56");
     if (chr == '5') {
-      Print_characters ("5\r");
+      (void)Print_string ("5\r");
       return BAUD_75;
     } else /* chr == '6' */ {
-      Print_characters ("6800\r");
+      (void)Print_string ("6800\r");
       return BAUD_76800;
     }
 
   } else if (chr == '9') {
-    Print_characters ("9600\r");
+    (void)Print_string ("9600\r");
     return BAUD_9600;
 
   } else /* chr == '\r' */ {
-    Print_integer (baud_rates[value], 0);
-    Print_character ('\r');
+    (void)Print_integer (baud_rates[value], 0);
+    (void)Print_character ('\r');
     return value;
   }
 }
@@ -9512,13 +9706,13 @@ byte Read_parity_setting (const char str[], byte value) {
   byte val;
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == PARITY_NONE) {
-    Print_characters (" [NONE/odd/even]: ");
+    (void)Print_string (" [NONE/odd/even]: ");
   } else if (value == PARITY_ODD) {
-    Print_characters (" [none/ODD/even]: ");
+    (void)Print_string (" [none/ODD/even]: ");
   } else /* value == PARITY_EVEN */ {
-    Print_characters (" [none/odd/EVEN]: ");
+    (void)Print_string (" [none/odd/EVEN]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9536,11 +9730,11 @@ byte Read_parity_setting (const char str[], byte value) {
 
   // Print response.
   if (val == PARITY_NONE) {
-    Print_characters ("none\r");
+    (void)Print_string ("none\r");
   } else if (val == PARITY_ODD) {
-    Print_characters ("odd\r");
+    (void)Print_string ("odd\r");
   } else /* val == PARITY_EVEN */ {
-    Print_characters ("even\r");
+    (void)Print_string ("even\r");
   }
 
   return val;
@@ -9550,23 +9744,23 @@ byte Read_parity_setting (const char str[], byte value) {
 byte Read_dps_setting (const char str[], byte value) {
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == DPS_7O1) {
-    Print_characters (" [7O1/7e1/8n1/8o1/8e1/8n2/8o2/8e2]: ");
+    (void)Print_string (" [7O1/7e1/8n1/8o1/8e1/8n2/8o2/8e2]: ");
   } else if (value == DPS_7E1) {
-    Print_characters (" [7o1/7E1/8n1/8o1/8e1/8n2/8o2/8e2]: ");
+    (void)Print_string (" [7o1/7E1/8n1/8o1/8e1/8n2/8o2/8e2]: ");
   } else if (value == DPS_8N1) {
-    Print_characters (" [7o1/7e1/8N1/8o1/8e1/8n2/8o2/8e2]: ");
+    (void)Print_string (" [7o1/7e1/8N1/8o1/8e1/8n2/8o2/8e2]: ");
   } else if (value == DPS_8O1) {
-    Print_characters (" [7o1/7e1/8n1/8O1/8e1/8n2/8o2/8e2]: ");
+    (void)Print_string (" [7o1/7e1/8n1/8O1/8e1/8n2/8o2/8e2]: ");
   } else if (value == DPS_8E1) {
-    Print_characters (" [7o1/7e1/8n1/8o1/8E1/8n2/8o2/8e2]: ");
+    (void)Print_string (" [7o1/7e1/8n1/8o1/8E1/8n2/8o2/8e2]: ");
   } else if (value == DPS_8N2) {
-    Print_characters (" [7o1/7e1/8n1/8o1/8e1/8N2/8o2/8e2]: ");
+    (void)Print_string (" [7o1/7e1/8n1/8o1/8e1/8N2/8o2/8e2]: ");
   } else if (value == DPS_8O2) {
-    Print_characters (" [7o1/7e1/8n1/8o1/8e1/8n2/8O2/8e2]: ");
+    (void)Print_string (" [7o1/7e1/8n1/8o1/8e1/8n2/8O2/8e2]: ");
   } else /* value == DPS_8E2 */ {
-    Print_characters (" [7o1/7e1/8n1/8o1/8e1/8n2/8o2/8E2]: ");
+    (void)Print_string (" [7o1/7e1/8n1/8o1/8e1/8n2/8o2/8E2]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9574,56 +9768,56 @@ byte Read_dps_setting (const char str[], byte value) {
   char chr = Read_setup_character_from_set ("78\r");
 
   if (chr == '7') {
-    Print_character ('7');
+    (void)Print_character ('7');
     chr = Read_setup_character_from_set ("oOeE");
     if ((chr == 'o') || (chr == 'O')) {
-      Print_characters ("o1\r");
+      (void)Print_string ("o1\r");
       return DPS_7O1;
     } else /* (chr == 'e') || (chr == 'E') */ {
-      Print_characters ("e1\r");
+      (void)Print_string ("e1\r");
       return DPS_7E1;
     }
 
   } else if (chr == '8') {
-    Print_character ('8');
+    (void)Print_character ('8');
     chr = Read_setup_character_from_set ("nNoOeE");
     if ((chr == 'n') || (chr == 'N')) {
-      Print_character ('n');
+      (void)Print_character ('n');
       chr = Read_setup_character_from_set ("12");
       if (chr == '1') {
-        Print_characters ("1\r");
+        (void)Print_string ("1\r");
         return DPS_8N1;
       } else /* chr == '2' */ {
-        Print_characters ("2\r");
+        (void)Print_string ("2\r");
         return DPS_8N2;
       }
 
     } else if ((chr == 'o') || (chr == 'O')) {
-      Print_character ('o');
+      (void)Print_character ('o');
       chr = Read_setup_character_from_set ("12");
       if (chr == '1') {
-        Print_characters ("1\r");
+        (void)Print_string ("1\r");
         return DPS_8O1;
       } else /* chr == '2' */ {
-        Print_characters ("2\r");
+        (void)Print_string ("2\r");
         return DPS_8O2;
       }
 
     } else /* (chr == 'e') || (chr == 'E') */ {
-      Print_character ('e');
+      (void)Print_character ('e');
       chr = Read_setup_character_from_set ("12");
       if (chr == '1') {
-        Print_characters ("1\r");
+        (void)Print_string ("1\r");
         return DPS_8E1;
       } else /* chr == '2' */ {
-        Print_characters ("2\r");
+        (void)Print_string ("2\r");
         return DPS_8E2;
       }
     }
 
   } else /* chr == '\r' */ {
-    Print_characters (data_parity_stops_text[value]);
-    Print_character ('\r');
+    (void)Print_string (data_parity_stops_text[value]);
+    (void)Print_character ('\r');
     return value;
   }
 }
@@ -9633,11 +9827,11 @@ byte Read_swflow_setting (const char str[], byte value) {
   byte val;
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == SWFLOW_NONE) {
-    Print_characters (" [NONE/xon_xoff]: ");
+    (void)Print_string (" [NONE/xon_xoff]: ");
   } else /* value == SWFLOW_XON_XOFF */ {
-    Print_characters (" [none/XON_XOFF]: ");
+    (void)Print_string (" [none/XON_XOFF]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9653,9 +9847,9 @@ byte Read_swflow_setting (const char str[], byte value) {
 
   // Print response.
   if (val == SWFLOW_NONE) {
-    Print_characters ("none\r");
+    (void)Print_string ("none\r");
   } else /* val == SWFLOW_XON_XOFF */ {
-    Print_characters ("xon_xoff\r");
+    (void)Print_string ("xon_xoff\r");
   }
 
   return val;
@@ -9665,13 +9859,13 @@ byte Read_swflow_setting (const char str[], byte value) {
 byte Read_hwflow_setting (const char str[], byte value) {
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == HWFLOW_NONE) {
-    Print_characters (" [NONE/rts_cts/rtr_cts]: ");
+    (void)Print_string (" [NONE/rts_cts/rtr_cts]: ");
   } else if (value == HWFLOW_RTS_CTS) {
-    Print_characters (" [none/RTS_CTS/rtr_cts]: ");
+    (void)Print_string (" [none/RTS_CTS/rtr_cts]: ");
   } else /* value == HWFLOW_RTR_CTS */ {
-    Print_characters (" [none/rts_cts/RTR_CTS]: ");
+    (void)Print_string (" [none/rts_cts/RTR_CTS]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9679,27 +9873,27 @@ byte Read_hwflow_setting (const char str[], byte value) {
   char chr = Read_setup_character_from_set ("nNrR\r");
 
   if ((chr == 'n') || (chr == 'N')) {
-    Print_characters ("none\r");
+    (void)Print_string ("none\r");
     return HWFLOW_NONE;
 
   } else if ((chr == 'r') || (chr == 'R')) {
-    Print_characters ("rt");
+    (void)Print_string ("rt");
     chr = Read_setup_character_from_set ("sSrR");
     if ((chr == 's') || (chr == 'S')) {
-      Print_characters ("s_cts\r");
+      (void)Print_string ("s_cts\r");
       return HWFLOW_RTS_CTS;
     } else /* (chr == 'r') || (chr == 'R') */ {
-      Print_characters ("r_cts\r");
+      (void)Print_string ("r_cts\r");
       return HWFLOW_RTR_CTS;
     }
 
   } else /* chr == '\r' */ {
     if (value == HWFLOW_NONE) {
-      Print_characters ("none\r");
+      (void)Print_string ("none\r");
     } else if (value == HWFLOW_RTS_CTS) {
-      Print_characters ("rts_cts\r");
+      (void)Print_string ("rts_cts\r");
     } else /* value == HWFLOW_RTR_CTS */ {
-      Print_characters ("rtr_cts\r");
+      (void)Print_string ("rtr_cts\r");
     }
     return value;
   }
@@ -9709,15 +9903,15 @@ byte Read_hwflow_setting (const char str[], byte value) {
 byte Read_eol_setting (const char str[], byte value) {
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == EOL_CR) {
-    Print_characters (" [CR/crlf/lf/lfcr]: ");
+    (void)Print_string (" [CR/crlf/lf/lfcr]: ");
   } else if (value == EOL_CRLF) {
-    Print_characters (" [cr/CRLF/lf/lfcr]: ");
+    (void)Print_string (" [cr/CRLF/lf/lfcr]: ");
   } else if (value == EOL_LF) {
-    Print_characters (" [cr/crlf/LF/lfcr]: ");
+    (void)Print_string (" [cr/crlf/LF/lfcr]: ");
   } else /* value == EOL_LFCR */ {
-    Print_characters (" [cr/crlf/lf/LFCR]: ");
+    (void)Print_string (" [cr/crlf/lf/LFCR]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9725,36 +9919,36 @@ byte Read_eol_setting (const char str[], byte value) {
   char chr = Read_setup_character_from_set ("cClL\r");
 
   if ((chr == 'c') || (chr == 'C')) {
-    Print_characters ("cr");
+    (void)Print_string ("cr");
     chr = Read_setup_character_from_set ("lL\r");
     if ((chr == 'l') || (chr == 'L')) {
-      Print_characters ("lf\r");
+      (void)Print_string ("lf\r");
       return EOL_CRLF;
     } else /* chr == '\r' */ {
-      Print_characters ("\r");
+      (void)Print_string ("\r");
       return EOL_CR;
     }
 
   } else if ((chr == 'l') || (chr == 'L')) {
-    Print_characters ("lf");
+    (void)Print_string ("lf");
     chr = Read_setup_character_from_set ("cC\r");
     if ((chr == 'c') || (chr == 'C')) {
-      Print_characters ("cr\r");
+      (void)Print_string ("cr\r");
       return EOL_LFCR;
     } else /* chr == '\r' */ {
-      Print_characters ("\r");
+      (void)Print_string ("\r");
       return EOL_LF;
     }
 
   } else /* chr == '\r' */ {
     if (value == EOL_CR) {
-      Print_characters ("cr\r");
+      (void)Print_string ("cr\r");
     } else if (value == EOL_CRLF) {
-      Print_characters ("crlf\r");
+      (void)Print_string ("crlf\r");
     } else if (value == EOL_LF) {
-      Print_characters ("lf\r");
+      (void)Print_string ("lf\r");
     } else /* value == EOL_LFCR */ {
-      Print_characters ("lfcr\r");
+      (void)Print_string ("lfcr\r");
     }
     return value;
   }
@@ -9765,11 +9959,11 @@ byte Read_escapesequence_setting (const char str[], byte value) {
   byte val;
 
   // Print prompt.
-  Print_characters ("  "); Print_characters (str);
+  (void)Print_string ("  ");  (void)Print_string (str);
   if (value == ESCAPE_NONE) {
-    Print_characters (" [NONE/ignore]: ");
+    (void)Print_string (" [NONE/ignore]: ");
   } else /* value == ESCAPE_IGNORE */ {
-    Print_characters (" [none/IGNORE]: ");
+    (void)Print_string (" [none/IGNORE]: ");
   }
   Space_to_column (COLUMN_RESPONSE);
 
@@ -9785,9 +9979,9 @@ byte Read_escapesequence_setting (const char str[], byte value) {
 
   // Print response.
   if (val == ESCAPE_NONE) {
-    Print_characters ("none\r");
+    (void)Print_string ("none\r");
   } else /* val == ESCAPE_IGNORE */ {
-    Print_characters ("ignore\r");
+    (void)Print_string ("ignore\r");
   }
 
   return val;
@@ -9799,30 +9993,32 @@ byte Read_integer_setting (const char str[], byte value, byte min, byte max) {
   while (true) {
 
     // Print prompt.
-    Print_characters ("  "); Print_characters (str);
-    Print_characters (" ["); Print_integer (min, 0); Print_characters ("-"); Print_integer (max, 0);
-    Print_characters (", "); Print_integer (value, 0); Print_characters ("]: ");
+    (void)Print_string ("  ");  (void)Print_string (str);
+    (void)Print_string (" [");  (void)Print_integer (min, 0);  (void)Print_string ("-");  (void)Print_integer (max, 0);
+    (void)Print_string (", ");  (void)Print_integer (value, 0);  (void)Print_string ("]: ");
     Space_to_column (COLUMN_RESPONSE);
 
     int val = Read_integer (value);
     if ((val >= min) && (val <= max)) {
-      Print_characters ("\r");
+      (void)Print_string ("\r");
       return (byte)val;
     }
 
-    Print_characters ("\a invalid\r");
+    (void)Print_string ("\a invalid\r");
   }
 }
 
 // Developer functions.
-void Developer_functions () {
+void Developer_functions (void) {
 
   run_mode = MODE_RUNNING;
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
 
   while (TRUE) {
     char cmd = Read_developer_function ();
-    if (cmd == 'k') {
+    if (cmd == 'c') {
+      Check_print_timing ();
+    } else if (cmd == 'k') {
       Measure_keyboard_timing ();
     } else if (cmd == 'p') {
       Measure_printer_timing ();
@@ -9835,17 +10031,65 @@ void Developer_functions () {
     }
   }
 
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
 }
 
-// Measure keyboard bounce.
-void Measure_keyboard_timing () {
+// Check print timing.
+void Check_print_timing (void) {
+  byte warn;
 
-  Print_characters ("\r    Not implemented yet.\r\r");
+  // Temporarily disable, code under development.  DJB
+  (void)Print_string ("\r    Not implemented yet.\r\r");
+  return;
+
+  // Initialize variables.
+  warn = warnings;
+  warnings = SETTING_TRUE;
+  Reset_warnings ();
+
+  // Check ASCII Period Graphic characters.
+  Print_composite ("CHECK_ASCII_LESS_PG", &ASCII_PRINT_LESS_PG, length / 4);
+  Print_composite ("CHECK_ASCII_GREATER_PG", &ASCII_PRINT_GREATER_PG, length / 4);
+  Print_composite ("CHECK_ASCII_BSLASH_PG", &ASCII_PRINT_BSLASH_PG, length / 4);
+  Print_composite ("CHECK_ASCII_CARET_PG", &ASCII_PRINT_CARET_PG, length / 4);
+  Print_composite ("CHECK_ASCII_BAPOSTROPHE_PG", &ASCII_PRINT_BAPOSTROPHE_PG, length / 4);
+  Print_composite ("CHECK_ASCII_LBRACE_PG", &ASCII_PRINT_LBRACE_PG, length / 4);
+  Print_composite ("CHECK_ASCII_BAR_PG", &ASCII_PRINT_BAR_PG, length / 4);
+  Print_composite ("CHECK_ASCII_RBRACE_PG", &ASCII_PRINT_RBRACE_PG, length / 4);
+  Print_composite ("CHECK_ASCII_TILDE_PG", &ASCII_PRINT_TILDE_PG, length / 4);
+
+  // Check IBM 1620 composite characters.
+  Print_composite ("CHECK_IBM_SLASH_0", &IBM_PRINT_SLASH_0, length / 4);
+  Print_composite ("CHECK_IBM_FLAG_SLASH_0", &IBM_PRINT_FLAG_SLASH_0, length / 4);
+  Print_composite ("CHECK_IBM_FLAG_DIGIT", &IBM_PRINT_FLAG_0, length / 4);
+  Print_composite ("CHECK_IBM_FLAG_NUMBLANK", &IBM_PRINT_FLAG_NUMBLANK, length / 4);
+  Print_composite ("CHECK_IBM_RMARK", &IBM_PRINT_RMARK, length / 4);
+  Print_composite ("CHECK_IBM_FLAG_RMARK", &IBM_PRINT_FLAG_RMARK, length / 4);
+  Print_composite ("CHECK_IBM_GMARK", &IBM_PRINT_GMARK, length / 4);
+  Print_composite ("CHECK_IBM_FLAG_GMARK", &IBM_PRINT_FLAG_GMARK, length / 4);
+  Print_composite ("CHECK_IBM_RELEASESTART", &IBM_PRINT_RELEASESTART, length / 4);
+  Print_composite ("CHECK_IBM_INVALID", &IBM_PRINT_INVALID, length / 4);
+
+  // Check average text.
+  // TBD
+
+  // Check random characters.
+  // TBD
+
+  // Restore variables.
+  warnings = warn;
+  Reset_warnings ();
+
+}
+
+// Measure keyboard timing.
+void Measure_keyboard_timing (void) {
+
+  (void)Print_string ("\r    Not implemented yet.\r\r");
 }
 
 // Measure printer timing.
-void Measure_printer_timing () {
+void Measure_printer_timing (void) {
   int col;
   int cnt;
   int bcnt;
@@ -9854,155 +10098,132 @@ void Measure_printer_timing () {
   unsigned long btime;
 
   // Measure typewriter buffer size.
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   delay (1000);
   time = Measure_print_timing (NULL, &WW_PRINT_a, &WW_PRINT_a, 0, 0, 0, length, FALSE, FALSE, &cnt, &scan);
-  Print_string (&WW_PRINT_CRtn);
-  Print_characters ("buffer size: ");
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string ("buffer size: ");
   buffer_size = (int)((scan * cnt + time / 2UL) / time);
-  Print_integer (buffer_size, 0);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_integer (buffer_size, 0);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
 
   // Measure null print timing.
   time = Measure_print_timing (NULL, &WW_PRINT_LShift, &WW_PRINT_LShift, 0, 0, 0, length, FALSE, FALSE, &cnt, NULL);
-  Print_characters ("TIME_NULL: ");
-  Print_integer ((int)(time / cnt), 0);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("TIME_NULL: ");
+  (void)Print_integer ((int)(time / cnt), 0);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
 
   // Measure print timing components.
   Measure_shm_timing ("TIME_MOVE", NULL, &WW_PRINT_SPACE, &WW_PRINT_SPACE,
-                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4,
-                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4, length);
+                      TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4,
+                      TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4, length);
   Measure_shm_timing ("TIME_HIT_MOVE", NULL, &WW_PRINT_a, &WW_PRINT_a,
-                      TIME_RELEASE_NOSHIFT_3 + TIME_PRESS_NOSHIFT_3,
-                      TIME_RELEASE_NOSHIFT_3 + TIME_PRESS_NOSHIFT_3, length);
-  Measure_shm_timing ("TIME_SPIN(45)_HIT_MOVE", NULL, &WW_PRINT_e, &WW_PRINT_z,
-                      TIME_RELEASE_NOSHIFT_7 + TIME_PRESS_NOSHIFT_7,
-                      TIME_RELEASE_NOSHIFT_3 + TIME_PRESS_NOSHIFT_3, length);
-  Measure_shm_timing ("TIME_SPIN(90)_HIT_MOVE", NULL, &WW_PRINT_l, &WW_PRINT_x,
-                      TIME_RELEASE_NOSHIFT_11 + TIME_PRESS_NOSHIFT_11,
-                      TIME_RELEASE_NOSHIFT_6 + TIME_PRESS_NOSHIFT_6, length);
-  Measure_shm_timing ("TIME_SPIN(135)_HIT_MOVE", NULL, &WW_PRINT_v, &WW_PRINT_2,
-                      TIME_RELEASE_NOSHIFT_8 + TIME_PRESS_NOSHIFT_8,
-                      TIME_RELEASE_NOSHIFT_6 + TIME_PRESS_NOSHIFT_6, length);
-  Measure_shm_timing ("TIME_SPIN(180)_HIT_MOVE", NULL, &WW_PRINT_m, &WW_PRINT_8,
-                      TIME_RELEASE_NOSHIFT_9 + TIME_PRESS_NOSHIFT_9,
-                      TIME_RELEASE_NOSHIFT_10 + TIME_PRESS_NOSHIFT_10, length);
+                      TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3,
+                      TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3, length);
+  Measure_shm_timing ("TIME_SPIN(12)_HIT_MOVE", NULL, &WW_PRINT_e, &WW_PRINT_z,
+                      TIME_PRESS_NOSHIFT_7 + TIME_RELEASE_NOSHIFT_7,
+                      TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3, length);
+  Measure_shm_timing ("TIME_SPIN(24)_HIT_MOVE", NULL, &WW_PRINT_l, &WW_PRINT_x,
+                      TIME_PRESS_NOSHIFT_11 + TIME_RELEASE_NOSHIFT_11,
+                      TIME_PRESS_NOSHIFT_6 + TIME_RELEASE_NOSHIFT_6, length);
+  Measure_shm_timing ("TIME_SPIN(36)_HIT_MOVE", NULL, &WW_PRINT_v, &WW_PRINT_2,
+                      TIME_PRESS_NOSHIFT_8 + TIME_RELEASE_NOSHIFT_8,
+                      TIME_PRESS_NOSHIFT_6 + TIME_RELEASE_NOSHIFT_6, length);
+  Measure_shm_timing ("TIME_SPIN(48)_HIT_MOVE", NULL, &WW_PRINT_m, &WW_PRINT_8,
+                      TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9,
+                      TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10, length);
 
   // Measure baseline time.
   btime = Measure_tab_return_timing ("TIME_BASE", 0, FALSE, 0UL, &bcnt);
 
   // Temporarily set tabs for measuring tab, carriage return, and carriage movement timing.
-  Print_string (&WW_PRINT_ClrAllX);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_TSet);
-  for (col = 2; col < ((length - bcnt) / 4); ++col) Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_TSet);
-  for (; col < ((length - bcnt) / 2); ++col) Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_TSet);
-  for (; col < (length - bcnt); ++col) Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_TSet);
-  for (; col < length; ++col) Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_TSet);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_TClrAllX);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_TSet);
+  for (col = 2; col < ((length - bcnt) / 4); ++col) (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_TSet);
+  for (; col < ((length - bcnt) / 2); ++col) (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_TSet);
+  for (; col < (length - bcnt); ++col) (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_TSet);
+  for (; col < length; ++col) (void)Print_element (&WW_PRINT_SPACE);
+  (void)Print_element (&WW_PRINT_TSet);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (10000);
 
   // Measure tab and carriage return timing.
   (void)Measure_tab_return_timing ("TIME_TAB", 1, FALSE, btime, NULL);
   (void)Measure_tab_return_timing ("TIME_RETURN", 3, TRUE, btime, NULL);
-  Print_string (&WW_PRINT_Tab);
-  Print_string (&WW_PRINT_TClr);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_Tab);
+  (void)Print_element (&WW_PRINT_TClr);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (1000);
   (void)Measure_tab_return_timing ("TIME_TAB", ((length - bcnt) / 4) - 1, FALSE, btime, NULL);
   (void)Measure_tab_return_timing ("TIME_RETURN", ((length - bcnt) / 4) + 1, TRUE, btime, NULL);
-  Print_string (&WW_PRINT_Tab);
-  Print_string (&WW_PRINT_TClr);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_Tab);
+  (void)Print_element (&WW_PRINT_TClr);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (2000);
   (void)Measure_tab_return_timing ("TIME_TAB", ((length - bcnt) / 2) - 1, FALSE, btime, NULL);
   (void)Measure_tab_return_timing ("TIME_RETURN", ((length - bcnt) / 2) + 1, TRUE, btime, NULL);
-  Print_string (&WW_PRINT_Tab);
-  Print_string (&WW_PRINT_TClr);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_Tab);
+  (void)Print_element (&WW_PRINT_TClr);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (4000);
   (void)Measure_tab_return_timing ("TIME_TAB", length - bcnt - 1, FALSE, btime, NULL);
   (void)Measure_tab_return_timing ("TIME_RETURN", length - bcnt + 1, TRUE, btime, NULL);
-  Print_string (&WW_PRINT_Tab);
-  Print_string (&WW_PRINT_TClr);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_Tab);
+  (void)Print_element (&WW_PRINT_TClr);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (8000);
   (void)Measure_tab_return_timing ("TIME_RETURN", length + 1, TRUE, btime, NULL);
 
   // Measure carriage movement timing.
   Measure_shm_timing ("TIME_SPACE", NULL, &WW_PRINT_SPACE, &WW_PRINT_SPACE,
-                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4,
-                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4, length);
+                      TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4,
+                      TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4, length);
   Measure_shm_timing ("TIME_BACKSPACE", &WW_PRINT_Tab, &WW_PRINT_Backspace, &WW_PRINT_Backspace,
-                      TIME_RELEASE_NOSHIFT_13 + TIME_PRESS_NOSHIFT_13,
-                      TIME_RELEASE_NOSHIFT_13 + TIME_PRESS_NOSHIFT_13, length);
+                      TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13,
+                      TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13, length);
   Measure_shm_timing ("TIME_BKSP1", &WW_PRINT_Tab, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
-                      TIME_RELEASE_CODE_13 + TIME_PRESS_CODE_13,
-                      TIME_RELEASE_CODE_13 + TIME_PRESS_CODE_13, length);
+                      TIME_PRESS_CODE_13 + TIME_RELEASE_CODE_13,
+                      TIME_PRESS_CODE_13 + TIME_RELEASE_CODE_13, length);
   Measure_shm_timing ("TIME_PAPER_UP_DOWN", NULL, &WW_PRINT_PaperUp, &WW_PRINT_PaperDown,
-                      TIME_RELEASE_NOSHIFT_2 + TIME_PRESS_NOSHIFT_2,
-                      TIME_RELEASE_NOSHIFT_2 + TIME_PRESS_NOSHIFT_2, length);
-  Measure_shm_timing ("TIME_UP_DOWN_ARROW", NULL, &WW_PRINT_UARROW, &WW_PRINT_DARROW,
-                      TIME_RELEASE_NOSHIFT_13 + TIME_PRESS_NOSHIFT_13,
-                      TIME_RELEASE_NOSHIFT_2 + TIME_PRESS_NOSHIFT_2, length);
-  Measure_shm_timing ("TIME_UP_DOWN_MICRO", NULL, &WW_PRINT_UMicro, &WW_PRINT_DMicro,
-                      TIME_RELEASE_CODE_2 + TIME_PRESS_CODE_2,
-                      TIME_RELEASE_CODE_2 + TIME_PRESS_CODE_2, length);
+                      TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2,
+                      TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2, length);
+  Measure_shm_timing ("TIME_UP_DOWN_ARROW", NULL, &WW_PRINT_UPARROW, &WW_PRINT_DOWNARROW,
+                      TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13,
+                      TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2, length);
+  Measure_shm_timing ("TIME_UP_DOWN_MICRO", NULL, &WW_PRINT_UpMicro, &WW_PRINT_DownMicro,
+                      TIME_PRESS_CODE_2 + TIME_RELEASE_CODE_2,
+                      TIME_PRESS_CODE_2 + TIME_RELEASE_CODE_2, length);
+
+  // Measure beep timing.
+  time = Measure_print_timing (NULL, &WW_PRINT_BEEP, &WW_PRINT_BEEP, 0, 0, 0, length, FALSE, FALSE, &cnt, &scan);
+  (void)Print_string ("TIME_BEEP: ");
+  (void)Print_integer (max((int)(time / cnt), (int)(scan / buffer_size)), 0);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (2000);
 
   // Measure printwheel jiggle timing.
   time = Measure_print_timing (NULL, &WW_PRINT_TSet, &WW_PRINT_TClr, 0, 0, 0, length, FALSE, FALSE, &cnt, &scan);
-  Print_string (&WW_PRINT_TClr);
-  Print_characters ("TIME_JIGGLE: ");
-  Print_integer (max((int)(time / cnt), (int)(scan / buffer_size)), 0);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_TClr);
+  (void)Print_string ("TIME_JIGGLE: ");
+  (void)Print_integer (max((int)(time / cnt), (int)(scan / buffer_size)), 0);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (2000);
 
   // Restore tabs and margins.
   Set_margins_tabs (FALSE);
 
-
-/*
-  // Calibrate IBM 1620 Jr. print strings.
-  if (emulation == EMULATION_IBM) {
-    Calibrate_string ("TIMING_IBM_SLASH_0", &IBM_PRINT_SLASH_0, 75);
-    Calibrate_string ("TIMING_IBM_FLAG_SLASH_0", &IBM_PRINT_FLAG_SLASH_0, 75);
-    Calibrate_string ("TIMING_IBM_FLAG_DIGIT", &IBM_PRINT_FLAG_0, 75);
-    Calibrate_string ("TIMING_IBM_FLAG_NUMBLANK", &IBM_PRINT_FLAG_NUMBLANK, 20);
-    Calibrate_string ("TIMING_IBM_RMARK", &IBM_PRINT_RMARK, 20);
-    Calibrate_string ("TIMING_IBM_FLAG_RMARK", &IBM_PRINT_FLAG_RMARK, 20);
-    Calibrate_string ("TIMING_IBM_GMARK", &IBM_PRINT_GMARK, 20);
-    Calibrate_string ("TIMING_IBM_FLAG_GMARK", &IBM_PRINT_FLAG_GMARK, 20);
-    Calibrate_string ("TIMING_IBM_RELEASESTART", &IBM_PRINT_RELEASESTART, 10);
-    Calibrate_string ("TIMING_IBM_INVALID", &IBM_PRINT_INVALID, 20);
-  }
-
-  // Calibrate ASCII Terminal print strings (Period Graphics).
-  if ((emulation == EMULATION_ASCII) && (asciiwheel == SETTING_FALSE)) {
-    Calibrate_string ("TIMING_ASCII_LESS_PG", &ASCII_PRINT_LESS_PG, 20);
-    Calibrate_string ("TIMING_ASCII_GREATER_PG", &ASCII_PRINT_GREATER_PG, 20);
-    Calibrate_string ("TIMING_ASCII_BSLASH_PG", &ASCII_PRINT_BSLASH_PG, 20);
-    Calibrate_string ("TIMING_ASCII_CARET_PG", &ASCII_PRINT_CARET_PG, 20);
-    Calibrate_string ("TIMING_ASCII_BAPOSTROPHE_PG", &ASCII_PRINT_BAPOSTROPHE_PG, 20);
-    Calibrate_string ("TIMING_ASCII_LBRACE_PG", &ASCII_PRINT_LBRACE_PG, 20);
-    Calibrate_string ("TIMING_ASCII_BAR_PG", &ASCII_PRINT_BAR_PG, 20);
-    Calibrate_string ("TIMING_ASCII_RBRACE_PG", &ASCII_PRINT_RBRACE_PG, 20);
-    Calibrate_string ("TIMING_ASCII_TILDE_PG", &ASCII_PRINT_TILDE_PG, 10);
-  }
-*/
-
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
 }
 
 // Measure column scanning.
-void Measure_column_scanning () {
+void Measure_column_scanning (void) {
 
   // Wait for the print buffer to be empty and printing finished.
   Wait_print_buffer_empty (3000);
@@ -10021,18 +10242,18 @@ void Measure_column_scanning () {
   delay (100);
 
   // Print keyboard column scan time measurements.
-  Print_string (&WW_PRINT_CRtn);
-  Print_characters ("empty column scan (min): ");
-  Print_integer ((int)minimum_scan_time, 4);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string ("empty column scan (min): ");
+  (void)Print_integer ((int)minimum_scan_time, 4);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
-  Print_characters ("empty column scan (avg): ");
-  Print_integer ((int)(total_scan_time / column_scan_count), 4);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("empty column scan (avg): ");
+  (void)Print_integer ((int)(total_scan_time / column_scan_count), 4);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
-  Print_characters ("empty column scan (max): ");
-  Print_integer ((int)maximum_scan_time, 4);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("empty column scan (max): ");
+  (void)Print_integer ((int)maximum_scan_time, 4);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
 
   // Initiate key press and release column scan time measurements.
@@ -10068,32 +10289,32 @@ void Measure_column_scanning () {
   }
   
   // Print key press and release column scan time measurements.
-  Print_string (&WW_PRINT_CRtn);
-  Print_characters ("key pressed column scan (min): ");
-  Print_integer ((int)minimum_key_pressed_scan_time, 5);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string ("key pressed column scan (min): ");
+  (void)Print_integer ((int)minimum_key_pressed_scan_time, 5);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
-  Print_characters ("key pressed column scan (avg): ");
-  Print_integer ((int)(total_key_pressed_scan_time / length), 5);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("key pressed column scan (avg): ");
+  (void)Print_integer ((int)(total_key_pressed_scan_time / length), 5);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
-  Print_characters ("key pressed column scan (max): ");
-  Print_integer ((int)maximum_key_pressed_scan_time, 5);
-  Print_string (&WW_PRINT_CRtn);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("key pressed column scan (max): ");
+  (void)Print_integer ((int)maximum_key_pressed_scan_time, 5);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
-  Print_characters ("key released column scan (min): ");
-  Print_integer ((int)minimum_key_released_scan_time, 5);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("key released column scan (min): ");
+  (void)Print_integer ((int)minimum_key_released_scan_time, 5);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
-  Print_characters ("key released column scan (avg): ");
-  Print_integer ((int)(total_key_released_scan_time / length), 5);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("key released column scan (avg): ");
+  (void)Print_integer ((int)(total_key_released_scan_time / length), 5);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
-  Print_characters ("key released column scan (max): ");
-  Print_integer ((int)maximum_key_released_scan_time, 5);
-  Print_string (&WW_PRINT_CRtn);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("key released column scan (max): ");
+  (void)Print_integer ((int)maximum_key_released_scan_time, 5);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (9000);
 
   // Initiate flood column scan time measurements.
@@ -10118,50 +10339,71 @@ void Measure_column_scanning () {
   delay (100);
 
   // Print flood column scan time measurement.
-  Print_string (&WW_PRINT_CRtn);
-  Print_string (&WW_PRINT_CRtn);
-  Print_characters ("flood column scan: ");
-  Print_integer ((int)flood_key_scan_time, 0);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string ("flood column scan: ");
+  (void)Print_integer ((int)flood_key_scan_time, 0);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
 
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
 }
 
 // Change typewriter settings.
-void Change_typewriter_settings () {
+void Change_typewriter_settings (void) {
 
-  Print_characters ("\r    Not implemented yet.\r\r");
+  (void)Print_string ("\r    Not implemented yet.\r\r");
 }
 
 // Read a developer function character.
-char Read_developer_function () {
+char Read_developer_function (void) {
   char cmd;
 
   // Print function prompt.
-  Print_characters ("  Function [keyboard/printer/scanning/typewriter/EXIT]: ");
+  (void)Print_string ("  Function [check/keyboard/printer/scanning/typewriter/EXIT]: ");
   Space_to_column (COLUMN_FUNCTION);
 
   // Read a command character.
-  cmd = Read_setup_character_from_set ("kKpPtSsTeE\r");
+  cmd = Read_setup_character_from_set ("cCkKpPtSsTeE\r");
 
   // Validate and return setup command.
-  if ((cmd == 'k') || (cmd == 'K')) {
-    Print_characters ("keyboard\r");
+  if ((cmd == 'c') || (cmd == 'C')) {
+    (void)Print_string ("composite\r");
+    return 'c';
+  } else if ((cmd == 'k') || (cmd == 'K')) {
+    (void)Print_string ("keyboard\r");
     return 'k';
   } else if ((cmd == 'p') || (cmd == 'P')) {
-    Print_characters ("printer\r");
+    (void)Print_string ("printer\r");
     return 'p';
   } else if ((cmd == 's') || (cmd == 'S')) {
-    Print_characters ("scanning\r");
+    (void)Print_string ("scanning\r");
     return 's';
   } else if ((cmd == 't') || (cmd == 'T')) {
-    Print_characters ("typewriter\r");
+    (void)Print_string ("typewriter\r");
     return 't';
   } else /* (cmd == 'e') || (cmd == 'E') || (cmd == '\r') */ {
-    Print_characters ("exit\r");
+    (void)Print_string ("exit\r");
     return 'e';
   }
+}
+
+// Print composite character.
+void Print_composite (const char *name, const struct print_info *str, int len) {
+
+  // Print title.
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string (name);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (2000);
+
+  // Print composite character.
+  for (int i = 0; i <  len; ++i) {
+    (void)Print_element (str);
+  }
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (6000);
+
 }
 
 // Measure and optionally print timing of spin, hit, and move.
@@ -10178,24 +10420,24 @@ void Measure_shm_timing (const char *name, const struct print_info *str1, const 
   int lcnt;
 
   // Print title.
-  Print_string (&WW_PRINT_CRtn);
-  Print_characters (name);
-  Print_characters (", ");
-  Print_integer (fill2, 0);
-  Print_characters (", ");
-  Print_integer (fill3, 0);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string (name);
+  (void)Print_string (", ");
+  (void)Print_integer (fill2, 0);
+  (void)Print_string (", ");
+  (void)Print_integer (fill3, 0);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (4000);
 
   // Measure and print timing.
   if (str1 != NULL) {
-    Print_string (str1);
+    (void)Print_element (str1);
     Wait_print_buffer_empty (6000);
   }
   ltime = Measure_print_timing (NULL, str2, str3, 0, pad2, pad3, len, TRUE, FALSE, &lcnt, NULL);
   Wait_print_buffer_empty (6000);
   if (str1 != NULL) {
-    Print_string (str1);
+    (void)Print_element (str1);
     Wait_print_buffer_empty (6000);
   }
   time = Measure_print_timing (NULL, str2, str3, 0, pad2 + 4000, pad3 + 4000, len, TRUE, FALSE, &cnt, &scan);
@@ -10209,7 +10451,7 @@ void Measure_shm_timing (const char *name, const struct print_info *str1, const 
     ltime = time;
     lcnt = cnt;
     if (str1 != NULL) {
-      Print_string (str1);
+      (void)Print_element (str1);
       Wait_print_buffer_empty (6000);
     }
     time = Measure_print_timing (NULL, str2, str3, 0, pad2 + pad, pad3 + pad, len, TRUE, FALSE, &cnt, &scan);
@@ -10217,40 +10459,40 @@ void Measure_shm_timing (const char *name, const struct print_info *str1, const 
     pad += 1000;
   }
   if (str1 != NULL) {
-    Print_string (str1);
+    (void)Print_element (str1);
     Wait_print_buffer_empty (6000);
   }
   (void)Measure_print_timing (NULL, str2, str3, 0, (int)((ltime / lcnt) - fill2), (int)((ltime / lcnt) - fill3), len,
                               TRUE, TRUE, NULL, NULL);
   Wait_print_buffer_empty (6000);
 
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (1000);
 }
 
 // Measure and print timing of tabs and carriage returns.
-unsigned long Measure_tab_return_timing (const char *name, int len, bool ret, unsigned long btime, int *pcnt) {
+unsigned long Measure_tab_return_timing (const char *name, int len, boolean ret, unsigned long btime, int *pcnt) {
   unsigned long time;
   unsigned long ttime;
   unsigned long rtime;
   int cnt;
 
   // Print title.
-  Print_string (&WW_PRINT_CRtn);
-  Print_characters (name);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string (name);
   if (len != 0) {
-    Print_characters ("(");
-    Print_integer (len, 0);
-    Print_characters (")");
+    (void)Print_string ("(");
+    (void)Print_integer (len, 0);
+    (void)Print_string (")");
   }
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
 
   // Make five measurements and average.
   ttime = 0UL;
   for (int i = 0; i < 5; ++i) {
     if (ret) {
-      Print_string (&WW_PRINT_Tab);
+      (void)Print_element (&WW_PRINT_Tab);
       Wait_print_buffer_empty (3000);
       time = Measure_print_timing (&WW_PRINT_CRtn, &WW_PRINT_m, &WW_PRINT_8, 0, 0, 0, length, FALSE, FALSE, &cnt, NULL);
     } else if (btime != 0UL) {
@@ -10266,9 +10508,9 @@ unsigned long Measure_tab_return_timing (const char *name, int len, bool ret, un
     rtime = (ttime / 5UL) - (cnt * btime);
   }
 
-  Print_characters ("time: ");
-  Print_integer ((int)rtime, 0);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_string ("time: ");
+  (void)Print_integer ((int)rtime, 0);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (2000);
 
   // Return results.
@@ -10278,8 +10520,8 @@ unsigned long Measure_tab_return_timing (const char *name, int len, bool ret, un
 
 // Measure timing of a print sequence.
 unsigned long Measure_print_timing (const struct print_info *str1, const struct print_info *str2,
-                                    const struct print_info *str3, int pad1, int pad2, int pad3, int len, bool print,
-                                    bool force, int *pcnt, int *pscan) {
+                                    const struct print_info *str3, int pad1, int pad2, int pad3, int len, boolean print,
+                                    boolean force, int *pcnt, int *pscan) {
   struct print_info tstr1;
   struct print_info tstr2;
   struct print_info tstr3;
@@ -10295,20 +10537,27 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   // Initialize variables.
   if (str1 != NULL) {
     tstr1 = *str1;
+    if (tstr1.spacing == SPACING_TAB) tstr1.spacing = SPACING_TABX;
+    if (tstr1.spacing == SPACING_RETURN) tstr1.spacing = SPACING_RETURNX;
+    tstr1.position = POSITION_NOCHANGE;
     tstr1.timing = pad1;
   }
   tstr2 = *str2;
+  if (tstr2.spacing == SPACING_TAB) tstr2.spacing = SPACING_TABX;
+  if (tstr2.spacing == SPACING_RETURN) tstr2.spacing = SPACING_RETURNX;
+  tstr2.position = POSITION_NOCHANGE;
   tstr2.timing = pad2;
   tstr3 = *str3;
+  if (tstr3.spacing == SPACING_TAB) tstr3.spacing = SPACING_TABX;
+  if (tstr3.spacing == SPACING_RETURN) tstr3.spacing = SPACING_RETURNX;
+  tstr3.position = POSITION_NOCHANGE;
   tstr3.timing = pad3;
   warn = warnings;
   warnings = SETTING_TRUE;
-  warning_counts[WARNING_LONG_SCAN] = 0;
-  total_warnings = 0;
-  digitalWriteFast (BLUE_LED_PIN, blue_led_off);
+  Reset_warnings ();
 
   // Set initial position of printwheel.
-  Print_string ((const struct print_info *)(&tstr2));
+  (void)Print_element ((const struct print_info *)(&tstr2));
   Wait_print_buffer_empty (1000);
 
   // Load print string into buffer.
@@ -10318,16 +10567,16 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   Update_counter (&pb_count, +1);
   residual_time = 0;
   if (str1 != NULL) {
-    Print_string ((const struct print_info *)(&tstr1));
+    (void)Print_element ((const struct print_info *)(&tstr1));
   }
   for (int i = 1; i <  len; ++i) {
     print_buffer[pb_write] = WW_COUNT;
     if (++pb_write >= SIZE_PRINT_BUFFER) pb_write = 0;
     Update_counter (&pb_count, +1);
     if ((i % 2) == 0) {
-      Print_string ((const struct print_info *)(&tstr2));
+      (void)Print_element ((const struct print_info *)(&tstr2));
     } else {
-      Print_string ((const struct print_info *)(&tstr3));
+      (void)Print_element ((const struct print_info *)(&tstr3));
     }
   }
 
@@ -10346,38 +10595,36 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   cnt = print_character_count;
   scan = 1000 * longest_scan_duration;
   digitalWriteFast (BLUE_LED_PIN, blue_led_off);
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
 
   // Print timing results.
   if (print) {
-    Print_integer (pad1, 0);
-    Print_characters (", ");
-    Print_integer (pad2, 0);
-    Print_characters (", ");
-    Print_integer (pad3, 0);
-    Print_characters (", ");
-    Print_integer (cnt, 0);
-    Print_characters (", ");
-    Print_integer ((int)(time / cnt), 0);
-    Print_characters (", ");
-    Print_integer (scan / buffer_size, 0);
+    (void)Print_integer (pad1, 0);
+    (void)Print_string (", ");
+    (void)Print_integer (pad2, 0);
+    (void)Print_string (", ");
+    (void)Print_integer (pad3, 0);
+    (void)Print_string (", ");
+    (void)Print_integer (cnt, 0);
+    (void)Print_string (", ");
+    (void)Print_integer ((int)(time / cnt), 0);
+    (void)Print_string (", ");
+    (void)Print_integer (scan / buffer_size, 0);
     if ((scan != 0) || force) {
-      Print_characters (", ");
+      (void)Print_string (", ");
       cps = (int)((10000000UL * cnt + time / 2UL) / time);
-      Print_integer (cps / 10, 0);
-      Print_characters (".");
-      Print_integer (cps % 10, 0);
+      (void)Print_integer (cps / 10, 0);
+      (void)Print_string (".");
+      (void)Print_integer (cps % 10, 0);
     }
-    Print_string (&WW_PRINT_CRtn);
+    (void)Print_element (&WW_PRINT_CRtn);
     Wait_print_buffer_empty (3000);
   }
 
-  // Restore variables.
+  // Reset warnings.
   warnings = warn;
-  warning_counts[WARNING_LONG_SCAN] = 0;
-  total_warnings = 0;
-  digitalWriteFast (BLUE_LED_PIN, blue_led_off);
+  Reset_warnings ();
 
   // Return results.
   if (pcnt != NULL) *pcnt = cnt;
@@ -10385,59 +10632,71 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   return time;
 }
 
+// Reset all errors.
+inline void Reset_errors (void) {
+
+  total_errors = 0;
+  memset ((void *)error_counts, 0, sizeof(error_counts));
+  digitalWriteFast (ORANGE_LED_PIN, LOW);
+}
+
+// Reset all warnings.
+inline void Reset_warnings (void) {
+
+  total_warnings = 0;
+  memset ((void *)warning_counts, 0, sizeof(warning_counts));
+  digitalWriteFast (BLUE_LED_PIN, blue_led_off);
+}
+
 // Print errors and warnings.
-void Print_errors_warnings () {
+void Print_errors_warnings (void) {
 
   // Handle no errors or warnings.
   if ((total_errors == 0) && (total_warnings == 0)) {
-    Print_characters ("\r  No errors or warnings.\r\r");
+    (void)Print_string ("\r  No errors or warnings.\r\r");
     return;
   }
 
   // Print errors.
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   if (total_errors > 0) {
     for (int i = 0; i < NUM_ERRORS; ++i) {
       if (error_counts[i] > 0) {
-        Print_integer (error_counts[i], 8);
-        Print_string (&WW_PRINT_SPACE);
-        Print_characters (error_text[i]);
-        Print_string (&WW_PRINT_CRtn);
+        (void)Print_integer (error_counts[i], 8);
+        (void)Print_element (&WW_PRINT_SPACE);
+        (void)Print_string (error_text[i]);
+        (void)Print_element (&WW_PRINT_CRtn);
       }
     }
     if (Ask_yesno_question ("\rReset errors", FALSE)) {
-      total_errors = 0;
-      memset ((void *)error_counts, 0, sizeof(error_counts));
-      digitalWriteFast (ORANGE_LED_PIN, LOW);
-      }
+      Reset_errors ();
+    }
   } else {
-    Print_characters ("  No errors.\r");
+    (void)Print_string ("  No errors.\r");
   }
 
   // Print warnings.
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
   if (total_warnings > 0) {
     for (int i = 0; i < NUM_WARNINGS; ++i) {
       if (warning_counts[i] > 0) {
-        Print_integer (warning_counts[i], 8);
-        Print_string (&WW_PRINT_SPACE);
-        Print_characters (warning_text[i]);
-        Print_string (&WW_PRINT_CRtn);
+        (void)Print_integer (warning_counts[i], 8);
+        (void)Print_element (&WW_PRINT_SPACE);
+        (void)Print_string (warning_text[i]);
+        (void)Print_element (&WW_PRINT_CRtn);
       }
     }
     if (Ask_yesno_question ("\rReset warnings", FALSE)) {
-      total_warnings = 0;
-      memset ((void *)warning_counts, 0, sizeof(warning_counts));
-      digitalWriteFast (BLUE_LED_PIN, blue_led_off);
+      Reset_warnings ();
     }
   } else {
-    Print_characters ("  No warnings.\r");
+    (void)Print_string ("  No warnings.\r");
   }
-  Print_string (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
 }
 
 // Read a setup character.
-byte Read_setup_character () {
+byte Read_setup_character (void) {
 
   while (cb_count == 0) delay (1);
   byte chr = command_buffer[cb_read];
@@ -10457,7 +10716,7 @@ byte Read_setup_character_from_set (const char *charset) {
     if (strchr (charset, chr)) {
       return chr;
     } else {
-      Print_string (&WW_PRINT_BEEP);
+      (void)Print_element (&WW_PRINT_BEEP);
     }
   }
 }
@@ -10467,13 +10726,13 @@ void Space_to_column (int col) {
 
   if ((col >= 1) && (col <= length)) {
     while (current_column < col) {
-      Print_string (&WW_PRINT_SPACE);
+      (void)Print_element (&WW_PRINT_SPACE);
     }
   }
 }
 
 // Open serial communications port.
-void Serial_begin () {
+void Serial_begin (void) {
 
   if (serial == SERIAL_USB) {
 
@@ -10531,7 +10790,7 @@ void Serial_end (byte port) {
 }
 
 // Test character available on serial communication port.
-inline boolean Serial_available () {
+inline boolean Serial_available (void) {
 
   if (serial == SERIAL_USB) {
     return Serial.available ();
@@ -10545,7 +10804,7 @@ inline boolean Serial_available () {
 }
 
 // Read serial communication port.
-inline byte Serial_read () {
+inline byte Serial_read (void) {
 
   if (serial == SERIAL_USB) {
     return Serial.read ();
@@ -10593,7 +10852,7 @@ int Serial_write (byte chr) {
 }
 
 // Send now to serial communication port.
-inline void Serial_send_now () {
+inline void Serial_send_now (void) {
 
   if (serial == SERIAL_USB) {
     Serial.send_now ();
