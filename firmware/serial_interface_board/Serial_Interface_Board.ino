@@ -1379,7 +1379,7 @@
   #define TIME_HMOVE            48000
   #define TIME_HMOVE_MICRO      46000
   #define TIME_VMOVE           147000
-  #definr TIME_VMOVE_HALF      103000
+  #define TIME_VMOVE_HALF      103000
   #define TIME_VMOVE_MICRO      63000
   #define TIME_BEEP            180000
   #define TIME_JIGGLE          230000
