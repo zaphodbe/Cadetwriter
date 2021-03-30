@@ -19,8 +19,8 @@
 //                      SlowSoftSerial library (https://github.com/MustBeArt/SlowSoftSerial).
 //                      Compile options - Teensy 3.5, USB Serial, 120 MHz, Fastest with LTO.
 //
-//  Memory:             81172 bytes (15%) of program storage space.
-//                      109188 bytes (41%) of dynamic memory for global variables.
+//  Memory:             98240 bytes (18%) of program storage space.
+//                      108652 bytes (41%) of dynamic memory for global variables.
 //
 //  Documentation:      IBM 1620 Jr. Console Typewriter Protocol, version 1.10, 5/24/2019.
 //                      IBM 1620 Jr. Console Typewriter Test Program, version 1.10, 5/24/2019.
@@ -28,7 +28,7 @@
 //
 //  Authors:            Dave Babcock, Joe Fredrick, Paul Williamson
 //
-//  Copyright:          Copyright(C) 2019-2020 Dave Babcock, Joe Fredrick, Paul Williamson
+//  Copyright:          Copyright(C) 2019-2021 Dave Babcock, Joe Fredrick, Paul Williamson
 //
 //  License:            This program is free software: you can redistribute it and/or modify it under the terms of the
 //                      GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -93,6 +93,10 @@
 //                                           Warning:  The 20cps timing isn't calibrated yet.  No characters are lost,
 //                                                     but the firmware drives the print mechanism too fast and there is
 //                                                     lots of beeping.
+//                      6R0    2/4/2021  Developed new Spin-Hit-Move (SHM) printer timing model.
+//                                       Added developer column scan timing measurements and rewrote printer timing.
+//                                       Added configuration setting for ASCII printwheel (#1353909).
+//                                       Updated timings for 20cps print mechanism from Chris Coley.
 //
 //  Future ideas:       1. Support other Wheelwriter models.
 //
@@ -112,6 +116,8 @@
 //                      7. Add a keyboard key which aborts current printout and flushes print & input buffers.
 //
 //                      8. Translate common Unicode characters (e.g., curly quotes) to nearest ASCII equivalents.
+//
+//                      9. Add stand-alone BASIC and FORTH interpreters.
 //
 //======================================================================================================================
 
@@ -231,9 +237,9 @@
 //                 *  If a key in this column had been pressed but has been released since the last scan, then the scan
 //                    takes 3.68 milliseconds.
 //
-//                 There are two exceptions to these column times:
+//                 There are two exceptions to these column scan times:
 //                 *  If the typewriter's character buffer is full, then the current column scan will be lengthened up
-//                    to 2 seconds to allow printing to catch up.
+//                    to 3.5 seconds until printing fully catches up.
 //                 *  If the typewriter's logic board deems that too many vertical carriage movements and/or backspaces
 //                    have happened, then it stretches the current scan up to 5.1 seconds.  Exact details of the
 //                    conditions that trigger this slowdown are not known.
@@ -368,12 +374,12 @@
 //             The Teensy-based Serial Interface Board is capable of pumping print codes into the logic board much
 //             faster than they can be printed.  The Wheelwriter has a small, 32 character buffer which can fill
 //             quickly.  When it is almost full, the typewriter beeps three times.  When it is full, the logic board
-//             stretches the current column scan pulse by as much as 2 seconds, stalling "keyboard" input while the
-//             print mechanism catches up.  This is a safe thing to do as a stand-alone typewriter, but as a computer
-//             terminal it can cause loss of input data from the actual keyboard.  This firmware tries hard to keep from
-//             filling the typewriter's buffer by carefully balancing the time it takes to print a character and the
-//             total column scan time that it takes to assert the row drive lines for all of the character's print
-//             codes.
+//             stretches the current column scan pulse by as much as 3.5 seconds, stalling "keyboard" input until the
+//             print mechanism fully catches up.  This is a safe thing to do as a stand-alone typewriter, but as a
+//             computer terminal it can cause loss of input data from the actual keyboard.  This firmware tries hard to
+//             keep from filling the typewriter's buffer by carefully balancing the time it takes to print a character
+//             and the total column scan time that it takes to assert the row drive lines for all of the character's
+//             print codes.
 //
 //             There are several types of "characters" that can be printed:
 //             *  Standard typewriter characters which are present on the printwheel, such as 'A' or '$'.  These need
@@ -410,7 +416,7 @@
 //             *  To avoid ghosting of the fake key presses, the left shift key is used with most shifted symbols, but
 //                the right shift key is used for the B, N, and ? character.  Note that ghosting cannot be avoided with
 //                the Word, Required Space, Bold, Caps, left Word, or delete Word characters, but the typewriter's
-//                logic board can deal with these cases.
+//                logic board seems to deal with these cases correctly.
 //
 //             Here are the print codes, timing, and scan schedule for printing an 'm':
 //               Print codes:  WW_m_M, WW_NULL_9, WW_NULL_14, WW_NULL
@@ -514,6 +520,12 @@
 //                          .     .       .
 //                         .       .     . .
 //                          .     .
+//
+//                    Note:  1.5 years after period graphics were created, a special, limited-edition IBM printwheel
+//                           (#1353909) was found that contains the entire printable ASCII character set.  Using this
+//                           wheel, all characters print cleanly at full speed and period graphic characters aren't
+//                           needed.  A configuration setting controls whether native or period graphic ASCII characters
+//                           are printed.
 //
 //                    A third approach is to substitute an unused, but available character for a needed one.  This was
 //                    done at first for some of the missing ASCII characters, but quickly replaced with period graphic
@@ -679,6 +691,7 @@
 //                  (RS-232 only).  Initial value = 8N1.
 //               *  Software flow control setting (NONE, XON_XOFF) of the ASCII Terminal.  Initial value = XON_XOFF.
 //               *  Hardware flow control setting (NONE, RTS_CTS, RTR_CTS) of the ASCII Terminal.  Initial value = NONE.
+//               *  ASCII printwheel setting (TRUE, FALSE) of the ASCII Terminal.  Initial value = FALSE;
 //               *  Uppercase only setting (TRUE, FALSE) of the ASCII Terminal.  Initial value = FALSE.
 //               *  Auto return setting (TRUE, FALSE) of the ASCII Terminal.  Initial value = TRUE.
 //               *  Transmit EOL setting (EOL_CR, EOL_CRLF, EOL_LF, EOL_LFCR) of the ASCII TERMINAL.
@@ -921,8 +934,8 @@
 //**********************************************************************************************************************
 
 // Firmware version values.
-#define VERSION       60
-#define VERSION_TEXT  "5R10" FEATURE_VERSION_SUFFIX
+#define VERSION       61
+#define VERSION_TEXT  "6R0beta2" FEATURE_VERSION_SUFFIX
 
 #define VERSION_ESCAPEOFFSET_CHANGED  60  // Version when escape sequences and line offset changed.
 
@@ -1045,7 +1058,7 @@
 #define WW_COLUMN_14    0x0e  // <back X>, <back word>, Lock, R Mar, Tab, IndL, Mar Rel, RePrt, T Set
 
 // Wheelwriter row values.
-#define WW_ROW_NULL  0X00  // Null row.
+#define WW_ROW_NULL  0x00  // Null row.
 #define WW_ROW_1     0x01  // <left shift>, <right arrow>, <right word>, <space>, <required space>, Code, b, B, Bold, n,
                            // N, Caps, /, ?, <left arrow>, <left word>, <back X>, <back word>
 #define WW_ROW_2     0x02  // <right shift>, z, Z, <load paper>, x, X, <power wise>, c, C, Ctr, v, V, m, M, ,, .,
@@ -1159,6 +1172,7 @@
 #define WW_NULL_12   (WW_COLUMN_12 << 4)  // Column 12 null print code.
 #define WW_NULL_13   (WW_COLUMN_13 << 4)  // Column 13 null print code.
 #define WW_NULL_14   (WW_COLUMN_14 << 4)  // Column 14 null print code.
+#define WW_COUNT     0xfd                 // Count character when timing printer.
 #define WW_CATCH_UP  0xfe                 // Wait for printing to catch up.
 #define WW_SKIP      0xff                 // Skip print code.
 
@@ -1174,6 +1188,8 @@
 #define WW_q_Q_Impr                    (WW_NULL_3 | WW_ROW_4)   // q, Q, Impr print code.
 #define WW_1_EXCLAMATION_Spell         (WW_NULL_3 | WW_ROW_5)   // 1, !, Spell print code.
 #define WW_PLUSMINUS_DEGREE            (WW_NULL_3 | WW_ROW_6)   // +/-, <degree> print code.
+#define WW_BAPOSTROPHE_APW             (WW_NULL_3 | WW_ROW_6)   // ` print code (ASCII PrintWheel).
+#define WW_TILDE_APW                   (WW_NULL_3 | WW_ROW_6)   // ~ print code (ASCII PrintWheel).
 #define WW_a_A                         (WW_NULL_3 | WW_ROW_7)   // a, A print code.
 #define WW_SPACE_REQSPACE              (WW_NULL_4 | WW_ROW_1)   // <space>, <required space> print code.
 #define WW_LOADPAPER                   (WW_NULL_4 | WW_ROW_2)   // <load paper> print code.
@@ -1202,10 +1218,12 @@
 #define WW_u_U_Cont                    (WW_NULL_9 | WW_ROW_4)   // u, U, Cont print code.
 #define WW_7_AMPERSAND                 (WW_NULL_9 | WW_ROW_5)   // 7, & print code.
 #define WW_6_CENT                      (WW_NULL_9 | WW_ROW_6)   // 6, <cent> print code.
+#define WW_CARET_APW                   (WW_NULL_9 | WW_ROW_6)   // ^ print code (ASCII PrintWheel).
 #define WW_j_J                         (WW_NULL_9 | WW_ROW_7)   // j, J print code.
 #define WW_h_H_12DOWN                  (WW_NULL_9 | WW_ROW_8)   // h, H, <1/2 down> print code.
 #define WW_COMMA_COMMA                 (WW_NULL_10 | WW_ROW_2)  // ,, , print code.
 #define WW_RBRACKET_LBRACKET_SUPER3    (WW_NULL_10 | WW_ROW_3)  // ], [, <superscript 3> print code.
+#define WW_BSLASH_APW                  (WW_NULL_10 | WW_ROW_3)  // \ print code (ASCII PrintWheel).
 #define WW_i_I_Word                    (WW_NULL_10 | WW_ROW_4)  // i, I, Word print code.
 #define WW_8_ASTERISK                  (WW_NULL_10 | WW_ROW_5)  // 8, * print code.
 #define WW_EQUAL_PLUS                  (WW_NULL_10 | WW_ROW_6)  // =, + print code.
@@ -1216,11 +1234,16 @@
 #define WW_l_L_Lang                    (WW_NULL_11 | WW_ROW_7)  // l, L, Lang print code.
 #define WW_SLASH_QUESTION              (WW_NULL_12 | WW_ROW_1)  // /, ? print code.
 #define WW_HALF_QUARTER_SUPER2         (WW_NULL_12 | WW_ROW_3)  // <half>, <quarter>, <superscript 2> print code.
+#define WW_RBRACE_APW                  (WW_NULL_12 | WW_ROW_3)  // } print code (ASCII PrintWheel).
+#define WW_LBRACE_APW                  (WW_NULL_12 | WW_ROW_3)  // { print code (ASCII PrintWheel).
+#define WW_BAR_APW                     (WW_NULL_12 | WW_ROW_3)  // | print code (ASCII PrintWheel).
 #define WW_p_P                         (WW_NULL_12 | WW_ROW_4)  // p, P print code.
 #define WW_0_RPAREN                    (WW_NULL_12 | WW_ROW_5)  // 0, ) print code.
 #define WW_HYPHEN_UNDERSCORE           (WW_NULL_12 | WW_ROW_6)  // -, _ print code.
 #define WW_SEMICOLON_COLON_SECTION     (WW_NULL_12 | WW_ROW_7)  // :, :, <section> print code.
+#define WW_LESS_APW                    (WW_NULL_12 | WW_ROW_7)  // < print code (ASCII PrintWheel).
 #define WW_APOSTROPHE_QUOTE_PARAGRAPH  (WW_NULL_12 | WW_ROW_8)  // ', ", <paragraph> print code.
+#define WW_GREATER_APW                 (WW_NULL_12 | WW_ROW_8)  // > print code (ASCII PrintWheel).
 #define WW_LARROW_Word                 (WW_NULL_13 | WW_ROW_1)  // <left arrow>, <left word> print code.
 #define WW_UARROW_Line                 (WW_NULL_13 | WW_ROW_2)  // <up arrow>, <up line> print code.
 #define WW_Backspace_Bksp1             (WW_NULL_13 | WW_ROW_6)  // Backspace, Bksp 1 print code.
@@ -1242,6 +1265,7 @@
 #define LONG_SCAN_DURATION   25UL  // Threshold time for Wheelwriter long scans.
 
 // Keyboard scan timing values (in usec).
+#define CSCAN_MINIMUM     100                                       // Minimum time for column scan to be counted.
 #define CSCAN_NO_CHANGE   820                                       // Time for column scan with no key change.
 #define CSCAN_CHANGE     3680                                       // Time for column scan with a key change.
 #define FSCAN_0_CHANGES  (14 * CSCAN_NO_CHANGE)                     // Time for full scan with 0 key changes.
@@ -1260,41 +1284,43 @@
 #define ACTION_NONE          0x00      // No action.
 #define ACTION_SEND          0x01      // Send a character action.
 #define ACTION_PRINT         0x02      // Print a character action.
-#define ACTION_COMMAND       0x04      // Process a command character action.
-#define ACTION_MASK          0xf8      // Action mask.
+#define ACTION_PRINT_SPECIAL 0x04      // Print a special character action.
+#define ACTION_COMMAND       0x08      // Process a command character action.
+#define ACTION_MASK          0xf0      // Action mask.
 
-#define ACTION_IBM_MODE_0    (1 << 3)  // IBM 1620 Jr. Mode 0 action.
-#define ACTION_IBM_MODE_1    (2 << 3)  // IBM 1620 Jr. Mode 1 action.
-#define ACTION_IBM_MODE_1F   (3 << 3)  // IBM 1620 Jr. Mode 1 flag action.
-#define ACTION_IBM_MODE_2    (4 << 3)  // IBM 1620 Jr. Mode 2 action.
-#define ACTION_IBM_MODE_3    (5 << 3)  // IBM 1620 Jr. Mode 3 action.
-#define ACTION_IBM_SETUP     (6 << 3)  // IBM 1620 Jr. setup action.
+#define ACTION_IBM_MODE_0    (1 << 4)  // IBM 1620 Jr. Mode 0 action.
+#define ACTION_IBM_MODE_1    (2 << 4)  // IBM 1620 Jr. Mode 1 action.
+#define ACTION_IBM_MODE_1F   (3 << 4)  // IBM 1620 Jr. Mode 1 flag action.
+#define ACTION_IBM_MODE_2    (4 << 4)  // IBM 1620 Jr. Mode 2 action.
+#define ACTION_IBM_MODE_3    (5 << 4)  // IBM 1620 Jr. Mode 3 action.
+#define ACTION_IBM_SETUP     (6 << 4)  // IBM 1620 Jr. setup action.
 
-#define ACTION_ASCII_RETURN  (7 << 3)  // ASCII Terminal return action.
-#define ACTION_ASCII_SETUP   (8 << 3)  // ASCII Terminal setup action.
+#define ACTION_ASCII_RETURN  (7 << 4)  // ASCII Terminal return action.
+#define ACTION_ASCII_SETUP   (8 << 4)  // ASCII Terminal setup action.
 
-#define ACTION_FUTURE_SETUP  (9 << 3)  // Future setup action.
+#define ACTION_FUTURE_SETUP  (9 << 4)  // Future setup action.
 
 // Serial input actions.
 #define CMD_NONE           0  // No action.
 #define CMD_PRINT          1  // Print character action.
+#define CMD_PRINT_SPECIAL  2  // Print special character action.
 
-#define CMD_IBM_MODE_0     2  // Set mode 0 IBM 1620 Jr. action.
-#define CMD_IBM_MODE_1     3  // Set mode 1 IBM 1620 Jr. action.
-#define CMD_IBM_MODE_2     4  // Set mode 2 IBM 1620 Jr. action.
-#define CMD_IBM_MODE_3     5  // Set mode 3 IBM 1620 Jr. action.
-#define CMD_IBM_PING       6  // Ping IBM 1620 Jr. action.
-#define CMD_IBM_ACK        7  // Ack IBM 1620 Jr. action.
-#define CMD_IBM_SLASH      8  // Slash zeroes IBM 1620 Jr. action.
-#define CMD_IBM_UNSLASH    9  // Unslash zeroes IBM 1620 Jr. action.
-#define CMD_IBM_RESET     10  // Reset IBM 1620 Jr. action.
-#define CMD_IBM_PAUSE     11  // Pause IBM 1620 Jr. action.
-#define CMD_IBM_RESUME    12  // Resume IBM 1620 Jr. action.
+#define CMD_IBM_MODE_0     3  // Set mode 0 IBM 1620 Jr. action.
+#define CMD_IBM_MODE_1     4  // Set mode 1 IBM 1620 Jr. action.
+#define CMD_IBM_MODE_2     5  // Set mode 2 IBM 1620 Jr. action.
+#define CMD_IBM_MODE_3     6  // Set mode 3 IBM 1620 Jr. action.
+#define CMD_IBM_PING       7  // Ping IBM 1620 Jr. action.
+#define CMD_IBM_ACK        8  // Ack IBM 1620 Jr. action.
+#define CMD_IBM_SLASH      9  // Slash zeroes IBM 1620 Jr. action.
+#define CMD_IBM_UNSLASH   10  // Unslash zeroes IBM 1620 Jr. action.
+#define CMD_IBM_RESET     11  // Reset IBM 1620 Jr. action.
+#define CMD_IBM_PAUSE     12  // Pause IBM 1620 Jr. action.
+#define CMD_IBM_RESUME    13  // Resume IBM 1620 Jr. action.
 
-#define CMD_ASCII_CR      13  // CR action.
-#define CMD_ASCII_LF      14  // LF action.
-#define CMD_ASCII_XON     15  // XON ASCII Terminal action.
-#define CMD_ASCII_XOFF    16  // XOFF ASCII Terminal action.
+#define CMD_ASCII_CR      14  // CR action.
+#define CMD_ASCII_LF      15  // LF action.
+#define CMD_ASCII_XON     16  // XON ASCII Terminal action.
+#define CMD_ASCII_XOFF    17  // XOFF ASCII Terminal action.
 
 // Type run modes.
 #define MODE_INITIALIZING        0  // Typewriter is initializing.
@@ -1316,6 +1342,130 @@
 #define SPACING_TSET       8  // No horizontal movement, set tab.
 #define SPACING_TCLR       9  // No horizontal movement, clear tab.
 #define SPACING_CLRALL    10  // No horizontal movement, clear all tabs.
+
+// Printer timing values for Spin-Hit-Move model (in usec).
+#define TIME_PRESS_MIN    FSCAN_1_CHANGE
+#define TIME_PRESS_MAX    (2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_MIN  FSCAN_1_CHANGE
+#define TIME_RELEASE_MAX  (FSCAN_1_CHANGE + FSCAN_2_CHANGES)
+
+/* DJB
+#if FEATURE_20CPS
+  #define TIME_NULL                ??
+  #define TIME_SPIN_MIN            ??
+  #define TIME_SPIN_MAX            ??
+  #define TIME_SPIN_FACTOR         ??
+  #define TIME_HIT                 ??
+  #define TIME_MOVE                ??
+  #define TIME_TAB_OFFSET          ??
+  #define TIME_TAB_FACTOR          ??
+  #define TIME_RETURN_OFFSET       ??
+  #define TIME_RETURN_FACTOR       ??
+  #define TIME_HMOVE               ??
+  #define TIME_HMOVE_MICRO         ??
+  #define TIME_VMOVE               ??
+  #define TIME_VMOVE_MICRO         ??
+  #define TIME_JIGGLE              ??
+  #define TIME_LOADPAPER           ??
+#else
+  #define TIME_NULL             29000
+  #define TIME_SPIN_MIN             0
+  #define TIME_SPIN_MAX         45000
+  #define TIME_SPIN_FACTOR        250
+  #define TIME_HIT               2500
+  #define TIME_MOVE             59000
+  #define TIME_TAB_OFFSET      195000
+  #define TIME_TAB_FACTOR        5500
+  #define TIME_RETURN_OFFSET   195000
+  #define TIME_RETURN_FACTOR     5500
+  #define TIME_HMOVE            59000
+  #define TIME_HMOVE_MICRO      58000
+  #define TIME_VMOVE           147000
+  #define TIME_VMOVE_MICRO      63000
+  #define TIME_JIGGLE          230000
+  #define TIME_LOADPAPER      3000000
+#endif
+DJB */
+
+#define TIME_PRESS_NOSHIFT_1   (                       CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_2   (     CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_3   ( 2 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_4   ( 3 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_6   ( 5 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_7   ( 6 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_8   ( 7 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_9   ( 8 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_10  ( 9 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_11  (10 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_12  (11 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_13  (12 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+#define TIME_PRESS_NOSHIFT_14  (13 * CSCAN_NO_CHANGE + CSCAN_CHANGE)
+
+#define TIME_RELEASE_NOSHIFT_1   (13 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_2   (12 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_3   (11 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_4   (10 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_6   ( 8 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_7   ( 7 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_8   ( 6 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_9   ( 5 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_10  ( 4 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_11  ( 3 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_12  ( 2 * CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_13  (     CSCAN_NO_CHANGE + FSCAN_1_CHANGE)
+#define TIME_RELEASE_NOSHIFT_14  (                       FSCAN_1_CHANGE)
+
+#define TIME_PRESS_SHIFT_2   (                     + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_3   (     CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_4   ( 2 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_6   ( 4 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_7   ( 5 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_8   ( 6 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_9   ( 7 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_10  ( 8 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_11  ( 9 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_12  (10 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_13  (11 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_SHIFT_14  (12 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+
+#define TIME_RELEASE_SHIFT_2   (12 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_3   (11 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_4   (10 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_6   ( 8 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_7   ( 7 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_8   ( 6 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_9   ( 5 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_10  ( 4 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_11  ( 3 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_12  ( 2 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_13  (     CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_SHIFT_14  (                       2 * FSCAN_1_CHANGE)
+
+#define TIME_PRESS_CODE_2   (14 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_3   (15 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_4   (16 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_6   ( 4 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_7   ( 5 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_8   ( 6 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_9   ( 7 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_10  ( 8 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_11  ( 9 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_12  (10 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_13  (11 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+#define TIME_PRESS_CODE_14  (12 * CSCAN_NO_CHANGE + 2 * CSCAN_CHANGE)
+
+#define TIME_RELEASE_CODE_2   (12 * CSCAN_NO_CHANGE +     FSCAN_2_CHANGES)
+#define TIME_RELEASE_CODE_3   (11 * CSCAN_NO_CHANGE +     FSCAN_2_CHANGES)
+#define TIME_RELEASE_CODE_4   (10 * CSCAN_NO_CHANGE +     FSCAN_2_CHANGES)
+#define TIME_RELEASE_CODE_6   ( 8 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_7   ( 7 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_8   ( 6 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_9   ( 5 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_10  ( 4 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_11  ( 3 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_12  ( 2 * CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_13  (     CSCAN_NO_CHANGE + 2 * FSCAN_1_CHANGE)
+#define TIME_RELEASE_CODE_14  (                       2 * FSCAN_1_CHANGE)
 
 // Print string timing values (in usec).
 #if FEATURE_20CPS
@@ -1364,6 +1514,9 @@
 #define TIMING_RETURN     (- TIME_RETURN)                 // Residual time for return print character, full line.
 #define TIMING_LOADPAPER  (POSITIVE(TIME_LOADPAPER - (2 * FSCAN_1_CHANGE)))
                                                           // Residual time for a load paper.
+
+// Printer timing measurement values.
+#define PRINTER_TIMING_MAX_PAD      40000  // Maximum pad value.
 
 // ISR values.
 #define ISR_DELAY  20  // ISR delay (in usec) before reading column lines.
@@ -1458,6 +1611,7 @@
 #define EEPROM_RECEIVEEOL     31  // EEPROM location of receive end-of-line setting byte.        Used by ASCII Terminal.
 #define EEPROM_ESCAPESEQUENCE 32  // EEPROM location of escape sequence setting byte.            Used by ASCII Terminal.
 #define EEPROM_UPPERCASE      33  // EEPROM location of uppercase only setting byte.             Used by ASCII Terminal.
+#define EEPROM_ASCIIWHEEL     34  // EEPROM location of ASCII printwheel setting byte.           Used by ASCII Terminal.
 
 #define EEPROM_TABS          100  // EEPROM location of tab table bytes [200].                   Used by all emulations.
 
@@ -1609,6 +1763,7 @@
 #define INITIAL_DPS             DPS_8N1          // Databits, parity, stopbits.
 #define INITIAL_SWFLOW          SWFLOW_XON_XOFF  // Software flow control.
 #define INITIAL_HWFLOW          HWFLOW_NONE      // Hardware flow control.
+#define INITIAL_ASCIIWHEEL      SETTING_FALSE    // ASCII printwheel.
 #define INITIAL_UPPERCASE       SETTING_FALSE    // Uppercase only.
 #define INITIAL_AUTORETURN      SETTING_TRUE     // Auto return.
 #define INITIAL_TRANSMITEOL     EOL_CR           // Send end-of-line.
@@ -1620,6 +1775,7 @@
 #define INITIAL_ASCII_OFFSET    1                // Column offset for ASCII Terminal.
 #define INITIAL_FUTURE_OFFSET   1                // Column offset for future emulation.
 
+
 //**********************************************************************************************************************
 //
 //  Wheelwriter control structures.
@@ -1628,15 +1784,23 @@
 
 // Keyboard key action structure.
 struct key_action {
-  byte                     action;  // Action to take.
-  char                     send;    // Character to send or process as setup command.
-  const struct print_info *print;   // Character to print.
+  byte                     action;     // Action to take.
+  char                     send;       // Character to send or process as setup command.
+  union {                              // Print info.
+    const void              *init;     //   Used for static initialization.
+    const struct print_info *print;    //   Character to print.
+    const struct print_info **prints;  //   Special character to print.
+  };
 };
 
 // Serial input action structure.
 struct serial_action {
-  int                      action;  // Action to take.
-  const struct print_info *print;   // Character to print.
+  int                      action;     // Action to take.
+  union {                              // Print info.
+    const void              *init;     //   Used for static initialization.
+    const struct print_info *print;    //   Character to print.
+    const struct print_info **prints;  //   Special character to print.
+  };
 };
 
 // Print string information structure.
@@ -1871,10 +2035,6 @@ const struct print_info WW_PRINT_8 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_8
 
 const byte WW_STR_9[]              = {WW_9_LPAREN_Stop, WW_NULL_11, WW_NULL_14, WW_NULL};
 const struct print_info WW_PRINT_9 = {SPACING_FORWARD, TIMING_NOSHIFT, &WW_STR_9};
-
-// QV079 - stress case alphanumeric print string.
-const byte WW_STR_QV079[]              = {WW_LShift, WW_q_Q_Impr, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_QV079 = {SPACING_FORWARD, TIMING_SHIFT, &WW_STR_QV079};
 
 // !, @, #, $, %, <cent>, &, *, (, ) print strings.
 const byte WW_STR_EXCLAMATION[]              = {WW_LShift, WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1, WW_NULL_14,
@@ -2124,7 +2284,7 @@ const struct print_info WW_PRINT_TClr    = {SPACING_TCLR, TIMING_NONE, &WW_STR_T
 const byte WW_STR_ClrAll[]               = {WW_TClr, WW_CRtn_IndClr, WW_TClr, WW_NULL_4, WW_NULL_14, WW_NULL};
 const struct print_info WW_PRINT_ClrAll  = {SPACING_CLRALL, TIMING_NONE, &WW_STR_ClrAll};
 const struct print_info WW_PRINT_ClrAllX = {SPACING_NONE, TIMING_NONE, &WW_STR_ClrAll};
-                                           // Special case for Set_margins_tabs() that doesn't clear tabs[].
+                                             // Special case for Set_margins_tabs() that doesn't clear tabs[].
 
 // Special function print strings.
 const byte WW_STR_POWERWISE_OFF[]              = {WW_Code, WW_x_X_POWERWISE, WW_Code, WW_0_RPAREN, WW_Code, WW_NULL_5,
@@ -2170,7 +2330,7 @@ volatile boolean code = FALSE;          // Current code shift state.
 volatile int key_offset = OFFSET_NONE;  // Offset into action table for shifted keys.
 
 // Escape sequence variables.
-volatile boolean escaping = FALSE;              // Currently in escape sequence.
+volatile boolean escaping = FALSE;           // Currently in escape sequence.
 volatile int escape_state = ESC_INIT_STATE;  // Current escape FSA state.
 
 // End-of-line variables.
@@ -2195,6 +2355,33 @@ volatile int residual_time = 0;  // Residual time toward next empty full scan ne
 volatile boolean key_pressed_states[NUM_WW_KEYS] = {FALSE};    // Current state of each key.
 volatile unsigned long key_repeat_times[NUM_WW_KEYS] = {0UL};  // Time of repeating key press.
 volatile unsigned long key_shadow_times[NUM_WW_KEYS] = {0UL};  // End of shadow time for debouncing.
+
+// Column scan timing variables.
+volatile boolean in_column_scan_timing = FALSE;                 // Currently in column scan timing.
+volatile boolean press_space_key = FALSE;                       // Assert space key.
+volatile boolean flood_a_5_keys = FALSE;                        // Flood typewriter with 'a' & '5' keys at maximum
+                                                                // speed.
+volatile int column_scan_count = 0;                             // Count of column scans.
+volatile int flood_key_count = 0;                               // Count of flood keys.
+volatile unsigned long last_interrupt_time_microseconds = 0UL;  // Time of last interrupt.
+volatile unsigned long interrupt_time_microseconds = 0UL;       // Time of current interrupt.
+volatile unsigned long elapsed_time_microseconds = 0UL;         // Elapsed time of last column scan.
+volatile unsigned long total_scan_time = 0UL;                   // Total column scan time.
+volatile unsigned long minimum_scan_time = 0UL;                 // Minimum column scan time.
+volatile unsigned long maximum_scan_time = 0UL;                 // Minimum column scan time.
+volatile unsigned long total_key_pressed_scan_time = 0UL;       // Total key pressed column scan time.
+volatile unsigned long minimum_key_pressed_scan_time = 0UL;     // Minimum key pressed column scan time.
+volatile unsigned long maximum_key_pressed_scan_time = 0UL;     // Maximum key pressed column scan time.
+volatile unsigned long total_key_released_scan_time = 0UL;      // Total key released column scan time.
+volatile unsigned long minimum_key_released_scan_time = 0UL;    // Minimum key released column scan time.
+volatile unsigned long maximum_key_released_scan_time = 0UL;    // Maximum key released column scan time.
+volatile unsigned long flood_key_scan_time = 0UL;               // Flood space key column scan time.
+
+// Printer timing variables.
+volatile boolean in_printer_timing = FALSE;          // Currently in printer timing.
+volatile int print_character_count = 0;              // Count of characters printed.
+volatile unsigned long longest_scan_duration = 0UL;  // Duration of longest full scan.
+volatile int buffer_size = 0;                        // Size of Wheelwriter input buffer.
 
 // Error text table.
 const char* error_text[NUM_ERRORS] = {NULL,
@@ -2405,6 +2592,7 @@ volatile byte parity = INITIAL_PARITY;                  // Parity.              
 volatile byte dps = INITIAL_DPS;                        // Databits, parity, stopbits.  Used by ASCII Terminal (RS-232).
 volatile byte swflow = INITIAL_SWFLOW;                  // Software flow control.       Used by ASCII Terminal.
 volatile byte hwflow = INITIAL_HWFLOW;                  // Hardware flow control.       Used by ASCII Terminal (RS-232).
+volatile byte asciiwheel = INITIAL_ASCIIWHEEL;          // ASCII printwheel.            Used by ASCII Terminal.
 volatile byte uppercase = INITIAL_UPPERCASE;            // Uppercase only.              Used by ASCII Terminal.
 volatile byte autoreturn = INITIAL_AUTORETURN;          // Auto return.                 Used by ASCII Terminal.
 volatile byte transmiteol = INITIAL_TRANSMITEOL;        // Send end-of-line.            Used by ASCII Terminal.
@@ -4535,47 +4723,47 @@ void Print_IBM_character_set ()  {
                                             (-1 * TIME_ADJUST)))
                                     // Residual time for special space print character.
 
-#define TIMING_ASCII_LESS         (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 6 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_LESS_PG      (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 6 * TIME_VMOVEMENT) - \
                                             (23 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 3 * FSCAN_3_CHANGES) + \
                                             (-13 * TIME_ADJUST)))
                                     // Residual time for less print character.
 
-#define TIMING_ASCII_GREATER      (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 3 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_GREATER_PG   (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 3 * TIME_VMOVEMENT) - \
                                             (27 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 3 * FSCAN_3_CHANGES) + \
                                             (65 * TIME_ADJUST)))
                                     // Residual time for greater print character.
 
-#define TIMING_ASCII_BSLASH       (POSITIVE((4 * TIME_CHARACTER + 8 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_BSLASH_PG    (POSITIVE((4 * TIME_CHARACTER + 8 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
                                             (28 * FSCAN_1_CHANGE + 7 * FSCAN_2_CHANGES + 4 * FSCAN_3_CHANGES) + \
                                             (50 * TIME_ADJUST)))
                                     // Residual time for backslash print character.
 
-#define TIMING_ASCII_CARET        (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_CARET_PG     (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
                                             (30 * FSCAN_1_CHANGE + 5 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
                                             (11 * TIME_ADJUST)))
                                     // Residual time for caret print character.
 
-#define TIMING_ASCII_BAPOSTROPHE  (POSITIVE((2 * TIME_CHARACTER + 6 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
-                                            (28 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
-                                            (-48 * TIME_ADJUST)))
-                                    // Residual time for back apostophe print character.
+#define TIMING_ASCII_BAPOSTROPHE_PG  (POSITIVE((2 * TIME_CHARACTER + 6 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
+                                              (28 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES + 2 * FSCAN_3_CHANGES) + \
+                                              (-48 * TIME_ADJUST)))
+                                      // Residual time for back apostophe print character.
 
-#define TIMING_ASCII_LBRACE       (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_LBRACE_PG    (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
                                             (17 * FSCAN_1_CHANGE + 6 * FSCAN_2_CHANGES + 1 * FSCAN_3_CHANGES) + \
                                             (10 * TIME_ADJUST)))
                                     // Residual time for left brace print character.
 
-#define TIMING_ASCII_BAR          (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_BAR_PG       (POSITIVE((2 * TIME_CHARACTER + 1 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
                                             (4 * FSCAN_1_CHANGE + 2 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
                                             (-8 * TIME_ADJUST)))
                                     // Residual time for bar print character.
 
-#define TIMING_ASCII_RBRACE       (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_RBRACE_PG    (POSITIVE((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 0 * TIME_VMOVEMENT) - \
                                             (18 * FSCAN_1_CHANGE + 6 * FSCAN_2_CHANGES + 0 * FSCAN_3_CHANGES) + \
                                             (8 * TIME_ADJUST)))
                                     // Residual time for right brace print character.
 
-#define TIMING_ASCII_TILDE        (POSITIVE((5 * TIME_CHARACTER + 9 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
+#define TIMING_ASCII_TILDE_PG     (POSITIVE((5 * TIME_CHARACTER + 9 * TIME_HMOVEMENT + 8 * TIME_VMOVEMENT) - \
                                             (33 * FSCAN_1_CHANGE + 9 * FSCAN_2_CHANGES + 5 * FSCAN_3_CHANGES) + \
                                             (88 * TIME_ADJUST)))
                                     // Residual time for tilde print character.
@@ -4586,6 +4774,24 @@ void Print_IBM_character_set ()  {
 #define CHAR_ASCII_XON   0x11  // XON character.
 #define CHAR_ASCII_XOFF  0x13  // XOFF character.
 #define CHAR_ASCII_ESC   0x1b  // ESC character.
+
+
+//**********************************************************************************************************************
+//
+//  ASCII Terminal dynamic print strings.
+//
+//**********************************************************************************************************************
+
+// Dynamic print strings.
+const struct print_info* ascii_print_less;
+const struct print_info* ascii_print_greater;
+const struct print_info* ascii_print_bslash;
+const struct print_info* ascii_print_caret;
+const struct print_info* ascii_print_bapostrophe;
+const struct print_info* ascii_print_lbrace;
+const struct print_info* ascii_print_bar;
+const struct print_info* ascii_print_rbrace;
+const struct print_info* ascii_print_tilde;
 
 
 //**********************************************************************************************************************
@@ -4603,114 +4809,152 @@ const byte ASCII_STR_SPACE3[]               = {WW_SPACE_REQSPACE, WW_NULL_4, WW_
                                                WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
 const struct print_info ASCII_PRINT_SPACE3  = {SPACING_FORWARD, TIMING_ASCII_SPACE3, &ASCII_STR_SPACE3};
 
-// <, >, \, ^, `, {, |, }, ~ print strings.
-const byte ASCII_STR_LESS[]                     = {WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
-                                                   WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                   WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro,
-                                                   WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Backspace_Bksp1,
-                                                   WW_NULL_13, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
-                                                   WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code,
-                                                   WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_LESS        = {SPACING_FORWARD, TIMING_ASCII_LESS, &ASCII_STR_LESS};
+// <, >, \, ^, `, {, |, }, ~ print strings (Print Graphics).
+const byte ASCII_STR_LESS_PG[]                     = {WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
+                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
+                                                      WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro,
+                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
+                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperUp_Micro,
+                                                      WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2,
+                                                      WW_PERIOD_PERIOD, WW_NULL_11, WW_Code, WW_Backspace_Bksp1,
+                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14,
+                                                      WW_NULL};
+const struct print_info ASCII_PRINT_LESS_PG        = {SPACING_FORWARD, TIMING_ASCII_LESS_PG, &ASCII_STR_LESS_PG};
 
-const byte ASCII_STR_GREATER[]                  = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-                                                   WW_MarRel_RePrt, WW_NULL_14, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                   WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code, WW_Backspace_Bksp1,
-                                                   WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code,
-                                                   WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code, WW_PaperUp_Micro,
-                                                   WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14,
-                                                   WW_NULL};
-const struct print_info ASCII_PRINT_GREATER     = {SPACING_FORWARD, TIMING_ASCII_GREATER, &ASCII_STR_GREATER};
+const byte ASCII_STR_GREATER_PG[]                  = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_MarRel_RePrt, WW_NULL_14, WW_Backspace_Bksp1,
+                                                      WW_NULL_13, WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code,
+                                                      WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
+                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
+                                                      WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_GREATER_PG     = {SPACING_FORWARD, TIMING_ASCII_GREATER_PG, &ASCII_STR_GREATER_PG};
 
-const byte ASCII_STR_BSLASH[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                   WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_MarRel_RePrt, WW_NULL_14,
-                                                   WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                   WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro,
-                                                   WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
-                                                   WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-                                                   WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-                                                   WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_BSLASH      = {SPACING_FORWARD, TIMING_ASCII_BSLASH, &ASCII_STR_BSLASH};
+const byte ASCII_STR_BSLASH_PG[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
+                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_MarRel_RePrt,
+                                                      WW_NULL_14, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro, WW_Code,
+                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code,
+                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro,
+                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
+                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_Backspace_Bksp1,
+                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2,
+                                                      WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_BSLASH_PG      = {SPACING_FORWARD, TIMING_ASCII_BSLASH_PG, &ASCII_STR_BSLASH_PG};
 
-const byte ASCII_STR_CARET[]                    = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                   WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                   WW_NULL_11, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_PERIOD_PERIOD,
-                                                   WW_NULL_11, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2,
-                                                   WW_PERIOD_PERIOD, WW_NULL_11, WW_Code, WW_PaperUp_Micro, WW_Code,
-                                                   WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro,
-                                                   WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14,
-                                                   WW_NULL};
-const struct print_info ASCII_PRINT_CARET       = {SPACING_FORWARD, TIMING_ASCII_CARET, &ASCII_STR_CARET};
+const byte ASCII_STR_CARET_PG[]                    = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
+                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro, WW_Code,
+                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
+                                                      WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code,
+                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro,
+                                                      WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_CARET_PG       = {SPACING_FORWARD, TIMING_ASCII_CARET_PG, &ASCII_STR_CARET_PG};
 
-const byte ASCII_STR_BAPOSTROPHE[]              = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                   WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
-                                                   WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                   WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro,
-                                                   WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                   WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code,
-                                                   WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_BAPOSTROPHE = {SPACING_FORWARD, TIMING_ASCII_BAPOSTROPHE, &ASCII_STR_BAPOSTROPHE};
+const byte ASCII_STR_BAPOSTROPHE_PG[]              = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
+                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro,
+                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
+                                                      WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro,
+                                                      WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
+                                                      WW_PaperUp_Micro, WW_Code, WW_Code, WW_PaperUp_Micro, WW_Code,
+                                                      WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14,
+                                                      WW_NULL};
+const struct print_info ASCII_PRINT_BAPOSTROPHE_PG = {SPACING_FORWARD, TIMING_ASCII_BAPOSTROPHE_PG,
+                                                      &ASCII_STR_BAPOSTROPHE_PG};
 
 
-const byte ASCII_STR_LBRACE[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_NULL_5, WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
-                                                   WW_Code, WW_NULL_5, WW_LShift, WW_9_LPAREN_Stop, WW_LShift,
-                                                   WW_NULL_1, WW_Backspace_Bksp1, WW_NULL_13, WW_LShift,
-                                                   WW_RBRACKET_LBRACKET_SUPER3, WW_LShift, WW_NULL_1, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_LBRACE      = {SPACING_FORWARD, TIMING_ASCII_LBRACE, &ASCII_STR_LBRACE};
+const byte ASCII_STR_LBRACE_PG[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_NULL_5, WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1,
+                                                      WW_Code, WW_NULL_5, WW_LShift, WW_9_LPAREN_Stop, WW_LShift,
+                                                      WW_NULL_1, WW_Backspace_Bksp1, WW_NULL_13, WW_LShift,
+                                                      WW_RBRACKET_LBRACKET_SUPER3, WW_LShift, WW_NULL_1, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_LBRACE_PG      = {SPACING_FORWARD, TIMING_ASCII_LBRACE_PG, &ASCII_STR_LBRACE_PG};
 
-const byte ASCII_STR_BAR[]                      = {WW_LShift, WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1,
-                                                   WW_Backspace_Bksp1, WW_NULL_13, WW_i_I_Word, WW_NULL_10, WW_NULL_14,
-                                                   WW_NULL};
-const struct print_info ASCII_PRINT_BAR         = {SPACING_FORWARD, TIMING_ASCII_BAR, &ASCII_STR_BAR};
+const byte ASCII_STR_BAR_PG[]                      = {WW_LShift, WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1,
+                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_i_I_Word, WW_NULL_10,
+                                                      WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_BAR_PG         = {SPACING_FORWARD, TIMING_ASCII_BAR_PG, &ASCII_STR_BAR_PG};
 
-const byte ASCII_STR_RBRACE[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_NULL_5, WW_LShift, WW_0_RPAREN, WW_LShift, WW_NULL_1,
-                                                   WW_Backspace_Bksp1, WW_NULL_13, WW_RBRACKET_LBRACKET_SUPER3,
-                                                   WW_NULL_10, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5,
-                                                   WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_Code, WW_Backspace_Bksp1,
-                                                   WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_RBRACE      = {SPACING_FORWARD, TIMING_ASCII_RBRACE, &ASCII_STR_RBRACE};
+const byte ASCII_STR_RBRACE_PG[]                   = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_NULL_5, WW_LShift, WW_0_RPAREN, WW_LShift, WW_NULL_1,
+                                                      WW_Backspace_Bksp1, WW_NULL_13, WW_RBRACKET_LBRACKET_SUPER3,
+                                                      WW_NULL_10, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5,
+                                                      WW_HYPHEN_UNDERSCORE, WW_NULL_12, WW_Code, WW_Backspace_Bksp1,
+                                                      WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_RBRACE_PG      = {SPACING_FORWARD, TIMING_ASCII_RBRACE_PG, &ASCII_STR_RBRACE_PG};
 
-const byte ASCII_STR_TILDE[]                    = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
-                                                   WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
-                                                   WW_NULL_11, WW_MarRel_RePrt, WW_NULL_14, WW_Backspace_Bksp1,
-                                                   WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro,
-                                                   WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code,
-                                                   WW_NULL_5, WW_PERIOD_PERIOD, WW_NULL_11, WW_Backspace_Bksp1,
-                                                   WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro,
-                                                   WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Backspace_Bksp1,
-                                                   WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro,
-                                                   WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_SPACE_REQSPACE,
-                                                   WW_NULL_4, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-                                                   WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
-                                                   WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
-const struct print_info ASCII_PRINT_TILDE       = {SPACING_FORWARD, TIMING_ASCII_TILDE, &ASCII_STR_TILDE};
+const byte ASCII_STR_TILDE_PG[]                    = {WW_MarRel_RePrt, WW_NULL_14, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_PaperDown_Micro, WW_Code, WW_Code, WW_PaperDown_Micro, WW_Code,
+                                                      WW_Code, WW_PaperDown_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_MarRel_RePrt, WW_NULL_14, WW_Backspace_Bksp1,
+                                                      WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code,
+                                                      WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_PERIOD_PERIOD,
+                                                      WW_NULL_11, WW_Backspace_Bksp1, WW_NULL_13, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code, WW_NULL_2,
+                                                      WW_PERIOD_PERIOD, WW_NULL_11, WW_Backspace_Bksp1, WW_NULL_13,
+                                                      WW_Code, WW_Backspace_Bksp1, WW_Code, WW_PaperDown_Micro, WW_Code,
+                                                      WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_SPACE_REQSPACE,
+                                                      WW_NULL_4, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
+                                                      WW_Backspace_Bksp1, WW_Code, WW_PaperUp_Micro, WW_Code, WW_Code,
+                                                      WW_PaperUp_Micro, WW_Code, WW_NULL_2, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_TILDE_PG       = {SPACING_FORWARD, TIMING_ASCII_TILDE_PG, &ASCII_STR_TILDE_PG};
+
+// <, >, \, ^, `, {, |, }, ~ print strings (ASCII PrintWheel).
+const byte ASCII_STR_LESS_APW[]                     = {WW_Code, WW_LESS_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_LESS_APW        = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_LESS_APW};
+
+const byte ASCII_STR_GREATER_APW[]                  = {WW_Code, WW_GREATER_APW, WW_Code, WW_NULL_5, WW_NULL_14,
+                                                       WW_NULL};
+const struct print_info ASCII_PRINT_GREATER_APW     = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_GREATER_APW};
+
+const byte ASCII_STR_BSLASH_APW[]                   = {WW_Code, WW_BSLASH_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_BSLASH_APW      = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_BSLASH_APW};
+
+const byte ASCII_STR_CARET_APW[]                    = {WW_LShift, WW_CARET_APW, WW_LShift, WW_NULL_1, WW_NULL_14,
+                                                       WW_NULL};
+const struct print_info ASCII_PRINT_CARET_APW       = {SPACING_FORWARD, TIMING_SHIFT, &ASCII_STR_CARET_APW};
+
+const byte ASCII_STR_BAPOSTROPHE_APW[]              = {WW_BAPOSTROPHE_APW, WW_NULL_3, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_BAPOSTROPHE_APW = {SPACING_FORWARD, TIMING_NOSHIFT, &ASCII_STR_BAPOSTROPHE_APW};
+
+const byte ASCII_STR_LBRACE_APW[]                   = {WW_LShift, WW_LBRACE_APW, WW_LShift, WW_NULL_1, WW_NULL_14,
+                                                       WW_NULL};
+const struct print_info ASCII_PRINT_LBRACE_APW      = {SPACING_FORWARD, TIMING_SHIFT, &ASCII_STR_LBRACE_APW};
+
+const byte ASCII_STR_BAR_APW[]                      = {WW_Code, WW_BAR_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_BAR_APW         = {SPACING_FORWARD, TIMING_CODE, &ASCII_STR_BAR_APW};
+
+const byte ASCII_STR_RBRACE_APW[]                   = {WW_RBRACE_APW, WW_NULL_12, WW_NULL_14, WW_NULL};
+const struct print_info ASCII_PRINT_RBRACE_APW      = {SPACING_FORWARD, TIMING_NOSHIFT, &ASCII_STR_RBRACE_APW};
+
+const byte ASCII_STR_TILDE_APW[]                    = {WW_LShift, WW_TILDE_APW, WW_LShift, WW_NULL_1, WW_NULL_14,
+                                                       WW_NULL};
+const struct print_info ASCII_PRINT_TILDE_APW       = {SPACING_FORWARD, TIMING_SHIFT, &ASCII_STR_TILDE_APW};
 
 // CR, LF print strings.
 const byte ASCII_STR_CR[]              = {WW_CRtn_IndClr, WW_NULL_13, WW_UARROW_Line, WW_NULL_13, WW_NULL_14, WW_NULL};
@@ -4727,134 +4971,134 @@ const struct print_info ASCII_PRINT_LF = {SPACING_NONE, TIMING_VMOVE, &ASCII_STR
 //**********************************************************************************************************************
 
 const struct serial_action ASCII_SERIAL_ACTIONS[128] = { 
-  {CMD_NONE,       NULL},                      // NUL
-  {CMD_NONE,       NULL},                      // SOH
-  {CMD_NONE,       NULL},                      // STX
-  {CMD_NONE,       NULL},                      // ETX
-  {CMD_NONE,       NULL},                      // EOT
-  {CMD_NONE,       NULL},                      // ENQ
-  {CMD_NONE,       NULL},                      // ACK
-  {CMD_PRINT,      &WW_PRINT_BEEP},            // BEL
-  {CMD_PRINT,      &WW_PRINT_Backspace},       // BS
-  {CMD_PRINT,      &WW_PRINT_Tab},             // TAB
-  {CMD_ASCII_LF,   NULL},                      // LF
-  {CMD_NONE,       NULL},                      // VT
-  {CMD_NONE,       NULL},                      // FF
-  {CMD_ASCII_CR,   &WW_PRINT_CRtn},            // CR
-  {CMD_NONE,       NULL},                      // SO
-  {CMD_NONE,       NULL},                      // SI
-  {CMD_NONE,       NULL},                      // DLE
-  {CMD_ASCII_XON,  NULL},                      // DC1/XON
-  {CMD_NONE,       NULL},                      // DC2
-  {CMD_ASCII_XOFF, NULL},                      // DC3/XOFF
-  {CMD_NONE,       NULL},                      // DC4
-  {CMD_NONE,       NULL},                      // NAK
-  {CMD_NONE,       NULL},                      // SYN
-  {CMD_NONE,       NULL},                      // ETB
-  {CMD_NONE,       NULL},                      // CAN
-  {CMD_NONE,       NULL},                      // EM
-  {CMD_NONE,       NULL},                      // SUB
-  {CMD_NONE,       NULL},                      // ESC
-  {CMD_NONE,       NULL},                      // FS
-  {CMD_NONE,       NULL},                      // GS
-  {CMD_NONE,       NULL},                      // RS
-  {CMD_NONE,       NULL},                      // US
-  {CMD_PRINT,      &WW_PRINT_SPACE},           //
-  {CMD_PRINT,      &WW_PRINT_EXCLAMATION},     // !
-  {CMD_PRINT,      &WW_PRINT_QUOTE},           // "
-  {CMD_PRINT,      &WW_PRINT_POUND},           // #
-  {CMD_PRINT,      &WW_PRINT_DOLLAR},          // $
-  {CMD_PRINT,      &WW_PRINT_PERCENT},         // %
-  {CMD_PRINT,      &WW_PRINT_AMPERSAND},       // &
-  {CMD_PRINT,      &WW_PRINT_APOSTROPHE},      // '
-  {CMD_PRINT,      &WW_PRINT_LPAREN},          // (
-  {CMD_PRINT,      &WW_PRINT_RPAREN},          // )
-  {CMD_PRINT,      &WW_PRINT_ASTERISK},        // *
-  {CMD_PRINT,      &WW_PRINT_PLUS},            // +
-  {CMD_PRINT,      &WW_PRINT_COMMA},           // , 
-  {CMD_PRINT,      &WW_PRINT_HYPHEN},          // -
-  {CMD_PRINT,      &WW_PRINT_PERIOD},          // .
-  {CMD_PRINT,      &WW_PRINT_SLASH},           // /
-  {CMD_PRINT,      &WW_PRINT_0},               // 0
-  {CMD_PRINT,      &WW_PRINT_1},               // 1
-  {CMD_PRINT,      &WW_PRINT_2},               // 2
-  {CMD_PRINT,      &WW_PRINT_3},               // 3
-  {CMD_PRINT,      &WW_PRINT_4},               // 4
-  {CMD_PRINT,      &WW_PRINT_5},               // 5
-  {CMD_PRINT,      &WW_PRINT_6},               // 6
-  {CMD_PRINT,      &WW_PRINT_7},               // 7
-  {CMD_PRINT,      &WW_PRINT_8},               // 8
-  {CMD_PRINT,      &WW_PRINT_9},               // 9
-  {CMD_PRINT,      &WW_PRINT_COLON},           // :
-  {CMD_PRINT,      &WW_PRINT_SEMICOLON},       // ;
-  {CMD_PRINT,      &ASCII_PRINT_LESS},         // <
-  {CMD_PRINT,      &WW_PRINT_EQUAL},           // =
-  {CMD_PRINT,      &ASCII_PRINT_GREATER},      // >
-  {CMD_PRINT,      &WW_PRINT_QUESTION},        // ?
-  {CMD_PRINT,      &WW_PRINT_AT},              // @
-  {CMD_PRINT,      &WW_PRINT_A},               // A
-  {CMD_PRINT,      &WW_PRINT_B},               // B
-  {CMD_PRINT,      &WW_PRINT_C},               // C
-  {CMD_PRINT,      &WW_PRINT_D},               // D
-  {CMD_PRINT,      &WW_PRINT_E},               // E
-  {CMD_PRINT,      &WW_PRINT_F},               // F
-  {CMD_PRINT,      &WW_PRINT_G},               // G
-  {CMD_PRINT,      &WW_PRINT_H},               // H
-  {CMD_PRINT,      &WW_PRINT_I},               // I
-  {CMD_PRINT,      &WW_PRINT_J},               // J
-  {CMD_PRINT,      &WW_PRINT_K},               // K
-  {CMD_PRINT,      &WW_PRINT_L},               // L
-  {CMD_PRINT,      &WW_PRINT_M},               // M
-  {CMD_PRINT,      &WW_PRINT_N},               // N
-  {CMD_PRINT,      &WW_PRINT_O},               // O
-  {CMD_PRINT,      &WW_PRINT_P},               // P
-  {CMD_PRINT,      &WW_PRINT_Q},               // Q
-  {CMD_PRINT,      &WW_PRINT_R},               // R
-  {CMD_PRINT,      &WW_PRINT_S},               // S
-  {CMD_PRINT,      &WW_PRINT_T},               // T
-  {CMD_PRINT,      &WW_PRINT_U},               // U
-  {CMD_PRINT,      &WW_PRINT_V},               // V
-  {CMD_PRINT,      &WW_PRINT_W},               // W
-  {CMD_PRINT,      &WW_PRINT_X},               // X
-  {CMD_PRINT,      &WW_PRINT_Y},               // Y
-  {CMD_PRINT,      &WW_PRINT_Z},               // Z
-  {CMD_PRINT,      &WW_PRINT_LBRACKET},        // [
-  {CMD_PRINT,      &ASCII_PRINT_BSLASH},       // <backslash>
-  {CMD_PRINT,      &WW_PRINT_RBRACKET},        // ]
-  {CMD_PRINT,      &ASCII_PRINT_CARET},        // ^
-  {CMD_PRINT,      &WW_PRINT_UNDERSCORE},      // _
-  {CMD_PRINT,      &ASCII_PRINT_BAPOSTROPHE},  // `
-  {CMD_PRINT,      &WW_PRINT_a},               // a
-  {CMD_PRINT,      &WW_PRINT_b},               // b
-  {CMD_PRINT,      &WW_PRINT_c},               // c
-  {CMD_PRINT,      &WW_PRINT_d},               // d
-  {CMD_PRINT,      &WW_PRINT_e},               // e
-  {CMD_PRINT,      &WW_PRINT_f},               // f
-  {CMD_PRINT,      &WW_PRINT_g},               // g
-  {CMD_PRINT,      &WW_PRINT_h},               // h
-  {CMD_PRINT,      &WW_PRINT_i},               // i
-  {CMD_PRINT,      &WW_PRINT_j},               // j
-  {CMD_PRINT,      &WW_PRINT_k},               // k
-  {CMD_PRINT,      &WW_PRINT_l},               // l
-  {CMD_PRINT,      &WW_PRINT_m},               // m
-  {CMD_PRINT,      &WW_PRINT_n},               // n
-  {CMD_PRINT,      &WW_PRINT_o},               // o
-  {CMD_PRINT,      &WW_PRINT_p},               // p
-  {CMD_PRINT,      &WW_PRINT_q},               // q
-  {CMD_PRINT,      &WW_PRINT_r},               // r
-  {CMD_PRINT,      &WW_PRINT_s},               // s
-  {CMD_PRINT,      &WW_PRINT_t},               // t
-  {CMD_PRINT,      &WW_PRINT_u},               // u
-  {CMD_PRINT,      &WW_PRINT_v},               // v
-  {CMD_PRINT,      &WW_PRINT_w},               // w
-  {CMD_PRINT,      &WW_PRINT_x},               // x
-  {CMD_PRINT,      &WW_PRINT_y},               // y
-  {CMD_PRINT,      &WW_PRINT_z},               // z
-  {CMD_PRINT,      &ASCII_PRINT_LBRACE},       // {
-  {CMD_PRINT,      &ASCII_PRINT_BAR},          // |
-  {CMD_PRINT,      &ASCII_PRINT_RBRACE},       // }
-  {CMD_PRINT,      &ASCII_PRINT_TILDE},        // ~
-  {CMD_NONE,       NULL}                       // DEL
+  {CMD_NONE,          NULL},                      // NUL
+  {CMD_NONE,          NULL},                      // SOH
+  {CMD_NONE,          NULL},                      // STX
+  {CMD_NONE,          NULL},                      // ETX
+  {CMD_NONE,          NULL},                      // EOT
+  {CMD_NONE,          NULL},                      // ENQ
+  {CMD_NONE,          NULL},                      // ACK
+  {CMD_PRINT,         &WW_PRINT_BEEP},            // BEL
+  {CMD_PRINT,         &WW_PRINT_Backspace},       // BS
+  {CMD_PRINT,         &WW_PRINT_Tab},             // TAB
+  {CMD_ASCII_LF,      NULL},                      // LF
+  {CMD_NONE,          NULL},                      // VT
+  {CMD_NONE,          NULL},                      // FF
+  {CMD_ASCII_CR,      &WW_PRINT_CRtn},            // CR
+  {CMD_NONE,          NULL},                      // SO
+  {CMD_NONE,          NULL},                      // SI
+  {CMD_NONE,          NULL},                      // DLE
+  {CMD_ASCII_XON,     NULL},                      // DC1/XON
+  {CMD_NONE,          NULL},                      // DC2
+  {CMD_ASCII_XOFF,    NULL},                      // DC3/XOFF
+  {CMD_NONE,          NULL},                      // DC4
+  {CMD_NONE,          NULL},                      // NAK
+  {CMD_NONE,          NULL},                      // SYN
+  {CMD_NONE,          NULL},                      // ETB
+  {CMD_NONE,          NULL},                      // CAN
+  {CMD_NONE,          NULL},                      // EM
+  {CMD_NONE,          NULL},                      // SUB
+  {CMD_NONE,          NULL},                      // ESC
+  {CMD_NONE,          NULL},                      // FS
+  {CMD_NONE,          NULL},                      // GS
+  {CMD_NONE,          NULL},                      // RS
+  {CMD_NONE,          NULL},                      // US
+  {CMD_PRINT,         &WW_PRINT_SPACE},           //
+  {CMD_PRINT,         &WW_PRINT_EXCLAMATION},     // !
+  {CMD_PRINT,         &WW_PRINT_QUOTE},           // "
+  {CMD_PRINT,         &WW_PRINT_POUND},           // #
+  {CMD_PRINT,         &WW_PRINT_DOLLAR},          // $
+  {CMD_PRINT,         &WW_PRINT_PERCENT},         // %
+  {CMD_PRINT,         &WW_PRINT_AMPERSAND},       // &
+  {CMD_PRINT,         &WW_PRINT_APOSTROPHE},      // '
+  {CMD_PRINT,         &WW_PRINT_LPAREN},          // (
+  {CMD_PRINT,         &WW_PRINT_RPAREN},          // )
+  {CMD_PRINT,         &WW_PRINT_ASTERISK},        // *
+  {CMD_PRINT,         &WW_PRINT_PLUS},            // +
+  {CMD_PRINT,         &WW_PRINT_COMMA},           // , 
+  {CMD_PRINT,         &WW_PRINT_HYPHEN},          // -
+  {CMD_PRINT,         &WW_PRINT_PERIOD},          // .
+  {CMD_PRINT,         &WW_PRINT_SLASH},           // /
+  {CMD_PRINT,         &WW_PRINT_0},               // 0
+  {CMD_PRINT,         &WW_PRINT_1},               // 1
+  {CMD_PRINT,         &WW_PRINT_2},               // 2
+  {CMD_PRINT,         &WW_PRINT_3},               // 3
+  {CMD_PRINT,         &WW_PRINT_4},               // 4
+  {CMD_PRINT,         &WW_PRINT_5},               // 5
+  {CMD_PRINT,         &WW_PRINT_6},               // 6
+  {CMD_PRINT,         &WW_PRINT_7},               // 7
+  {CMD_PRINT,         &WW_PRINT_8},               // 8
+  {CMD_PRINT,         &WW_PRINT_9},               // 9
+  {CMD_PRINT,         &WW_PRINT_COLON},           // :
+  {CMD_PRINT,         &WW_PRINT_SEMICOLON},       // ;
+  {CMD_PRINT_SPECIAL, &ascii_print_less},         // <
+  {CMD_PRINT,         &WW_PRINT_EQUAL},           // =
+  {CMD_PRINT_SPECIAL, &ascii_print_greater},      // >
+  {CMD_PRINT,         &WW_PRINT_QUESTION},        // ?
+  {CMD_PRINT,         &WW_PRINT_AT},              // @
+  {CMD_PRINT,         &WW_PRINT_A},               // A
+  {CMD_PRINT,         &WW_PRINT_B},               // B
+  {CMD_PRINT,         &WW_PRINT_C},               // C
+  {CMD_PRINT,         &WW_PRINT_D},               // D
+  {CMD_PRINT,         &WW_PRINT_E},               // E
+  {CMD_PRINT,         &WW_PRINT_F},               // F
+  {CMD_PRINT,         &WW_PRINT_G},               // G
+  {CMD_PRINT,         &WW_PRINT_H},               // H
+  {CMD_PRINT,         &WW_PRINT_I},               // I
+  {CMD_PRINT,         &WW_PRINT_J},               // J
+  {CMD_PRINT,         &WW_PRINT_K},               // K
+  {CMD_PRINT,         &WW_PRINT_L},               // L
+  {CMD_PRINT,         &WW_PRINT_M},               // M
+  {CMD_PRINT,         &WW_PRINT_N},               // N
+  {CMD_PRINT,         &WW_PRINT_O},               // O
+  {CMD_PRINT,         &WW_PRINT_P},               // P
+  {CMD_PRINT,         &WW_PRINT_Q},               // Q
+  {CMD_PRINT,         &WW_PRINT_R},               // R
+  {CMD_PRINT,         &WW_PRINT_S},               // S
+  {CMD_PRINT,         &WW_PRINT_T},               // T
+  {CMD_PRINT,         &WW_PRINT_U},               // U
+  {CMD_PRINT,         &WW_PRINT_V},               // V
+  {CMD_PRINT,         &WW_PRINT_W},               // W
+  {CMD_PRINT,         &WW_PRINT_X},               // X
+  {CMD_PRINT,         &WW_PRINT_Y},               // Y
+  {CMD_PRINT,         &WW_PRINT_Z},               // Z
+  {CMD_PRINT,         &WW_PRINT_LBRACKET},        // [
+  {CMD_PRINT_SPECIAL, &ascii_print_bslash},       // <backslash>
+  {CMD_PRINT,         &WW_PRINT_RBRACKET},        // ]
+  {CMD_PRINT_SPECIAL, &ascii_print_caret},        // ^
+  {CMD_PRINT,         &WW_PRINT_UNDERSCORE},      // _
+  {CMD_PRINT_SPECIAL, &ascii_print_bapostrophe},  // `
+  {CMD_PRINT,         &WW_PRINT_a},               // a
+  {CMD_PRINT,         &WW_PRINT_b},               // b
+  {CMD_PRINT,         &WW_PRINT_c},               // c
+  {CMD_PRINT,         &WW_PRINT_d},               // d
+  {CMD_PRINT,         &WW_PRINT_e},               // e
+  {CMD_PRINT,         &WW_PRINT_f},               // f
+  {CMD_PRINT,         &WW_PRINT_g},               // g
+  {CMD_PRINT,         &WW_PRINT_h},               // h
+  {CMD_PRINT,         &WW_PRINT_i},               // i
+  {CMD_PRINT,         &WW_PRINT_j},               // j
+  {CMD_PRINT,         &WW_PRINT_k},               // k
+  {CMD_PRINT,         &WW_PRINT_l},               // l
+  {CMD_PRINT,         &WW_PRINT_m},               // m
+  {CMD_PRINT,         &WW_PRINT_n},               // n
+  {CMD_PRINT,         &WW_PRINT_o},               // o
+  {CMD_PRINT,         &WW_PRINT_p},               // p
+  {CMD_PRINT,         &WW_PRINT_q},               // q
+  {CMD_PRINT,         &WW_PRINT_r},               // r
+  {CMD_PRINT,         &WW_PRINT_s},               // s
+  {CMD_PRINT,         &WW_PRINT_t},               // t
+  {CMD_PRINT,         &WW_PRINT_u},               // u
+  {CMD_PRINT,         &WW_PRINT_v},               // v
+  {CMD_PRINT,         &WW_PRINT_w},               // w
+  {CMD_PRINT,         &WW_PRINT_x},               // x
+  {CMD_PRINT,         &WW_PRINT_y},               // y
+  {CMD_PRINT,         &WW_PRINT_z},               // z
+  {CMD_PRINT_SPECIAL, &ascii_print_lbrace},       // {
+  {CMD_PRINT_SPECIAL, &ascii_print_bar},          // |
+  {CMD_PRINT_SPECIAL, &ascii_print_rbrace},       // }
+  {CMD_PRINT_SPECIAL, &ascii_print_tilde},        // ~
+  {CMD_NONE,          NULL}                       // DEL
 };
 
 
@@ -4872,7 +5116,7 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '\\',  &ASCII_PRINT_BSLASH},       // \, |
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '\\',  &ascii_print_bslash},       // \, |
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // <setup>
   {ACTION_NONE,                                     0,     NULL},                      //
@@ -4880,7 +5124,7 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                      'z',   &WW_PRINT_z},               // z, Z, SUB
   {ACTION_SEND | ACTION_PRINT,                      'q',   &WW_PRINT_q},               // q, Q, DC1/XON
   {ACTION_SEND | ACTION_PRINT,                      '1',   &WW_PRINT_1},               // 1, !
-  {ACTION_SEND | ACTION_PRINT,                      '`',   &ASCII_PRINT_BAPOSTROPHE},  // `, ~
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '`',   &ascii_print_bapostrophe},  // `, ~
   {ACTION_SEND | ACTION_PRINT,                      'a',   &WW_PRINT_a},               // a, A, SOH
   {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
   {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
@@ -4953,7 +5197,7 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '|',   &ASCII_PRINT_BAR},          // \, |
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '|',   &ascii_print_bar},          // \, |
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // <setup>
   {ACTION_NONE,                                     0,     NULL},                      //
@@ -4961,7 +5205,7 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                      'Z',   &WW_PRINT_Z},               // z, Z, SUB
   {ACTION_SEND | ACTION_PRINT,                      'Q',   &WW_PRINT_Q},               // q, Q, DC1/XON
   {ACTION_SEND | ACTION_PRINT,                      '!',   &WW_PRINT_EXCLAMATION},     // 1, !
-  {ACTION_SEND | ACTION_PRINT,                      '~',   &ASCII_PRINT_TILDE},        // `, ~
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '~',   &ascii_print_tilde},        // `, ~
   {ACTION_SEND | ACTION_PRINT,                      'A',   &WW_PRINT_A},               // a, A, SOH
   {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
   {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
@@ -4993,21 +5237,21 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                      'Y',   &WW_PRINT_Y},               // y, Y, EM
   {ACTION_SEND | ACTION_PRINT,                      'U',   &WW_PRINT_U},               // u, U, NAK
   {ACTION_SEND | ACTION_PRINT,                      '&',   &WW_PRINT_AMPERSAND},       // 7, &
-  {ACTION_SEND | ACTION_PRINT,                      '^',   &ASCII_PRINT_CARET},        // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '^',   &ascii_print_caret},        // 6, ^, RS
   {ACTION_SEND | ACTION_PRINT,                      'J',   &WW_PRINT_J},               // j, J, LF
   {ACTION_SEND | ACTION_PRINT,                      'H',   &WW_PRINT_H},               // h, H, BS
-  {ACTION_SEND | ACTION_PRINT,                      '<',   &ASCII_PRINT_LESS},         // ,, <
-  {ACTION_SEND | ACTION_PRINT,                      '}',   &ASCII_PRINT_RBRACE},       // ], }, GS
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '<',   &ascii_print_less},         // ,, <
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '}',   &ascii_print_rbrace},       // ], }, GS
   {ACTION_SEND | ACTION_PRINT,                      'I',   &WW_PRINT_I},               // i, I, TAB
   {ACTION_SEND | ACTION_PRINT,                      '*',   &WW_PRINT_ASTERISK},        // 8, *
   {ACTION_SEND | ACTION_PRINT,                      '+',   &WW_PRINT_PLUS},            // =, +
   {ACTION_SEND | ACTION_PRINT,                      'K',   &WW_PRINT_K},               // k, K, VT
-  {ACTION_SEND | ACTION_PRINT,                      '>',   &ASCII_PRINT_GREATER},      // ., >
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '>',   &ascii_print_greater},      // ., >
   {ACTION_SEND | ACTION_PRINT,                      'O',   &WW_PRINT_O},               // o, O, SI
   {ACTION_SEND | ACTION_PRINT,                      '(',   &WW_PRINT_LPAREN},          // 9, (
   {ACTION_SEND | ACTION_PRINT,                      'L',   &WW_PRINT_L},               // l, L, FF
   {ACTION_SEND | ACTION_PRINT,                      '?',   &WW_PRINT_QUESTION},        // /, ?
-  {ACTION_SEND | ACTION_PRINT,                      '{',   &ASCII_PRINT_LBRACE},       // [, {, ESC
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '{',   &ascii_print_lbrace},       // [, {, ESC
   {ACTION_SEND | ACTION_PRINT,                      'P',   &WW_PRINT_P},               // p, P, DLE
   {ACTION_SEND | ACTION_PRINT,                      ')',   &WW_PRINT_RPAREN},          // 0, )
   {ACTION_SEND | ACTION_PRINT,                      '_',   &WW_PRINT_UNDERSCORE},      // -, _, US
@@ -5118,7 +5362,7 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '\\',  &ASCII_PRINT_BSLASH},       // \, |
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '\\',  &ascii_print_bslash},       // \, |
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // <setup>
   {ACTION_NONE,                                     0,     NULL},                      //
@@ -5126,7 +5370,7 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                      'Z',   &WW_PRINT_Z},               // z, Z, SUB
   {ACTION_SEND | ACTION_PRINT,                      'Q',   &WW_PRINT_Q},               // q, Q, DC1/XON
   {ACTION_SEND | ACTION_PRINT,                      '1',   &WW_PRINT_1},               // 1, !
-  {ACTION_SEND | ACTION_PRINT,                      '`',   &ASCII_PRINT_BAPOSTROPHE},  // `, ~
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '`',   &ascii_print_bapostrophe},  // `, ~
   {ACTION_SEND | ACTION_PRINT,                      'A',   &WW_PRINT_A},               // a, A, SOH
   {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
   {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
@@ -5199,7 +5443,7 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_PRINT,                                    0,     &WW_PRINT_RARROW},          // <right arrow>
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
-  {ACTION_SEND | ACTION_PRINT,                      '|',   &ASCII_PRINT_BAR},          // \, |
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '|',   &ascii_print_bar},          // \, |
   {ACTION_NONE,                                     0,     NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                     0,     NULL},                      // <setup>
   {ACTION_NONE,                                     0,     NULL},                      //
@@ -5207,7 +5451,7 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                      'Z',   &WW_PRINT_Z},               // z, Z, SUB
   {ACTION_SEND | ACTION_PRINT,                      'Q',   &WW_PRINT_Q},               // q, Q, DC1/XON
   {ACTION_SEND | ACTION_PRINT,                      '!',   &WW_PRINT_EXCLAMATION},     // 1, !
-  {ACTION_SEND | ACTION_PRINT,                      '~',   &ASCII_PRINT_TILDE},        // `, ~
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '~',   &ascii_print_tilde},        // `, ~
   {ACTION_SEND | ACTION_PRINT,                      'A',   &WW_PRINT_A},               // a, A, SOH
   {ACTION_SEND | ACTION_PRINT,                      ' ',   &WW_PRINT_SPACE},           // <space>
   {ACTION_PRINT,                                    0,     &WW_PRINT_LOADPAPER},       // <load paper>
@@ -5239,21 +5483,21 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                      'Y',   &WW_PRINT_Y},               // y, Y, EM
   {ACTION_SEND | ACTION_PRINT,                      'U',   &WW_PRINT_U},               // u, U, NAK
   {ACTION_SEND | ACTION_PRINT,                      '&',   &WW_PRINT_AMPERSAND},       // 7, &
-  {ACTION_SEND | ACTION_PRINT,                      '^',   &ASCII_PRINT_CARET},        // 6, ^, RS
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '^',   &ascii_print_caret},        // 6, ^, RS
   {ACTION_SEND | ACTION_PRINT,                      'J',   &WW_PRINT_J},               // j, J, LF
   {ACTION_SEND | ACTION_PRINT,                      'H',   &WW_PRINT_H},               // h, H, BS
-  {ACTION_SEND | ACTION_PRINT,                      '<',   &ASCII_PRINT_LESS},         // ,, <
-  {ACTION_SEND | ACTION_PRINT,                      '}',   &ASCII_PRINT_RBRACE},       // ], }, GS
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '<',   &ascii_print_less},         // ,, <
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '}',   &ascii_print_rbrace},       // ], }, GS
   {ACTION_SEND | ACTION_PRINT,                      'I',   &WW_PRINT_I},               // i, I, TAB
   {ACTION_SEND | ACTION_PRINT,                      '*',   &WW_PRINT_ASTERISK},        // 8, *
   {ACTION_SEND | ACTION_PRINT,                      '+',   &WW_PRINT_PLUS},            // =, +
   {ACTION_SEND | ACTION_PRINT,                      'K',   &WW_PRINT_K},               // k, K, VT
-  {ACTION_SEND | ACTION_PRINT,                      '>',   &ASCII_PRINT_GREATER},      // ., >
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '>',   &ascii_print_greater},      // ., >
   {ACTION_SEND | ACTION_PRINT,                      'O',   &WW_PRINT_O},               // o, O, SI
   {ACTION_SEND | ACTION_PRINT,                      '(',   &WW_PRINT_LPAREN},          // 9, (
   {ACTION_SEND | ACTION_PRINT,                      'L',   &WW_PRINT_L},               // l, L, FF
   {ACTION_SEND | ACTION_PRINT,                      '?',   &WW_PRINT_QUESTION},        // /, ?
-  {ACTION_SEND | ACTION_PRINT,                      '{',   &ASCII_PRINT_LBRACE},       // [, {, ESC
+  {ACTION_SEND | ACTION_PRINT_SPECIAL,              '{',   &ascii_print_lbrace},       // [, {, ESC
   {ACTION_SEND | ACTION_PRINT,                      'P',   &WW_PRINT_P},               // p, P, DLE
   {ACTION_SEND | ACTION_PRINT,                      ')',   &WW_PRINT_RPAREN},          // 0, )
   {ACTION_SEND | ACTION_PRINT,                      '_',   &WW_PRINT_UNDERSCORE},      // -, _, US
@@ -6127,6 +6371,27 @@ void Setup_ASCII () {
   serial_actions = &ASCII_SERIAL_ACTIONS;
   flow_on = CHAR_ASCII_XON;
   flow_off = CHAR_ASCII_XOFF;
+  if (asciiwheel == SETTING_TRUE) {
+    ascii_print_less = &ASCII_PRINT_LESS_APW;
+    ascii_print_greater = &ASCII_PRINT_GREATER_APW;
+    ascii_print_bslash = &ASCII_PRINT_BSLASH_APW;
+    ascii_print_caret = &ASCII_PRINT_CARET_APW;
+    ascii_print_bapostrophe = &ASCII_PRINT_BAPOSTROPHE_APW;
+    ascii_print_lbrace = &ASCII_PRINT_LBRACE_APW;
+    ascii_print_bar = &ASCII_PRINT_BAR_APW;
+    ascii_print_rbrace = &ASCII_PRINT_RBRACE_APW;
+    ascii_print_tilde = &ASCII_PRINT_TILDE_APW;
+  } else {
+    ascii_print_less = &ASCII_PRINT_LESS_PG;
+    ascii_print_greater = &ASCII_PRINT_GREATER_PG;
+    ascii_print_bslash = &ASCII_PRINT_BSLASH_PG;
+    ascii_print_caret = &ASCII_PRINT_CARET_PG;
+    ascii_print_bapostrophe = &ASCII_PRINT_BAPOSTROPHE_PG;
+    ascii_print_lbrace = &ASCII_PRINT_LBRACE_PG;
+    ascii_print_bar = &ASCII_PRINT_BAR_PG;
+    ascii_print_rbrace = &ASCII_PRINT_RBRACE_PG;
+    ascii_print_tilde = &ASCII_PRINT_TILDE_PG;
+  }
 }
 
 
@@ -6172,6 +6437,28 @@ void Update_ASCII_settings () {
   } else /* serial == SERIAL_RS232 */ {
     hwflow = Read_hwflow_setting ("hw flow control", hwflow);
   }
+  asciiwheel = Read_truefalse_setting ("ASCII printwheel", asciiwheel);
+  if (asciiwheel == SETTING_TRUE) {
+    ascii_print_less = &ASCII_PRINT_LESS_APW;
+    ascii_print_greater = &ASCII_PRINT_GREATER_APW;
+    ascii_print_bslash = &ASCII_PRINT_BSLASH_APW;
+    ascii_print_caret = &ASCII_PRINT_CARET_APW;
+    ascii_print_bapostrophe = &ASCII_PRINT_BAPOSTROPHE_APW;
+    ascii_print_lbrace = &ASCII_PRINT_LBRACE_APW;
+    ascii_print_bar = &ASCII_PRINT_BAR_APW;
+    ascii_print_rbrace = &ASCII_PRINT_RBRACE_APW;
+    ascii_print_tilde = &ASCII_PRINT_TILDE_APW;
+  } else {
+    ascii_print_less = &ASCII_PRINT_LESS_PG;
+    ascii_print_greater = &ASCII_PRINT_GREATER_PG;
+    ascii_print_bslash = &ASCII_PRINT_BSLASH_PG;
+    ascii_print_caret = &ASCII_PRINT_CARET_PG;
+    ascii_print_bapostrophe = &ASCII_PRINT_BAPOSTROPHE_PG;
+    ascii_print_lbrace = &ASCII_PRINT_LBRACE_PG;
+    ascii_print_bar = &ASCII_PRINT_BAR_PG;
+    ascii_print_rbrace = &ASCII_PRINT_RBRACE_PG;
+    ascii_print_tilde = &ASCII_PRINT_TILDE_PG;
+  }
   uppercase = Read_truefalse_setting ("uppercase only", uppercase);
   if (duplex == DUPLEX_HALF) {
     if (uppercase == SETTING_FALSE) {
@@ -6212,6 +6499,7 @@ void Update_ASCII_settings () {
     Write_EEPROM (EEPROM_DPS, dps);
     Write_EEPROM (EEPROM_SWFLOW, swflow);
     Write_EEPROM (EEPROM_HWFLOW, hwflow);
+    Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     Write_EEPROM (EEPROM_UPPERCASE, uppercase);
     Write_EEPROM (EEPROM_AUTORETURN, autoreturn);
     Write_EEPROM (EEPROM_TRANSMITEOL, transmiteol);
@@ -6260,18 +6548,18 @@ void Print_ASCII_character_set ()  {
   Print_string (&WW_PRINT_4);  Print_string (&WW_PRINT_5);  Print_string (&WW_PRINT_6);  Print_string (&WW_PRINT_7);
   Print_string (&WW_PRINT_8);  Print_string (&WW_PRINT_9);
   Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_EXCLAMATION);  Print_string (&WW_PRINT_QUOTE);       Print_string (&WW_PRINT_POUND);
-  Print_string (&WW_PRINT_DOLLAR);       Print_string (&WW_PRINT_PERCENT);     Print_string (&WW_PRINT_AMPERSAND);
-  Print_string (&WW_PRINT_APOSTROPHE);   Print_string (&WW_PRINT_LPAREN);      Print_string (&WW_PRINT_RPAREN);
-  Print_string (&WW_PRINT_ASTERISK);     Print_string (&WW_PRINT_PLUS);        Print_string (&WW_PRINT_COMMA);
-  Print_string (&WW_PRINT_HYPHEN);       Print_string (&WW_PRINT_PERIOD);      Print_string (&WW_PRINT_SLASH);
-  Print_string (&WW_PRINT_COLON);        Print_string (&WW_PRINT_SEMICOLON);   Print_string (&ASCII_PRINT_LESS);
-  Print_string (&WW_PRINT_EQUAL);        Print_string (&ASCII_PRINT_GREATER);  Print_string (&WW_PRINT_QUESTION);
+  Print_string (&WW_PRINT_EXCLAMATION);  Print_string (&WW_PRINT_QUOTE);      Print_string (&WW_PRINT_POUND);
+  Print_string (&WW_PRINT_DOLLAR);       Print_string (&WW_PRINT_PERCENT);    Print_string (&WW_PRINT_AMPERSAND);
+  Print_string (&WW_PRINT_APOSTROPHE);   Print_string (&WW_PRINT_LPAREN);     Print_string (&WW_PRINT_RPAREN);
+  Print_string (&WW_PRINT_ASTERISK);     Print_string (&WW_PRINT_PLUS);       Print_string (&WW_PRINT_COMMA);
+  Print_string (&WW_PRINT_HYPHEN);       Print_string (&WW_PRINT_PERIOD);     Print_string (&WW_PRINT_SLASH);
+  Print_string (&WW_PRINT_COLON);        Print_string (&WW_PRINT_SEMICOLON);  Print_string (ascii_print_less);
+  Print_string (&WW_PRINT_EQUAL);        Print_string (ascii_print_greater);  Print_string (&WW_PRINT_QUESTION);
   Print_string (&WW_PRINT_SPACE);
-  Print_string (&WW_PRINT_AT);              Print_string (&WW_PRINT_LBRACKET);   Print_string (&ASCII_PRINT_BSLASH);
-  Print_string (&WW_PRINT_RBRACKET);        Print_string (&ASCII_PRINT_CARET);   Print_string (&WW_PRINT_UNDERSCORE);
-  Print_string (&ASCII_PRINT_BAPOSTROPHE);  Print_string (&ASCII_PRINT_LBRACE);  Print_string (&ASCII_PRINT_BAR);
-  Print_string (&ASCII_PRINT_RBRACE);       Print_string (&ASCII_PRINT_TILDE);
+  Print_string (&WW_PRINT_AT);             Print_string (&WW_PRINT_LBRACKET);  Print_string (ascii_print_bslash);
+  Print_string (&WW_PRINT_RBRACKET);       Print_string (ascii_print_caret);   Print_string (&WW_PRINT_UNDERSCORE);
+  Print_string (ascii_print_bapostrophe);  Print_string (ascii_print_lbrace);  Print_string (ascii_print_bar);
+  Print_string (ascii_print_rbrace);       Print_string (ascii_print_tilde);
   Print_string (&WW_PRINT_CRtn);  Print_string (&WW_PRINT_CRtn);
 }
 
@@ -6304,134 +6592,134 @@ void Print_ASCII_character_set ()  {
 //**********************************************************************************************************************
 
 const struct serial_action FUTURE_SERIAL_ACTIONS[128] = { 
-  {CMD_NONE,       NULL},                      // NUL
-  {CMD_NONE,       NULL},                      // SOH
-  {CMD_NONE,       NULL},                      // STX
-  {CMD_NONE,       NULL},                      // ETX
-  {CMD_NONE,       NULL},                      // EOT
-  {CMD_NONE,       NULL},                      // ENQ
-  {CMD_NONE,       NULL},                      // ACK
-  {CMD_PRINT,      &WW_PRINT_BEEP},            // BEL
-  {CMD_PRINT,      &WW_PRINT_Backspace},       // BS
-  {CMD_PRINT,      &WW_PRINT_Tab},             // TAB
-  {CMD_ASCII_LF,   NULL},                      // LF
-  {CMD_NONE,       NULL},                      // VT
-  {CMD_NONE,       NULL},                      // FF
-  {CMD_ASCII_CR,   &WW_PRINT_CRtn},            // CR
-  {CMD_NONE,       NULL},                      // SO
-  {CMD_NONE,       NULL},                      // SI
-  {CMD_NONE,       NULL},                      // DLE
-  {CMD_ASCII_XON,  NULL},                      // DC1/XON
-  {CMD_NONE,       NULL},                      // DC2
-  {CMD_ASCII_XOFF, NULL},                      // DC3/XOFF
-  {CMD_NONE,       NULL},                      // DC4
-  {CMD_NONE,       NULL},                      // NAK
-  {CMD_NONE,       NULL},                      // SYN
-  {CMD_NONE,       NULL},                      // ETB
-  {CMD_NONE,       NULL},                      // CAN
-  {CMD_NONE,       NULL},                      // EM
-  {CMD_NONE,       NULL},                      // SUB
-  {CMD_NONE,       NULL},                      // ESC
-  {CMD_NONE,       NULL},                      // FS
-  {CMD_NONE,       NULL},                      // GS
-  {CMD_NONE,       NULL},                      // RS
-  {CMD_NONE,       NULL},                      // US
-  {CMD_PRINT,      &WW_PRINT_SPACE},           //
-  {CMD_PRINT,      &WW_PRINT_EXCLAMATION},     // !
-  {CMD_PRINT,      &WW_PRINT_QUOTE},           // "
-  {CMD_PRINT,      &WW_PRINT_POUND},           // #
-  {CMD_PRINT,      &WW_PRINT_DOLLAR},          // $
-  {CMD_PRINT,      &WW_PRINT_PERCENT},         // %
-  {CMD_PRINT,      &WW_PRINT_AMPERSAND},       // &
-  {CMD_PRINT,      &WW_PRINT_APOSTROPHE},      // '
-  {CMD_PRINT,      &WW_PRINT_LPAREN},          // (
-  {CMD_PRINT,      &WW_PRINT_RPAREN},          // )
-  {CMD_PRINT,      &WW_PRINT_ASTERISK},        // *
-  {CMD_PRINT,      &WW_PRINT_PLUS},            // +
-  {CMD_PRINT,      &WW_PRINT_COMMA},           // , 
-  {CMD_PRINT,      &WW_PRINT_HYPHEN},          // -
-  {CMD_PRINT,      &WW_PRINT_PERIOD},          // .
-  {CMD_PRINT,      &WW_PRINT_SLASH},           // /
-  {CMD_PRINT,      &WW_PRINT_0},               // 0
-  {CMD_PRINT,      &WW_PRINT_1},               // 1
-  {CMD_PRINT,      &WW_PRINT_2},               // 2
-  {CMD_PRINT,      &WW_PRINT_3},               // 3
-  {CMD_PRINT,      &WW_PRINT_4},               // 4
-  {CMD_PRINT,      &WW_PRINT_5},               // 5
-  {CMD_PRINT,      &WW_PRINT_6},               // 6
-  {CMD_PRINT,      &WW_PRINT_7},               // 7
-  {CMD_PRINT,      &WW_PRINT_8},               // 8
-  {CMD_PRINT,      &WW_PRINT_9},               // 9
-  {CMD_PRINT,      &WW_PRINT_COLON},           // :
-  {CMD_PRINT,      &WW_PRINT_SEMICOLON},       // ;
-  {CMD_PRINT,      &ASCII_PRINT_LESS},         // <
-  {CMD_PRINT,      &WW_PRINT_EQUAL},           // =
-  {CMD_PRINT,      &ASCII_PRINT_GREATER},      // >
-  {CMD_PRINT,      &WW_PRINT_QUESTION},        // ?
-  {CMD_PRINT,      &WW_PRINT_AT},              // @
-  {CMD_PRINT,      &WW_PRINT_A},               // A
-  {CMD_PRINT,      &WW_PRINT_B},               // B
-  {CMD_PRINT,      &WW_PRINT_C},               // C
-  {CMD_PRINT,      &WW_PRINT_D},               // D
-  {CMD_PRINT,      &WW_PRINT_E},               // E
-  {CMD_PRINT,      &WW_PRINT_F},               // F
-  {CMD_PRINT,      &WW_PRINT_G},               // G
-  {CMD_PRINT,      &WW_PRINT_H},               // H
-  {CMD_PRINT,      &WW_PRINT_I},               // I
-  {CMD_PRINT,      &WW_PRINT_J},               // J
-  {CMD_PRINT,      &WW_PRINT_K},               // K
-  {CMD_PRINT,      &WW_PRINT_L},               // L
-  {CMD_PRINT,      &WW_PRINT_M},               // M
-  {CMD_PRINT,      &WW_PRINT_N},               // N
-  {CMD_PRINT,      &WW_PRINT_O},               // O
-  {CMD_PRINT,      &WW_PRINT_P},               // P
-  {CMD_PRINT,      &WW_PRINT_Q},               // Q
-  {CMD_PRINT,      &WW_PRINT_R},               // R
-  {CMD_PRINT,      &WW_PRINT_S},               // S
-  {CMD_PRINT,      &WW_PRINT_T},               // T
-  {CMD_PRINT,      &WW_PRINT_U},               // U
-  {CMD_PRINT,      &WW_PRINT_V},               // V
-  {CMD_PRINT,      &WW_PRINT_W},               // W
-  {CMD_PRINT,      &WW_PRINT_X},               // X
-  {CMD_PRINT,      &WW_PRINT_Y},               // Y
-  {CMD_PRINT,      &WW_PRINT_Z},               // Z
-  {CMD_PRINT,      &WW_PRINT_LBRACKET},        // [
-  {CMD_PRINT,      &ASCII_PRINT_BSLASH},       // <backslash>
-  {CMD_PRINT,      &WW_PRINT_RBRACKET},        // ]
-  {CMD_PRINT,      &ASCII_PRINT_CARET},        // ^
-  {CMD_PRINT,      &WW_PRINT_UNDERSCORE},      // _
-  {CMD_PRINT,      &ASCII_PRINT_BAPOSTROPHE},  // `
-  {CMD_PRINT,      &WW_PRINT_a},               // a
-  {CMD_PRINT,      &WW_PRINT_b},               // b
-  {CMD_PRINT,      &WW_PRINT_c},               // c
-  {CMD_PRINT,      &WW_PRINT_d},               // d
-  {CMD_PRINT,      &WW_PRINT_e},               // e
-  {CMD_PRINT,      &WW_PRINT_f},               // f
-  {CMD_PRINT,      &WW_PRINT_g},               // g
-  {CMD_PRINT,      &WW_PRINT_h},               // h
-  {CMD_PRINT,      &WW_PRINT_i},               // i
-  {CMD_PRINT,      &WW_PRINT_j},               // j
-  {CMD_PRINT,      &WW_PRINT_k},               // k
-  {CMD_PRINT,      &WW_PRINT_l},               // l
-  {CMD_PRINT,      &WW_PRINT_m},               // m
-  {CMD_PRINT,      &WW_PRINT_n},               // n
-  {CMD_PRINT,      &WW_PRINT_o},               // o
-  {CMD_PRINT,      &WW_PRINT_p},               // p
-  {CMD_PRINT,      &WW_PRINT_q},               // q
-  {CMD_PRINT,      &WW_PRINT_r},               // r
-  {CMD_PRINT,      &WW_PRINT_s},               // s
-  {CMD_PRINT,      &WW_PRINT_t},               // t
-  {CMD_PRINT,      &WW_PRINT_u},               // u
-  {CMD_PRINT,      &WW_PRINT_v},               // v
-  {CMD_PRINT,      &WW_PRINT_w},               // w
-  {CMD_PRINT,      &WW_PRINT_x},               // x
-  {CMD_PRINT,      &WW_PRINT_y},               // y
-  {CMD_PRINT,      &WW_PRINT_z},               // z
-  {CMD_PRINT,      &ASCII_PRINT_LBRACE},       // {
-  {CMD_PRINT,      &ASCII_PRINT_BAR},          // |
-  {CMD_PRINT,      &ASCII_PRINT_RBRACE},       // }
-  {CMD_PRINT,      &ASCII_PRINT_TILDE},        // ~
-  {CMD_NONE,       NULL}                       // DEL
+  {CMD_NONE,          NULL},                      // NUL
+  {CMD_NONE,          NULL},                      // SOH
+  {CMD_NONE,          NULL},                      // STX
+  {CMD_NONE,          NULL},                      // ETX
+  {CMD_NONE,          NULL},                      // EOT
+  {CMD_NONE,          NULL},                      // ENQ
+  {CMD_NONE,          NULL},                      // ACK
+  {CMD_PRINT,         &WW_PRINT_BEEP},            // BEL
+  {CMD_PRINT,         &WW_PRINT_Backspace},       // BS
+  {CMD_PRINT,         &WW_PRINT_Tab},             // TAB
+  {CMD_ASCII_LF,      NULL},                      // LF
+  {CMD_NONE,          NULL},                      // VT
+  {CMD_NONE,          NULL},                      // FF
+  {CMD_ASCII_CR,      &WW_PRINT_CRtn},            // CR
+  {CMD_NONE,          NULL},                      // SO
+  {CMD_NONE,          NULL},                      // SI
+  {CMD_NONE,          NULL},                      // DLE
+  {CMD_ASCII_XON,     NULL},                      // DC1/XON
+  {CMD_NONE,          NULL},                      // DC2
+  {CMD_ASCII_XOFF,    NULL},                      // DC3/XOFF
+  {CMD_NONE,          NULL},                      // DC4
+  {CMD_NONE,          NULL},                      // NAK
+  {CMD_NONE,          NULL},                      // SYN
+  {CMD_NONE,          NULL},                      // ETB
+  {CMD_NONE,          NULL},                      // CAN
+  {CMD_NONE,          NULL},                      // EM
+  {CMD_NONE,          NULL},                      // SUB
+  {CMD_NONE,          NULL},                      // ESC
+  {CMD_NONE,          NULL},                      // FS
+  {CMD_NONE,          NULL},                      // GS
+  {CMD_NONE,          NULL},                      // RS
+  {CMD_NONE,          NULL},                      // US
+  {CMD_PRINT,         &WW_PRINT_SPACE},           //
+  {CMD_PRINT,         &WW_PRINT_EXCLAMATION},     // !
+  {CMD_PRINT,         &WW_PRINT_QUOTE},           // "
+  {CMD_PRINT,         &WW_PRINT_POUND},           // #
+  {CMD_PRINT,         &WW_PRINT_DOLLAR},          // $
+  {CMD_PRINT,         &WW_PRINT_PERCENT},         // %
+  {CMD_PRINT,         &WW_PRINT_AMPERSAND},       // &
+  {CMD_PRINT,         &WW_PRINT_APOSTROPHE},      // '
+  {CMD_PRINT,         &WW_PRINT_LPAREN},          // (
+  {CMD_PRINT,         &WW_PRINT_RPAREN},          // )
+  {CMD_PRINT,         &WW_PRINT_ASTERISK},        // *
+  {CMD_PRINT,         &WW_PRINT_PLUS},            // +
+  {CMD_PRINT,         &WW_PRINT_COMMA},           // , 
+  {CMD_PRINT,         &WW_PRINT_HYPHEN},          // -
+  {CMD_PRINT,         &WW_PRINT_PERIOD},          // .
+  {CMD_PRINT,         &WW_PRINT_SLASH},           // /
+  {CMD_PRINT,         &WW_PRINT_0},               // 0
+  {CMD_PRINT,         &WW_PRINT_1},               // 1
+  {CMD_PRINT,         &WW_PRINT_2},               // 2
+  {CMD_PRINT,         &WW_PRINT_3},               // 3
+  {CMD_PRINT,         &WW_PRINT_4},               // 4
+  {CMD_PRINT,         &WW_PRINT_5},               // 5
+  {CMD_PRINT,         &WW_PRINT_6},               // 6
+  {CMD_PRINT,         &WW_PRINT_7},               // 7
+  {CMD_PRINT,         &WW_PRINT_8},               // 8
+  {CMD_PRINT,         &WW_PRINT_9},               // 9
+  {CMD_PRINT,         &WW_PRINT_COLON},           // :
+  {CMD_PRINT,         &WW_PRINT_SEMICOLON},       // ;
+  {CMD_PRINT_SPECIAL, &ascii_print_less},         // <
+  {CMD_PRINT,         &WW_PRINT_EQUAL},           // =
+  {CMD_PRINT_SPECIAL, &ascii_print_greater},      // >
+  {CMD_PRINT,         &WW_PRINT_QUESTION},        // ?
+  {CMD_PRINT,         &WW_PRINT_AT},              // @
+  {CMD_PRINT,         &WW_PRINT_A},               // A
+  {CMD_PRINT,         &WW_PRINT_B},               // B
+  {CMD_PRINT,         &WW_PRINT_C},               // C
+  {CMD_PRINT,         &WW_PRINT_D},               // D
+  {CMD_PRINT,         &WW_PRINT_E},               // E
+  {CMD_PRINT,         &WW_PRINT_F},               // F
+  {CMD_PRINT,         &WW_PRINT_G},               // G
+  {CMD_PRINT,         &WW_PRINT_H},               // H
+  {CMD_PRINT,         &WW_PRINT_I},               // I
+  {CMD_PRINT,         &WW_PRINT_J},               // J
+  {CMD_PRINT,         &WW_PRINT_K},               // K
+  {CMD_PRINT,         &WW_PRINT_L},               // L
+  {CMD_PRINT,         &WW_PRINT_M},               // M
+  {CMD_PRINT,         &WW_PRINT_N},               // N
+  {CMD_PRINT,         &WW_PRINT_O},               // O
+  {CMD_PRINT,         &WW_PRINT_P},               // P
+  {CMD_PRINT,         &WW_PRINT_Q},               // Q
+  {CMD_PRINT,         &WW_PRINT_R},               // R
+  {CMD_PRINT,         &WW_PRINT_S},               // S
+  {CMD_PRINT,         &WW_PRINT_T},               // T
+  {CMD_PRINT,         &WW_PRINT_U},               // U
+  {CMD_PRINT,         &WW_PRINT_V},               // V
+  {CMD_PRINT,         &WW_PRINT_W},               // W
+  {CMD_PRINT,         &WW_PRINT_X},               // X
+  {CMD_PRINT,         &WW_PRINT_Y},               // Y
+  {CMD_PRINT,         &WW_PRINT_Z},               // Z
+  {CMD_PRINT,         &WW_PRINT_LBRACKET},        // [
+  {CMD_PRINT_SPECIAL, &ascii_print_bslash},       // <backslash>
+  {CMD_PRINT,         &WW_PRINT_RBRACKET},        // ]
+  {CMD_PRINT_SPECIAL, &ascii_print_caret},        // ^
+  {CMD_PRINT,         &WW_PRINT_UNDERSCORE},      // _
+  {CMD_PRINT_SPECIAL, &ascii_print_bapostrophe},  // `
+  {CMD_PRINT,         &WW_PRINT_a},               // a
+  {CMD_PRINT,         &WW_PRINT_b},               // b
+  {CMD_PRINT,         &WW_PRINT_c},               // c
+  {CMD_PRINT,         &WW_PRINT_d},               // d
+  {CMD_PRINT,         &WW_PRINT_e},               // e
+  {CMD_PRINT,         &WW_PRINT_f},               // f
+  {CMD_PRINT,         &WW_PRINT_g},               // g
+  {CMD_PRINT,         &WW_PRINT_h},               // h
+  {CMD_PRINT,         &WW_PRINT_i},               // i
+  {CMD_PRINT,         &WW_PRINT_j},               // j
+  {CMD_PRINT,         &WW_PRINT_k},               // k
+  {CMD_PRINT,         &WW_PRINT_l},               // l
+  {CMD_PRINT,         &WW_PRINT_m},               // m
+  {CMD_PRINT,         &WW_PRINT_n},               // n
+  {CMD_PRINT,         &WW_PRINT_o},               // o
+  {CMD_PRINT,         &WW_PRINT_p},               // p
+  {CMD_PRINT,         &WW_PRINT_q},               // q
+  {CMD_PRINT,         &WW_PRINT_r},               // r
+  {CMD_PRINT,         &WW_PRINT_s},               // s
+  {CMD_PRINT,         &WW_PRINT_t},               // t
+  {CMD_PRINT,         &WW_PRINT_u},               // u
+  {CMD_PRINT,         &WW_PRINT_v},               // v
+  {CMD_PRINT,         &WW_PRINT_w},               // w
+  {CMD_PRINT,         &WW_PRINT_x},               // x
+  {CMD_PRINT,         &WW_PRINT_y},               // y
+  {CMD_PRINT,         &WW_PRINT_z},               // z
+  {CMD_PRINT_SPECIAL, &ascii_print_lbrace},       // {
+  {CMD_PRINT_SPECIAL, &ascii_print_bar},          // |
+  {CMD_PRINT_SPECIAL, &ascii_print_rbrace},       // }
+  {CMD_PRINT_SPECIAL, &ascii_print_tilde},        // ~
+  {CMD_NONE,          NULL}                       // DEL
 };
 
 
@@ -6965,7 +7253,7 @@ void setup () {
 
   // Wait for any initial printing to finish.
   if (emulation != EMULATION_STANDALONE) {
-    Wait_print_buffer_empty ();
+    Wait_print_buffer_empty (3000);
   }
 }
 
@@ -7157,6 +7445,10 @@ void loop () {
         Print_string ((*serial_actions)[chr].print);
         break;
 
+      case CMD_PRINT_SPECIAL:
+        Print_string (*((*serial_actions)[chr].prints));
+        break;
+
       // IBM 1620 Jr. specific actions.
 
       case CMD_IBM_MODE_0:
@@ -7308,7 +7600,7 @@ void loop () {
       Setup_IBM ();
       run_mode = MODE_RUNNING;
       Print_characters ("---- All settings reset to factory defaults.\r\r");
-      Wait_print_buffer_empty ();
+      Wait_print_buffer_empty (3000);
 
     // Interactive setup.
     } else {
@@ -7370,7 +7662,7 @@ void loop () {
       Setup_ASCII ();
       run_mode = MODE_RUNNING;
       Print_characters ("---- All settings reset to factory defaults.\r\r");
-      Wait_print_buffer_empty ();
+      Wait_print_buffer_empty (3000);
 
     // Interactive setup.
     } else {
@@ -7431,7 +7723,7 @@ void loop () {
       Setup_FUTURE ();
       run_mode = MODE_RUNNING;
       Print_characters ("---- All settings reset to factory defaults.\r\r");
-      Wait_print_buffer_empty ();
+      Wait_print_buffer_empty (3000);
 
     // Interactive setup.
     } else {
@@ -7540,6 +7832,23 @@ void ISR_common () {
   // Get the time that the ISR was entered.
   interrupt_time = millis ();
 
+  // Measure column scan timing.
+  if (in_column_scan_timing) {
+    interrupt_time_microseconds = micros ();
+    if (last_interrupt_time_microseconds > 0UL) {
+      elapsed_time_microseconds = interrupt_time_microseconds - last_interrupt_time_microseconds;
+      if (interrupt_time_microseconds < last_interrupt_time_microseconds) elapsed_time_microseconds =
+                                                                          ~elapsed_time_microseconds + 1;
+      if (elapsed_time_microseconds >= CSCAN_MINIMUM) {
+        ++column_scan_count;
+        total_scan_time += elapsed_time_microseconds;
+        minimum_scan_time = min (minimum_scan_time, elapsed_time_microseconds);
+        maximum_scan_time = max (maximum_scan_time, elapsed_time_microseconds);
+      }
+    }
+    last_interrupt_time_microseconds = interrupt_time_microseconds;
+  }
+
   // Wait for the scan lines to settle down.
   delayMicroseconds (ISR_DELAY);
 
@@ -7577,6 +7886,12 @@ void ISR_common () {
         Report_warning (WARNING_SHORT_SCAN);
       } else if (last_scan_duration > LONG_SCAN_DURATION) {
         Report_warning (WARNING_LONG_SCAN);
+        if (in_printer_timing) {
+          Clear_counter (&pb_count);
+          pb_write = pb_read;
+          print_buffer[pb_write] = WW_NULL;
+          longest_scan_duration = max (longest_scan_duration, last_scan_duration);
+        }
       }
     }
 
@@ -7735,6 +8050,13 @@ inline void ISR_column_3 () {
   // Clear all row drive lines.
   Clear_all_row_lines ();
 
+  // Press 'a' key if timing column scans.
+  if (flood_a_5_keys && (flood_key_count > 0) && ((flood_key_count % 3) == 2)) {
+    Assert_key (WW_a_A);
+    --flood_key_count;
+    return;
+  }
+
   // If the current print character is in this column, assert appropriate row line.
   (void)Test_print (WW_COLUMN_3);
 
@@ -7754,6 +8076,12 @@ inline void ISR_column_4 () {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
+
+  // Press space key if timing column scans.
+  if (press_space_key) {
+    Assert_key (WW_SPACE_REQSPACE);
+    return;
+  }
 
   // If the current print character is in this column, assert appropriate row line.
   (void)Test_print (WW_COLUMN_4);
@@ -7828,6 +8156,15 @@ inline void ISR_column_8 () {
 
   // Clear all row drive lines.
   Clear_all_row_lines ();
+
+  // Press '5' key if timing column scans.
+  if (flood_a_5_keys && (flood_key_count > 0) && ((flood_key_count % 3) != 2)) {
+    if ((flood_key_count % 3) == 1) {
+      Assert_key (WW_5_PERCENT);
+    }
+    --flood_key_count;
+    return;
+  }
 
   // If the current print character is in this column, assert appropriate row line.
   (void)Test_print (WW_COLUMN_8);
@@ -8064,6 +8401,7 @@ void Initialize_configuration_settings (boolean reset) {
   dps = INITIAL_DPS;
   swflow = INITIAL_SWFLOW;
   hwflow = INITIAL_HWFLOW;
+  asciiwheel = INITIAL_ASCIIWHEEL;
   uppercase = INITIAL_UPPERCASE;
   autoreturn = INITIAL_AUTORETURN;
   transmiteol = INITIAL_TRANSMITEOL;
@@ -8101,6 +8439,7 @@ void Initialize_configuration_settings (boolean reset) {
     Write_EEPROM (EEPROM_DPS, dps);
     Write_EEPROM (EEPROM_SWFLOW, swflow);
     Write_EEPROM (EEPROM_HWFLOW, hwflow);
+    Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     Write_EEPROM (EEPROM_UPPERCASE, uppercase);
     Write_EEPROM (EEPROM_AUTORETURN, autoreturn);
     Write_EEPROM (EEPROM_TRANSMITEOL, transmiteol);
@@ -8150,6 +8489,7 @@ void Initialize_configuration_settings (boolean reset) {
     dps = Read_EEPROM (EEPROM_DPS, dps);
     swflow = Read_EEPROM (EEPROM_SWFLOW, swflow);
     hwflow = Read_EEPROM (EEPROM_HWFLOW, hwflow);
+    asciiwheel = Read_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
     uppercase = Read_EEPROM (EEPROM_UPPERCASE, uppercase);
     autoreturn = Read_EEPROM (EEPROM_AUTORETURN, autoreturn);
     transmiteol = Read_EEPROM (EEPROM_TRANSMITEOL, transmiteol);
@@ -8310,7 +8650,7 @@ inline boolean Send_character (char chr) {
   if (sb_count < SIZE_SEND_BUFFER) {
     send_buffer[sb_write] = chr;
     if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
-    Update_counter (&sb_count, 1);
+    Update_counter (&sb_count, +1);
   } else {  // Character doesn't fit in the send buffer.
     Report_error (ERROR_SB_FULL);
     return FALSE;
@@ -8334,7 +8674,7 @@ inline boolean Transfer_print_string (const struct print_info *str) {
   if (tb_count < SIZE_TRANSFER_BUFFER) {
     transfer_buffer[tb_write] = str;
     if (++tb_write >= SIZE_TRANSFER_BUFFER) tb_write = 0;
-    Update_counter (&tb_count, 1);
+    Update_counter (&tb_count, +1);
     return TRUE;
   } else {  // Print string doesn't fit in transfer buffer.
     Report_error (ERROR_TB_FULL);
@@ -8460,9 +8800,9 @@ boolean Print_string (const struct print_info *str) {
   // For ASCII Terminal - A space following '\', '{', or '}' needs special handling to print.
   if (emulation == EMULATION_ASCII) {
     if (str == &WW_PRINT_SPACE) {
-      if (previous_string == &ASCII_PRINT_BSLASH) {
+      if (previous_string == &ASCII_PRINT_BSLASH_PG) {
         str = &ASCII_PRINT_SPACE2;
-      } else if ((previous_string == &ASCII_PRINT_LBRACE) || (previous_string == &ASCII_PRINT_RBRACE)) {
+      } else if ((previous_string == &ASCII_PRINT_LBRACE_PG) || (previous_string == &ASCII_PRINT_RBRACE_PG)) {
         str = &ASCII_PRINT_SPACE3;
       }
     }
@@ -8578,18 +8918,26 @@ boolean Print_string (const struct print_info *str) {
   return TRUE;
 }
 
-// Test if printing has caught up.
-inline boolean Test_printing_caught_up () {
+// Test if print buffer is empty.
+inline boolean Test_print_buffer_empty () {
 
-  return ((interrupt_column == WW_COLUMN_1) &&
+  return ((pb_count == 0) && (interrupt_column == WW_COLUMN_1) &&
           (last_scan_duration < LONG_SCAN_DURATION) && (last_last_scan_duration < LONG_SCAN_DURATION));
 }
 
-// Wait for the print buffer to be empty.
-inline void Wait_print_buffer_empty () {
+// Wait for the print buffer to be empty and optionally for printing to finish.
+inline void Wait_print_buffer_empty (int wait) {
+  while (!Test_print_buffer_empty) delay (1);
+  if (wait >= 0) delay (wait);
+}
 
-    while (pb_count > 0) delay (1);
-    delay (2 * LONG_SCAN_DURATION);
+// Assert a key's row line in current column.
+inline void Assert_key (byte key) {
+  byte pin = row_out_pins[key & 0x0f];
+  if (pin != ROW_OUT_NO_PIN) {
+    digitalWriteFast (pin, HIGH);
+    digitalWriteFast (ROW_ENABLE_PIN, LOW);
+  }
 }
 
 // Test column of current print code and assert row line if match, return output pin.
@@ -8598,7 +8946,15 @@ inline byte Test_print (int column) {
 
   // Test if printing has caught up.
   if (pchr == WW_CATCH_UP) {
-    if (!Test_printing_caught_up ()) return ROW_OUT_NO_PIN;
+    if (!Test_print_buffer_empty ()) return ROW_OUT_NO_PIN;
+    if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
+    pchr = print_buffer[pb_read];
+    Update_counter (&pb_count, -1);
+  }
+
+  // Count character when timing printer.
+  if (pchr == WW_COUNT) {
+    ++print_character_count;
     if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
     pchr = print_buffer[pb_read];
     Update_counter (&pb_count, -1);
@@ -8639,13 +8995,16 @@ void Take_action (int key) {
   if (action & ACTION_PRINT) {
     Transfer_print_string ((*key_actions)[key].print);
   }
+  if (action & ACTION_PRINT_SPECIAL) {
+    Transfer_print_string (*((*key_actions)[key].prints));
+  }
 
   // Queue command character if requested.
   if (action & ACTION_COMMAND) {
     if (cb_count < SIZE_COMMAND_BUFFER) {
       command_buffer[cb_write] = (*key_actions)[key].send;
       if (++cb_write >= SIZE_COMMAND_BUFFER) cb_write = 0;
-      Update_counter (&cb_count, 1);
+      Update_counter (&cb_count, +1);
     } else {  // Character doesn't fit in the command buffer.
       Report_error (ERROR_CB_FULL);
     }
@@ -8712,7 +9071,7 @@ void Take_action (int key) {
         if (sb_count < SIZE_SEND_BUFFER) {
           send_buffer[sb_write] = CHAR_ASCII_CR;
           if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
-          Update_counter (&sb_count, 1);
+          Update_counter (&sb_count, +1);
         } else {  // Character doesn't fit in send buffer.
           Report_error (ERROR_SB_FULL);
         }
@@ -8720,10 +9079,10 @@ void Take_action (int key) {
         if (sb_count < (SIZE_SEND_BUFFER - 1)) {
           send_buffer[sb_write] = CHAR_ASCII_CR;
           if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
-          Update_counter (&sb_count, 1);
+          Update_counter (&sb_count, +1);
           send_buffer[sb_write] = CHAR_ASCII_LF;
           if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
-          Update_counter (&sb_count, 1);
+          Update_counter (&sb_count, +1);
         } else {  // Character doesn't fit in send buffer.
           Report_error (ERROR_SB_FULL);
         }
@@ -8731,7 +9090,7 @@ void Take_action (int key) {
         if (sb_count < SIZE_SEND_BUFFER) {
           send_buffer[sb_write] = CHAR_ASCII_LF;
           if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
-          Update_counter (&sb_count, 1);
+          Update_counter (&sb_count, +1);
         } else {  // Character doesn't fit in send buffer.
           Report_error (ERROR_SB_FULL);
         }
@@ -8739,10 +9098,10 @@ void Take_action (int key) {
         if (sb_count < (SIZE_SEND_BUFFER - 1)) {
           send_buffer[sb_write] = CHAR_ASCII_LF;
           if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
-          Update_counter (&sb_count, 1);
+          Update_counter (&sb_count, +1);
           send_buffer[sb_write] = CHAR_ASCII_CR;
           if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
-          Update_counter (&sb_count, 1);
+          Update_counter (&sb_count, +1);
         } else {  // Character doesn't fit in send buffer.
           Report_error (ERROR_SB_FULL);
         }
@@ -8773,15 +9132,23 @@ void Take_action (int key) {
   }
 }
 
-// Safely increment/decrement a shared counter without disabling interrupts.
+// Safely zero/increment/decrement a shared counter without disabling interrupts.
 // Note:  The Teensy 3.5's Cortex-M4 processor implements the ARMv7-M architecture which supports synchronization
-//        primitives.  As long as all updates to the shared counters in the main code and ISRs call this routine, the
+//        primitives.  As long as all updates to the shared counters in the main code and ISRs call these routines, the
 //        counters will be correct.  For information on the LDREX/STREX instructions, refer to sections 2.2.7 and 3.4.8
 //        in: http://infocenter.arm.com/help/topic/com.arm.doc.dui0553b/DUI0553.pdf
+__attribute__((noinline)) void Clear_counter (volatile int *counter) {
+  int value;
+  int result;
+  do {
+    asm volatile ("ldrex %0, [%1]" : "=r" (value) : "r" (counter) );
+    value = 0;
+    asm volatile ("strex %0, %2, %1" : "=&r" (result), "=Q" (*counter) : "r" (value));
+  } while (result);
+}
 __attribute__((noinline)) void Update_counter (volatile int *counter, int increment) {
   int value;
   int result;
-
   do {
     asm volatile ("ldrex %0, [%1]" : "=r" (value) : "r" (counter) );
     value += increment;
@@ -8810,8 +9177,7 @@ inline void Write_EEPROM (int location, byte value) {
 // Report an error.
 void Report_error (int error) {
 
-  if ((run_mode == MODE_RUNNING) && (errors == SETTING_TRUE) &&
-      (error > ERROR_NULL) && (error < NUM_ERRORS)) {
+  if ((run_mode == MODE_RUNNING) && (errors == SETTING_TRUE) && (error > ERROR_NULL) && (error < NUM_ERRORS)) {
     ++total_errors;
     ++error_counts[error];
     digitalWriteFast (ORANGE_LED_PIN, HIGH);  // Turn on orange LED to indicate error.
@@ -9457,9 +9823,11 @@ void Developer_functions () {
   while (TRUE) {
     char cmd = Read_developer_function ();
     if (cmd == 'k') {
-      Measure_keyboard_bounce ();
+      Measure_keyboard_timing ();
     } else if (cmd == 'p') {
-      Calibrate_printer_timing ();
+      Measure_printer_timing ();
+    } else if (cmd == 's') {
+      Measure_column_scanning ();
     } else if (cmd == 't') {
       Change_typewriter_settings ();
     } else /* cmd == 'e' */ {
@@ -9471,44 +9839,291 @@ void Developer_functions () {
 }
 
 // Measure keyboard bounce.
-void Measure_keyboard_bounce () {
+void Measure_keyboard_timing () {
 
   Print_characters ("\r    Not implemented yet.\r\r");
 }
 
-// Calibrate printer timing.
-void Calibrate_printer_timing () {
+// Measure printer timing.
+void Measure_printer_timing () {
+  int col;
+  int cnt;
+  int bcnt;
+  int scan;
+  unsigned long time;
+  unsigned long btime;
 
-  // Calibrate basic print strings.
-  Calibrate_string ("TIMING_NOSHIFT", &WW_PRINT_a, 77);
-  Calibrate_string ("TIMING_SHIFT", &WW_PRINT_A, 77);
-  Calibrate_string ("TIMING_CODE", &WW_PRINT_PARAGRAPH, 77);
+  // Measure typewriter buffer size.
+  Print_string (&WW_PRINT_CRtn);
+  delay (1000);
+  time = Measure_print_timing (NULL, &WW_PRINT_a, &WW_PRINT_a, 0, 0, 0, length, FALSE, FALSE, &cnt, &scan);
+  Print_string (&WW_PRINT_CRtn);
+  Print_characters ("buffer size: ");
+  buffer_size = (int)((scan * cnt + time / 2UL) / time);
+  Print_integer (buffer_size, 0);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
 
-  // Calibrate stress case alphanumeric string.
-  Calibrate_string ("TIMING_NOSHIFT,SHIFT,CODE", &WW_PRINT_QV079, -15);
+  // Measure null print timing.
+  time = Measure_print_timing (NULL, &WW_PRINT_LShift, &WW_PRINT_LShift, 0, 0, 0, length, FALSE, FALSE, &cnt, NULL);
+  Print_characters ("TIME_NULL: ");
+  Print_integer ((int)(time / cnt), 0);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
 
+  // Measure print timing components.
+  Measure_shm_timing ("TIME_MOVE", NULL, &WW_PRINT_SPACE, &WW_PRINT_SPACE,
+                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4,
+                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4, length);
+  Measure_shm_timing ("TIME_HIT_MOVE", NULL, &WW_PRINT_a, &WW_PRINT_a,
+                      TIME_RELEASE_NOSHIFT_3 + TIME_PRESS_NOSHIFT_3,
+                      TIME_RELEASE_NOSHIFT_3 + TIME_PRESS_NOSHIFT_3, length);
+  Measure_shm_timing ("TIME_SPIN(45)_HIT_MOVE", NULL, &WW_PRINT_e, &WW_PRINT_z,
+                      TIME_RELEASE_NOSHIFT_7 + TIME_PRESS_NOSHIFT_7,
+                      TIME_RELEASE_NOSHIFT_3 + TIME_PRESS_NOSHIFT_3, length);
+  Measure_shm_timing ("TIME_SPIN(90)_HIT_MOVE", NULL, &WW_PRINT_l, &WW_PRINT_x,
+                      TIME_RELEASE_NOSHIFT_11 + TIME_PRESS_NOSHIFT_11,
+                      TIME_RELEASE_NOSHIFT_6 + TIME_PRESS_NOSHIFT_6, length);
+  Measure_shm_timing ("TIME_SPIN(135)_HIT_MOVE", NULL, &WW_PRINT_v, &WW_PRINT_2,
+                      TIME_RELEASE_NOSHIFT_8 + TIME_PRESS_NOSHIFT_8,
+                      TIME_RELEASE_NOSHIFT_6 + TIME_PRESS_NOSHIFT_6, length);
+  Measure_shm_timing ("TIME_SPIN(180)_HIT_MOVE", NULL, &WW_PRINT_m, &WW_PRINT_8,
+                      TIME_RELEASE_NOSHIFT_9 + TIME_PRESS_NOSHIFT_9,
+                      TIME_RELEASE_NOSHIFT_10 + TIME_PRESS_NOSHIFT_10, length);
+
+  // Measure baseline time.
+  btime = Measure_tab_return_timing ("TIME_BASE", 0, FALSE, 0UL, &bcnt);
+
+  // Temporarily set tabs for measuring tab, carriage return, and carriage movement timing.
+  Print_string (&WW_PRINT_ClrAllX);
+  Print_string (&WW_PRINT_SPACE);
+  Print_string (&WW_PRINT_SPACE);
+  Print_string (&WW_PRINT_TSet);
+  for (col = 2; col < ((length - bcnt) / 4); ++col) Print_string (&WW_PRINT_SPACE);
+  Print_string (&WW_PRINT_TSet);
+  for (; col < ((length - bcnt) / 2); ++col) Print_string (&WW_PRINT_SPACE);
+  Print_string (&WW_PRINT_TSet);
+  for (; col < (length - bcnt); ++col) Print_string (&WW_PRINT_SPACE);
+  Print_string (&WW_PRINT_TSet);
+  for (; col < length; ++col) Print_string (&WW_PRINT_SPACE);
+  Print_string (&WW_PRINT_TSet);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (10000);
+
+  // Measure tab and carriage return timing.
+  (void)Measure_tab_return_timing ("TIME_TAB", 1, FALSE, btime, NULL);
+  (void)Measure_tab_return_timing ("TIME_RETURN", 3, TRUE, btime, NULL);
+  Print_string (&WW_PRINT_Tab);
+  Print_string (&WW_PRINT_TClr);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
+  (void)Measure_tab_return_timing ("TIME_TAB", ((length - bcnt) / 4) - 1, FALSE, btime, NULL);
+  (void)Measure_tab_return_timing ("TIME_RETURN", ((length - bcnt) / 4) + 1, TRUE, btime, NULL);
+  Print_string (&WW_PRINT_Tab);
+  Print_string (&WW_PRINT_TClr);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (2000);
+  (void)Measure_tab_return_timing ("TIME_TAB", ((length - bcnt) / 2) - 1, FALSE, btime, NULL);
+  (void)Measure_tab_return_timing ("TIME_RETURN", ((length - bcnt) / 2) + 1, TRUE, btime, NULL);
+  Print_string (&WW_PRINT_Tab);
+  Print_string (&WW_PRINT_TClr);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (4000);
+  (void)Measure_tab_return_timing ("TIME_TAB", length - bcnt - 1, FALSE, btime, NULL);
+  (void)Measure_tab_return_timing ("TIME_RETURN", length - bcnt + 1, TRUE, btime, NULL);
+  Print_string (&WW_PRINT_Tab);
+  Print_string (&WW_PRINT_TClr);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (8000);
+  (void)Measure_tab_return_timing ("TIME_RETURN", length + 1, TRUE, btime, NULL);
+
+  // Measure carriage movement timing.
+  Measure_shm_timing ("TIME_SPACE", NULL, &WW_PRINT_SPACE, &WW_PRINT_SPACE,
+                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4,
+                      TIME_RELEASE_NOSHIFT_4 + TIME_PRESS_NOSHIFT_4, length);
+  Measure_shm_timing ("TIME_BACKSPACE", &WW_PRINT_Tab, &WW_PRINT_Backspace, &WW_PRINT_Backspace,
+                      TIME_RELEASE_NOSHIFT_13 + TIME_PRESS_NOSHIFT_13,
+                      TIME_RELEASE_NOSHIFT_13 + TIME_PRESS_NOSHIFT_13, length);
+  Measure_shm_timing ("TIME_BKSP1", &WW_PRINT_Tab, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
+                      TIME_RELEASE_CODE_13 + TIME_PRESS_CODE_13,
+                      TIME_RELEASE_CODE_13 + TIME_PRESS_CODE_13, length);
+  Measure_shm_timing ("TIME_PAPER_UP_DOWN", NULL, &WW_PRINT_PaperUp, &WW_PRINT_PaperDown,
+                      TIME_RELEASE_NOSHIFT_2 + TIME_PRESS_NOSHIFT_2,
+                      TIME_RELEASE_NOSHIFT_2 + TIME_PRESS_NOSHIFT_2, length);
+  Measure_shm_timing ("TIME_UP_DOWN_ARROW", NULL, &WW_PRINT_UARROW, &WW_PRINT_DARROW,
+                      TIME_RELEASE_NOSHIFT_13 + TIME_PRESS_NOSHIFT_13,
+                      TIME_RELEASE_NOSHIFT_2 + TIME_PRESS_NOSHIFT_2, length);
+  Measure_shm_timing ("TIME_UP_DOWN_MICRO", NULL, &WW_PRINT_UMicro, &WW_PRINT_DMicro,
+                      TIME_RELEASE_CODE_2 + TIME_PRESS_CODE_2,
+                      TIME_RELEASE_CODE_2 + TIME_PRESS_CODE_2, length);
+
+  // Measure printwheel jiggle timing.
+  time = Measure_print_timing (NULL, &WW_PRINT_TSet, &WW_PRINT_TClr, 0, 0, 0, length, FALSE, FALSE, &cnt, &scan);
+  Print_string (&WW_PRINT_TClr);
+  Print_characters ("TIME_JIGGLE: ");
+  Print_integer (max((int)(time / cnt), (int)(scan / buffer_size)), 0);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (2000);
+
+  // Restore tabs and margins.
+  Set_margins_tabs (FALSE);
+
+
+/*
   // Calibrate IBM 1620 Jr. print strings.
-  Calibrate_string ("TIMING_IBM_SLASH_0", &IBM_PRINT_SLASH_0, 77);
-  Calibrate_string ("TIMING_IBM_FLAG_SLASH_0", &IBM_PRINT_FLAG_SLASH_0, 77);
-  Calibrate_string ("TIMING_IBM_FLAG_DIGIT", &IBM_PRINT_FLAG_0, 77);
-  Calibrate_string ("TIMING_IBM_FLAG_NUMBLANK", &IBM_PRINT_FLAG_NUMBLANK, 20);
-  Calibrate_string ("TIMING_IBM_RMARK", &IBM_PRINT_RMARK, 20);
-  Calibrate_string ("TIMING_IBM_FLAG_RMARK", &IBM_PRINT_FLAG_RMARK, 20);
-  Calibrate_string ("TIMING_IBM_GMARK", &IBM_PRINT_GMARK, 20);
-  Calibrate_string ("TIMING_IBM_FLAG_GMARK", &IBM_PRINT_FLAG_GMARK, 20);
-  Calibrate_string ("TIMING_IBM_RELEASESTART", &IBM_PRINT_RELEASESTART, 10);
-  Calibrate_string ("TIMING_IBM_INVALID", &IBM_PRINT_INVALID, 20);
+  if (emulation == EMULATION_IBM) {
+    Calibrate_string ("TIMING_IBM_SLASH_0", &IBM_PRINT_SLASH_0, 75);
+    Calibrate_string ("TIMING_IBM_FLAG_SLASH_0", &IBM_PRINT_FLAG_SLASH_0, 75);
+    Calibrate_string ("TIMING_IBM_FLAG_DIGIT", &IBM_PRINT_FLAG_0, 75);
+    Calibrate_string ("TIMING_IBM_FLAG_NUMBLANK", &IBM_PRINT_FLAG_NUMBLANK, 20);
+    Calibrate_string ("TIMING_IBM_RMARK", &IBM_PRINT_RMARK, 20);
+    Calibrate_string ("TIMING_IBM_FLAG_RMARK", &IBM_PRINT_FLAG_RMARK, 20);
+    Calibrate_string ("TIMING_IBM_GMARK", &IBM_PRINT_GMARK, 20);
+    Calibrate_string ("TIMING_IBM_FLAG_GMARK", &IBM_PRINT_FLAG_GMARK, 20);
+    Calibrate_string ("TIMING_IBM_RELEASESTART", &IBM_PRINT_RELEASESTART, 10);
+    Calibrate_string ("TIMING_IBM_INVALID", &IBM_PRINT_INVALID, 20);
+  }
 
-  // Calibrate ASCII Terminal print strings.
-  Calibrate_string ("TIMING_ASCII_LESS", &ASCII_PRINT_LESS, 20);
-  Calibrate_string ("TIMING_ASCII_GREATER", &ASCII_PRINT_GREATER, 20);
-  Calibrate_string ("TIMING_ASCII_BSLASH", &ASCII_PRINT_BSLASH, 20);
-  Calibrate_string ("TIMING_ASCII_CARET", &ASCII_PRINT_CARET, 20);
-  Calibrate_string ("TIMING_ASCII_BAPOSTROPHE", &ASCII_PRINT_BAPOSTROPHE, 20);
-  Calibrate_string ("TIMING_ASCII_LBRACE", &ASCII_PRINT_LBRACE, 20);
-  Calibrate_string ("TIMING_ASCII_BAR", &ASCII_PRINT_BAR, 20);
-  Calibrate_string ("TIMING_ASCII_RBRACE", &ASCII_PRINT_RBRACE, 20);
-  Calibrate_string ("TIMING_ASCII_TILDE", &ASCII_PRINT_TILDE, 10);
+  // Calibrate ASCII Terminal print strings (Period Graphics).
+  if ((emulation == EMULATION_ASCII) && (asciiwheel == SETTING_FALSE)) {
+    Calibrate_string ("TIMING_ASCII_LESS_PG", &ASCII_PRINT_LESS_PG, 20);
+    Calibrate_string ("TIMING_ASCII_GREATER_PG", &ASCII_PRINT_GREATER_PG, 20);
+    Calibrate_string ("TIMING_ASCII_BSLASH_PG", &ASCII_PRINT_BSLASH_PG, 20);
+    Calibrate_string ("TIMING_ASCII_CARET_PG", &ASCII_PRINT_CARET_PG, 20);
+    Calibrate_string ("TIMING_ASCII_BAPOSTROPHE_PG", &ASCII_PRINT_BAPOSTROPHE_PG, 20);
+    Calibrate_string ("TIMING_ASCII_LBRACE_PG", &ASCII_PRINT_LBRACE_PG, 20);
+    Calibrate_string ("TIMING_ASCII_BAR_PG", &ASCII_PRINT_BAR_PG, 20);
+    Calibrate_string ("TIMING_ASCII_RBRACE_PG", &ASCII_PRINT_RBRACE_PG, 20);
+    Calibrate_string ("TIMING_ASCII_TILDE_PG", &ASCII_PRINT_TILDE_PG, 10);
+  }
+*/
+
+  Print_string (&WW_PRINT_CRtn);
+}
+
+// Measure column scanning.
+void Measure_column_scanning () {
+
+  // Wait for the print buffer to be empty and printing finished.
+  Wait_print_buffer_empty (3000);
+
+  // Initiate keyboard column scan time measurement.
+  column_scan_count = 0;
+  last_interrupt_time_microseconds = 0UL;
+  total_scan_time = 0UL;
+  minimum_scan_time = 0xFFFFFFFFUL;
+  maximum_scan_time = 0UL;
+
+  // Wait for 1000 column scans.
+  in_column_scan_timing = TRUE;
+  while (column_scan_count < 1000) delayMicroseconds (10);
+  in_column_scan_timing = FALSE;
+  delay (100);
+
+  // Print keyboard column scan time measurements.
+  Print_string (&WW_PRINT_CRtn);
+  Print_characters ("empty column scan (min): ");
+  Print_integer ((int)minimum_scan_time, 4);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+  Print_characters ("empty column scan (avg): ");
+  Print_integer ((int)(total_scan_time / column_scan_count), 4);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+  Print_characters ("empty column scan (max): ");
+  Print_integer ((int)maximum_scan_time, 4);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+
+  // Initiate key press and release column scan time measurements.
+  total_key_pressed_scan_time = 0UL;
+  minimum_key_pressed_scan_time = 0xFFFFFFFFUL;
+  maximum_key_pressed_scan_time = 0UL;
+  total_key_released_scan_time = 0UL;
+  minimum_key_released_scan_time = 0xFFFFFFFFUL;
+  maximum_key_released_scan_time = 0UL;
+
+  // Press, hold, and release space key and measure.
+  for (int i = 0; i < length; ++i) {
+    column_scan_count = 0;
+    last_interrupt_time_microseconds = 0UL;
+    total_scan_time = 0UL;
+    minimum_scan_time = 0xFFFFFFFFUL;
+    maximum_scan_time = 0UL;
+    in_column_scan_timing = TRUE;
+    delay (100);
+    press_space_key = TRUE;
+    delay (100);
+    total_key_pressed_scan_time += maximum_scan_time;
+    minimum_key_pressed_scan_time = min (minimum_key_pressed_scan_time, maximum_scan_time);
+    maximum_key_pressed_scan_time = max (maximum_key_pressed_scan_time, maximum_scan_time);
+    maximum_scan_time = 0UL;
+    press_space_key = FALSE;
+    delay (100);
+    in_column_scan_timing = FALSE;
+    delay (100);
+    total_key_released_scan_time += maximum_scan_time;
+    minimum_key_released_scan_time = min (minimum_key_released_scan_time, maximum_scan_time);
+    maximum_key_released_scan_time = max (maximum_key_released_scan_time, maximum_scan_time);
+  }
+  
+  // Print key press and release column scan time measurements.
+  Print_string (&WW_PRINT_CRtn);
+  Print_characters ("key pressed column scan (min): ");
+  Print_integer ((int)minimum_key_pressed_scan_time, 5);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+  Print_characters ("key pressed column scan (avg): ");
+  Print_integer ((int)(total_key_pressed_scan_time / length), 5);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+  Print_characters ("key pressed column scan (max): ");
+  Print_integer ((int)maximum_key_pressed_scan_time, 5);
+  Print_string (&WW_PRINT_CRtn);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+  Print_characters ("key released column scan (min): ");
+  Print_integer ((int)minimum_key_released_scan_time, 5);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+  Print_characters ("key released column scan (avg): ");
+  Print_integer ((int)(total_key_released_scan_time / length), 5);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+  Print_characters ("key released column scan (max): ");
+  Print_integer ((int)maximum_key_released_scan_time, 5);
+  Print_string (&WW_PRINT_CRtn);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (9000);
+
+  // Initiate flood column scan time measurements.
+  column_scan_count = 0;
+  last_interrupt_time_microseconds = 0UL;
+  total_scan_time = 0UL;
+  minimum_scan_time = 0xFFFFFFFFUL;
+  maximum_scan_time = 0UL;
+  in_column_scan_timing = TRUE;
+  delay (100);
+
+  // Flood typewriter with 'a' & '5' keys at maximum speed.
+  flood_key_count = 3 * (length / 2);
+  flood_a_5_keys = TRUE;
+ 
+  // Wait until flood printing is complete.
+  while (flood_key_count > 0) delayMicroseconds (10);
+  Wait_print_buffer_empty (3000);
+  flood_key_scan_time = maximum_scan_time;
+  in_column_scan_timing = FALSE;
+  flood_a_5_keys = FALSE;
+  delay (100);
+
+  // Print flood column scan time measurement.
+  Print_string (&WW_PRINT_CRtn);
+  Print_string (&WW_PRINT_CRtn);
+  Print_characters ("flood column scan: ");
+  Print_integer ((int)flood_key_scan_time, 0);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
 
   Print_string (&WW_PRINT_CRtn);
 }
@@ -9524,11 +10139,11 @@ char Read_developer_function () {
   char cmd;
 
   // Print function prompt.
-  Print_characters ("  Function [keyboard/printer/typewriter/EXIT]: ");
+  Print_characters ("  Function [keyboard/printer/scanning/typewriter/EXIT]: ");
   Space_to_column (COLUMN_FUNCTION);
 
   // Read a command character.
-  cmd = Read_setup_character_from_set ("kKpPtTeE\r");
+  cmd = Read_setup_character_from_set ("kKpPtSsTeE\r");
 
   // Validate and return setup command.
   if ((cmd == 'k') || (cmd == 'K')) {
@@ -9537,6 +10152,9 @@ char Read_developer_function () {
   } else if ((cmd == 'p') || (cmd == 'P')) {
     Print_characters ("printer\r");
     return 'p';
+  } else if ((cmd == 's') || (cmd == 'S')) {
+    Print_characters ("scanning\r");
+    return 's';
   } else if ((cmd == 't') || (cmd == 'T')) {
     Print_characters ("typewriter\r");
     return 't';
@@ -9546,114 +10164,225 @@ char Read_developer_function () {
   }
 }
 
-// Calibrate the print time for a print string.
-void Calibrate_string (const char *name, const struct print_info *str, int len) {
-  struct print_info temp = *str;
-  int base = 0;
-  int last = 0;
-  int cnt = 0;
-  int adj = 0;
-  boolean err = FALSE;
+// Measure and optionally print timing of spin, hit, and move.
+void Measure_shm_timing (const char *name, const struct print_info *str1, const struct print_info *str2,
+                         const struct print_info *str3, int fill2, int fill3, int len) {
+  int base = max (fill2, fill3);
+  int pad2 = base - fill2;
+  int pad3 = base - fill3;
+  int pad;
+  unsigned long time;
+  int cnt;
+  int scan;
+  unsigned long ltime;
+  int lcnt;
 
-  // Calibrate printable strings.
+  // Print title.
   Print_string (&WW_PRINT_CRtn);
-  if (temp.timing >= 0) {
-
-    // Determine timing adjustment.
-    base = Measure_string (&temp, len);
-    if (base >= 10) {
-      err = TRUE;
-    } else {
-      if (base > 0) {
-        while (TRUE) {
-          ++adj;
-          temp.timing += TIME_ADJUST;
-          if (Measure_string (&temp, len) == 0) break;
-          if (++cnt >= 20) {
-            err = TRUE;
-            break;
-          }
-        }
-      }
-      if (!err) {
-        cnt = 0;
-        while (temp.timing > 0) {
-          last = temp.timing;
-          --adj;
-          temp.timing = POSITIVE(temp.timing - TIME_ADJUST);
-          if (Measure_string (&temp, len) != 0) {
-            ++adj;
-            temp.timing = last;
-            break;
-          }
-          if (++cnt >= 20) {
-            err = TRUE;
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // Print timing adjustment.
   Print_characters (name);
-  Print_characters (": ");
-  Print_integer (adj, 0);
-  if (err) {
-    Print_characters (", not able to calibrate print string");
-  }
+  Print_characters (", ");
+  Print_integer (fill2, 0);
+  Print_characters (", ");
+  Print_integer (fill3, 0);
   Print_string (&WW_PRINT_CRtn);
-  delay (2000);
+  Wait_print_buffer_empty (4000);
+
+  // Measure and print timing.
+  if (str1 != NULL) {
+    Print_string (str1);
+    Wait_print_buffer_empty (6000);
+  }
+  ltime = Measure_print_timing (NULL, str2, str3, 0, pad2, pad3, len, TRUE, FALSE, &lcnt, NULL);
+  Wait_print_buffer_empty (6000);
+  if (str1 != NULL) {
+    Print_string (str1);
+    Wait_print_buffer_empty (6000);
+  }
+  time = Measure_print_timing (NULL, str2, str3, 0, pad2 + 4000, pad3 + 4000, len, TRUE, FALSE, &cnt, &scan);
+  Wait_print_buffer_empty (6000);
+  if (cnt > (len - 10)) {
+    pad = 5000;
+  } else {
+    pad = max (1000 * ((3 * (len - lcnt - 10)) / (cnt - lcnt)), 5000);
+  }
+  while (scan != 0) {
+    ltime = time;
+    lcnt = cnt;
+    if (str1 != NULL) {
+      Print_string (str1);
+      Wait_print_buffer_empty (6000);
+    }
+    time = Measure_print_timing (NULL, str2, str3, 0, pad2 + pad, pad3 + pad, len, TRUE, FALSE, &cnt, &scan);
+    Wait_print_buffer_empty (6000);
+    pad += 1000;
+  }
+  if (str1 != NULL) {
+    Print_string (str1);
+    Wait_print_buffer_empty (6000);
+  }
+  (void)Measure_print_timing (NULL, str2, str3, 0, (int)((ltime / lcnt) - fill2), (int)((ltime / lcnt) - fill3), len,
+                              TRUE, TRUE, NULL, NULL);
+  Wait_print_buffer_empty (6000);
+
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
 }
 
-// Measure timing of print string.
-int Measure_string (struct print_info *str, int len) {
-  byte warn = warnings;
-  int wcnt;
+// Measure and print timing of tabs and carriage returns.
+unsigned long Measure_tab_return_timing (const char *name, int len, bool ret, unsigned long btime, int *pcnt) {
+  unsigned long time;
+  unsigned long ttime;
+  unsigned long rtime;
+  int cnt;
+
+  // Print title.
+  Print_string (&WW_PRINT_CRtn);
+  Print_characters (name);
+  if (len != 0) {
+    Print_characters ("(");
+    Print_integer (len, 0);
+    Print_characters (")");
+  }
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+
+  // Make five measurements and average.
+  ttime = 0UL;
+  for (int i = 0; i < 5; ++i) {
+    if (ret) {
+      Print_string (&WW_PRINT_Tab);
+      Wait_print_buffer_empty (3000);
+      time = Measure_print_timing (&WW_PRINT_CRtn, &WW_PRINT_m, &WW_PRINT_8, 0, 0, 0, length, FALSE, FALSE, &cnt, NULL);
+    } else if (btime != 0UL) {
+      time = Measure_print_timing (&WW_PRINT_Tab, &WW_PRINT_m, &WW_PRINT_8, 0, 0, 0, length, FALSE, FALSE, &cnt, NULL);
+    } else {
+      time = Measure_print_timing (NULL, &WW_PRINT_m, &WW_PRINT_8, 0, 0, 0, length, FALSE, FALSE, &cnt, NULL);
+    }
+    ttime += time;
+  }
+  if (btime == 0UL) {
+    rtime = ttime / 5UL / cnt;
+  } else {
+    rtime = (ttime / 5UL) - (cnt * btime);
+  }
+
+  Print_characters ("time: ");
+  Print_integer ((int)rtime, 0);
+  Print_string (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (2000);
+
+  // Return results.
+  if (pcnt != NULL) *pcnt = cnt;
+  return rtime;
+}
+
+// Measure timing of a print sequence.
+unsigned long Measure_print_timing (const struct print_info *str1, const struct print_info *str2,
+                                    const struct print_info *str3, int pad1, int pad2, int pad3, int len, bool print,
+                                    bool force, int *pcnt, int *pscan) {
+  struct print_info tstr1;
+  struct print_info tstr2;
+  struct print_info tstr3;
+  byte warn;
+  int begin;
+  unsigned long start;
+  unsigned long end;
+  unsigned long time;
+  int cnt;
+  int scan;
+  int cps;
 
   // Initialize variables.
+  if (str1 != NULL) {
+    tstr1 = *str1;
+    tstr1.timing = pad1;
+  }
+  tstr2 = *str2;
+  tstr2.timing = pad2;
+  tstr3 = *str3;
+  tstr3.timing = pad3;
+  warn = warnings;
   warnings = SETTING_TRUE;
   warning_counts[WARNING_LONG_SCAN] = 0;
+  total_warnings = 0;
   digitalWriteFast (BLUE_LED_PIN, blue_led_off);
 
-  // Print string.
-  if (len >= 0) {
-    for (int i = 0; i < len; ++i) {
-      Print_string ((const struct print_info *)(str));
-    }
-  } else {  // Inject stress case alphanumeric string.
-    int delta = str->timing - WW_PRINT_QV079.timing;
-    struct print_info str_Q = WW_PRINT_Q;
-    str_Q.timing += delta;
-    struct print_info str_V = WW_PRINT_V;
-    str_V.timing += delta;
-    struct print_info str_0 = WW_PRINT_0;
-    str_0.timing += delta;
-    struct print_info str_7 = WW_PRINT_7;
-    str_7.timing += delta;
-    struct print_info str_9 = WW_PRINT_9;
-    str_9.timing += delta;
-    for (int i = 0; i > len; --i) {
-      Print_string (&str_Q);
-      Print_string (&str_V);
-      Print_string (&str_0);
-      Print_string (&str_7);
-      Print_string (&str_9);
+  // Set initial position of printwheel.
+  Print_string ((const struct print_info *)(&tstr2));
+  Wait_print_buffer_empty (1000);
+
+  // Load print string into buffer.
+  begin = pb_write;
+  if (++pb_write >= SIZE_PRINT_BUFFER) pb_write = 0;
+  print_buffer[pb_write] = WW_NULL;
+  Update_counter (&pb_count, +1);
+  residual_time = 0;
+  if (str1 != NULL) {
+    Print_string ((const struct print_info *)(&tstr1));
+  }
+  for (int i = 1; i <  len; ++i) {
+    print_buffer[pb_write] = WW_COUNT;
+    if (++pb_write >= SIZE_PRINT_BUFFER) pb_write = 0;
+    Update_counter (&pb_count, +1);
+    if ((i % 2) == 0) {
+      Print_string ((const struct print_info *)(&tstr2));
+    } else {
+      Print_string ((const struct print_info *)(&tstr3));
     }
   }
-  while (pb_read != pb_write) delay (1);
-  delay (2000);
-  wcnt = warning_counts[WARNING_LONG_SCAN];
-  Print_integer (wcnt, 3);
+
+  // Print string.
+  print_character_count = 0;
+  longest_scan_duration = 0UL;
+  in_printer_timing = TRUE;
+  start = micros ();
+  print_buffer[begin] = WW_SKIP;
+  while (pb_count > 0) delay (1);
+  end = micros ();
+  time = end - start;
+  if (end < start) time = ~time + 1;
+  in_printer_timing = FALSE;
+  Wait_print_buffer_empty (6000);
+  cnt = print_character_count;
+  scan = 1000 * longest_scan_duration;
+  digitalWriteFast (BLUE_LED_PIN, blue_led_off);
   Print_string (&WW_PRINT_CRtn);
-  delay (2000);
+  Wait_print_buffer_empty (3000);
+
+  // Print timing results.
+  if (print) {
+    Print_integer (pad1, 0);
+    Print_characters (", ");
+    Print_integer (pad2, 0);
+    Print_characters (", ");
+    Print_integer (pad3, 0);
+    Print_characters (", ");
+    Print_integer (cnt, 0);
+    Print_characters (", ");
+    Print_integer ((int)(time / cnt), 0);
+    Print_characters (", ");
+    Print_integer (scan / buffer_size, 0);
+    if ((scan != 0) || force) {
+      Print_characters (", ");
+      cps = (int)((10000000UL * cnt + time / 2UL) / time);
+      Print_integer (cps / 10, 0);
+      Print_characters (".");
+      Print_integer (cps % 10, 0);
+    }
+    Print_string (&WW_PRINT_CRtn);
+    Wait_print_buffer_empty (3000);
+  }
 
   // Restore variables.
   warnings = warn;
   warning_counts[WARNING_LONG_SCAN] = 0;
+  total_warnings = 0;
   digitalWriteFast (BLUE_LED_PIN, blue_led_off);
 
-  return wcnt;
+  // Return results.
+  if (pcnt != NULL) *pcnt = cnt;
+  if (pscan != NULL) *pscan = scan;
+  return time;
 }
 
 // Print errors and warnings.
