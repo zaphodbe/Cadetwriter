@@ -19,8 +19,8 @@
 //                      SlowSoftSerial library (https://github.com/MustBeArt/SlowSoftSerial).
 //                      Compile options - Teensy 3.5, USB Serial, 120 MHz, Fastest with LTO.
 //
-//  Memory:             99164 bytes (18%) of program storage space.
-//                      109732 bytes (41%) of dynamic memory for global variables.
+//  Memory:             99788 bytes (19%) of program storage space.
+//                      109752 bytes (41%) of dynamic memory for global variables.
 //
 //  Documentation:      IBM 1620 Jr. Console Typewriter Protocol, version 1.10, 5/24/2019.
 //                      IBM 1620 Jr. Console Typewriter Test Program, version 1.10, 5/24/2019.
@@ -93,7 +93,7 @@
 //                                           Warning:  The 20cps timing isn't calibrated yet.  No characters are lost,
 //                                                     but the firmware drives the print mechanism too fast and there is
 //                                                     lots of beeping.
-//                      6R0   3/19/2021  Developed new Spin-Hit-Move (SHM) printer timing model.
+//                      6R0   3/25/2021  Developed new Spin-Hit-Move (SHM) printer timing model.
 //                                       Added developer column scan timing measurements and rewrote printer timing.
 //                                       Added configuration setting for ASCII printwheel (#1353909).
 //                                       Updated timings for 20cps print mechanism from Chris Coley.
@@ -901,6 +901,7 @@
 #define TRUE   1  // Boolean true.
 #define FALSE  0  // Boolean false.
 
+
 //**********************************************************************************************************************
 //
 //  Wheelwriter feature definitions.
@@ -908,14 +909,14 @@
 //**********************************************************************************************************************
 
 // Wheelwriter 1000
-#define FEATURE_20CPS           FALSE
-#define FEATURE_WIDE_CARRIAGE   FALSE
-#define FEATURE_VERSION_SUFFIX  ""
+//#define FEATURE_20CPS           FALSE
+//#define FEATURE_WIDE_CARRIAGE   FALSE
+//#define FEATURE_VERSION_SUFFIX  ""
 
 // Wheelwriter 1500
-// #define FEATURE_20CPS           TRUE
-// #define FEATURE_WIDE_CARRIAGE   TRUE
-// #define FEATURE_VERSION_SUFFIX  "_1500"
+#define FEATURE_20CPS           TRUE
+#define FEATURE_WIDE_CARRIAGE   TRUE
+#define FEATURE_VERSION_SUFFIX  "_1500"
 
 // Wheelwriter 5
 // #define FEATURE_20CPS           TRUE
@@ -927,6 +928,7 @@
 // #define FEATURE_WIDE_CARRIAGE   TRUE
 // #define FEATURE_VERSION_SUFFIX  "_30II"
 
+
 //**********************************************************************************************************************
 //
 //  Global definitions.
@@ -935,7 +937,7 @@
 
 // Firmware version values.
 #define VERSION       61
-#define VERSION_TEXT  "6R0beta3" FEATURE_VERSION_SUFFIX
+#define VERSION_TEXT  "6R0beta4" FEATURE_VERSION_SUFFIX
 
 #define VERSION_ESCAPEOFFSET_CHANGED  60  // Version when escape sequences and line offset changed.
 
@@ -1263,7 +1265,7 @@
 
 // Keyboard scan timing values (in msec).
 #define SHORT_SCAN_DURATION  10UL  // Threshold time for Wheelwriter short scans.
-#define LONG_SCAN_DURATION   25UL  // Threshold time for Wheelwriter long scans.
+#define LONG_SCAN_DURATION   22UL  // Threshold time for Wheelwriter long scans.
 
 // Keyboard scan timing values (in usec).
 #define CSCAN_MINIMUM     100                                      // Minimum time for column scan to be counted.
@@ -1364,25 +1366,25 @@
 #define TIME_RELEASE_MAX  (FSCAN_1_CHANGE + FSCAN_2_CHANGES)
 
 #if FEATURE_20CPS
-  #define TIME_NULL             29000  // ??
-  #define TIME_SPIN_MIN             0  // ??
-  #define TIME_SPIN_MAX         45000  // ??
-  #define TIME_SPIN_FACTOR        940  // ??
-  #define TIME_HIT               2500  // ??
-  #define TIME_MOVE             59000  // ??
-  #define TIME_TAB_OFFSET      205000  // ??
-  #define TIME_TAB_FACTOR        5500  // ??
-  #define TIME_RETURN_OFFSET   205000  // ??
-  #define TIME_RETURN_FACTOR     5500  // ??
-  #define TIME_HMOVE            59000  // ??
-  #define TIME_HMOVE_MICRO      58000  // ??
-  #define TIME_VMOVE           147000  // ??
-  #define TIME_VMOVE_HALF      106000  // ??
-  #define TIME_VMOVE_MICRO      63000  // ??
-  #define TIME_BEEP            180000  // ??
-  #define TIME_JIGGLE          230000  // ??
-  #define TIME_LOADPAPER      3000000  // ??
-  #define TIME_UNKNOWN        1000000  // ??
+  #define TIME_NULL             29000
+  #define TIME_SPIN_MIN             0
+  #define TIME_SPIN_MAX         54000
+  #define TIME_SPIN_FACTOR       1130
+  #define TIME_HIT               2500
+  #define TIME_MOVE             48000
+  #define TIME_TAB_OFFSET      290000
+  #define TIME_TAB_FACTOR        5400
+  #define TIME_RETURN_OFFSET   240000
+  #define TIME_RETURN_FACTOR     5400
+  #define TIME_HMOVE            48000
+  #define TIME_HMOVE_MICRO      46000
+  #define TIME_VMOVE           147000
+  #definr TIME_VMOVE_HALF      103000
+  #define TIME_VMOVE_MICRO      63000
+  #define TIME_BEEP            180000
+  #define TIME_JIGGLE          230000
+  #define TIME_LOADPAPER      3000000
+  #define TIME_UNKNOWN        1000000
 #else
   #define TIME_NULL             29000
   #define TIME_SPIN_MIN             0
@@ -1391,9 +1393,9 @@
   #define TIME_HIT               2500
   #define TIME_MOVE             59000
   #define TIME_TAB_OFFSET      205000
-  #define TIME_TAB_FACTOR        5500
+  #define TIME_TAB_FACTOR        5400
   #define TIME_RETURN_OFFSET   205000
-  #define TIME_RETURN_FACTOR     5500
+  #define TIME_RETURN_FACTOR     5400
   #define TIME_HMOVE            59000
   #define TIME_HMOVE_MICRO      58000
   #define TIME_VMOVE           147000
@@ -1590,16 +1592,19 @@
 #define FINGERPRINT  0xdb  // EEPROM fingerprint value.
 
 // Error codes.
-#define ERROR_NULL        0  // Null error.
-#define ERROR_CB_FULL     1  // Command buffer full error.
-#define ERROR_RB_FULL     2  // Receive buffer full error.
-#define ERROR_SB_FULL     3  // Send buffer full error.
-#define ERROR_TB_FULL     4  // Transfer buffer full error.
-#define ERROR_PB_FULL     5  // Print buffer full error.
-#define ERROR_BAD_CODE    6  // Bad print code error.
-#define ERROR_BAD_ESCAPE  7  // Bad escape sequence error.
+#define ERROR_NULL                0  // Null error.
+#define ERROR_CB_FULL             1  // Command buffer full error.
+#define ERROR_RB_FULL             2  // Receive buffer full error.
+#define ERROR_SB_FULL             3  // Send buffer full error.
+#define ERROR_TB_FULL             4  // Transfer buffer full error.
+#define ERROR_PB_FULL             5  // Print buffer full error.
+#define ERROR_BAD_CODE            6  // Bad print code error.
+#define ERROR_BAD_ESCAPE          7  // Bad escape sequence error.
+#define ERROR_BAD_SPACING         8  // Bad print spacing code.
+#define ERROR_BAD_KEY_ACTION      9  // Bad key action code.
+#define ERROR_BAD_SERIAL_ACTION  10  // Bad serial action code.
 
-#define NUM_ERRORS        8  // Number of error codes.
+#define NUM_ERRORS               11  // Number of error codes.
 
 // Warning codes.
 #define WARNING_NULL             0  // Null warning.
@@ -1775,24 +1780,29 @@ struct serial_action {
 
 // Print element information structure.
 struct print_info {
-  byte                   type;               // Element type.
-  byte                   spacing;            // Spacing type.
-  byte                   position;           // Printwheel rotational position.
-  byte                   _pad_;              // Structure alignment padding.
-  int                    timing;             // Timing value (in usec).
-  union {                                    // Print codes.
-    const void          *init;               //   Used for static initialization.
-    const byte (*element)[1000];             //   Used for simple elements.
-    const struct print_info **pelement;      //   Used for complex and dynamic elements.
+  byte                    type;               // Element type.
+  byte                    spacing;            // Spacing type.
+  byte                    position;           // Printwheel rotational position.
+  byte                    _pad_;              // Structure alignment padding.
+  int                     timing;             // Timing value (in usec).
+  union {                                     // Print codes.
+    const void              *init;            //   Used for static initialization.
+    const byte              *element;         //   Used for simple elements.
+    const struct print_info **pelement;       //   Used for complex and dynamic elements.
   };
 };
 #define NULL_PRINT_INFO  (const struct print_info*)NULL
+
 
 //**********************************************************************************************************************
 //
 //  Wheelwriter print strings.
 //
 //**********************************************************************************************************************
+
+// <null> print string.
+const byte WW_STR_NULL[]              = {WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_NULL = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0, 0, &WW_STR_NULL};
 
 // <load paper>, <set top of form> print strings.
 const byte WW_STR_LOADPAPER[]                 = {WW_CATCH_UP, WW_LOADPAPER_SETTOPOFFORM, WW_NULL_4, WW_NULL_14,
@@ -2510,7 +2520,7 @@ const struct print_info WW_PRINT_Backspace = {ELEMENT_SIMPLE, SPACING_BACKWARD, 
                                               &WW_STR_Backspace};
 
 const byte WW_STR_Bksp1[]              = {WW_Code, WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_Bksp1 = {ELEMENT_SIMPLE, SPACING_UNKNOWN, POSITION_NOCHANGE, 0,
+const struct print_info WW_PRINT_Bksp1 = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
                                           TIME_HMOVE_MICRO - (TIME_PRESS_CODE_13 + TIME_RELEASE_CODE_13),
                                           &WW_STR_Bksp1};
 
@@ -2585,6 +2595,47 @@ const byte WW_STR_BEEP[]              = {WW_Code, WW_x_X_POWERWISE, WW_Code, WW_
 const struct print_info WW_PRINT_BEEP = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_RESET, 0,
                                          TIME_BEEP - (TIME_PRESS_CODE_6 + TIME_RELEASE_CODE_6),
                                          &WW_STR_BEEP};
+
+
+//**********************************************************************************************************************
+//
+//  Wheelwriter print character set.
+//
+//**********************************************************************************************************************
+
+const struct print_info *PRINT_CHARACTERS[] = {&WW_PRINT_a,           &WW_PRINT_n,         &WW_PRINT_r,
+                                               &WW_PRINT_m,           &WW_PRINT_c,         &WW_PRINT_s,
+                                               &WW_PRINT_d,           &WW_PRINT_h,         &WW_PRINT_l,
+                                               &WW_PRINT_f,           &WW_PRINT_k,      /* &WW_PRINT_COMMA, */
+                                               &WW_PRINT_V,           &WW_PRINT_HYPHEN,    &WW_PRINT_G,
+                                               &WW_PRINT_U,           &WW_PRINT_F,         &WW_PRINT_B,
+                                               &WW_PRINT_Z,           &WW_PRINT_H,         &WW_PRINT_P,
+                                               &WW_PRINT_RPAREN,      &WW_PRINT_R,         &WW_PRINT_L,
+                                               &WW_PRINT_S,           &WW_PRINT_N,         &WW_PRINT_C,
+                                               &WW_PRINT_T,           &WW_PRINT_D,         &WW_PRINT_E,
+                                               &WW_PRINT_I,           &WW_PRINT_A,         &WW_PRINT_J,
+                                               &WW_PRINT_O,           &WW_PRINT_LPAREN,    &WW_PRINT_M,
+                                               &WW_PRINT_PERIOD,      &WW_PRINT_Y,         &WW_PRINT_COMMA,
+                                               &WW_PRINT_SLASH,       &WW_PRINT_W,         &WW_PRINT_9,
+                                               &WW_PRINT_K,           &WW_PRINT_3,         &WW_PRINT_X,
+                                               &WW_PRINT_1,           &WW_PRINT_2,         &WW_PRINT_0,
+                                               &WW_PRINT_5,           &WW_PRINT_4,         &WW_PRINT_6,
+                                               &WW_PRINT_8,           &WW_PRINT_7,         &WW_PRINT_ASTERISK,
+                                               &WW_PRINT_DOLLAR,      &WW_PRINT_POUND,     &WW_PRINT_PERCENT,
+                                               &WW_PRINT_CENT,        &WW_PRINT_PLUS,      &WW_PRINT_PLUSMINUS,
+                                               &WW_PRINT_AT,          &WW_PRINT_Q,         &WW_PRINT_AMPERSAND,
+                                               &WW_PRINT_RBRACKET,    &WW_PRINT_LBRACKET,  &WW_PRINT_SUPER2,
+                                               &WW_PRINT_SUPER3,      &WW_PRINT_DEGREE,    &WW_PRINT_SECTION,
+                                               &WW_PRINT_PARAGRAPH,   &WW_PRINT_HALF,      &WW_PRINT_QUARTER,
+                                               &WW_PRINT_EXCLAMATION, &WW_PRINT_QUESTION,  &WW_PRINT_QUOTE,
+                                               &WW_PRINT_APOSTROPHE,  &WW_PRINT_EQUAL,     &WW_PRINT_COLON,
+                                               &WW_PRINT_UNDERSCORE,  &WW_PRINT_SEMICOLON, &WW_PRINT_x,
+                                               &WW_PRINT_p,           &WW_PRINT_v,         &WW_PRINT_z,
+                                               &WW_PRINT_w,           &WW_PRINT_j,      /* &WW_PRINT_PERIOD, */
+                                               &WW_PRINT_y,           &WW_PRINT_b,         &WW_PRINT_g,
+                                               &WW_PRINT_u,           &WW_PRINT_q,         &WW_PRINT_i,
+                                               &WW_PRINT_t,           &WW_PRINT_o,         &WW_PRINT_e};
+#define NUM_PRINT_CHARACTERS  94  // Number of unique printwheel characters.
 
 
 //**********************************************************************************************************************
@@ -2667,21 +2718,23 @@ volatile unsigned long flood_key_scan_time = 0UL;               // Flood space k
 // Printer timing variables.
 volatile boolean in_printer_timing = FALSE;          // Currently in printer timing.
 volatile int print_character_count = 0;              // Count of characters printed.
-volatile unsigned long longest_scan_duration = 0UL;  // Duration of longest full scan.
 volatile int buffer_size = 0;                        // Size of Wheelwriter input buffer.
 
 // Error text table.
-const char* error_text[NUM_ERRORS] = {NULL,
+const char* ERROR_TEXT[NUM_ERRORS] = {NULL,
                                       "Command buffer full errors.",
                                       "Receive buffer full errors.",
                                       "Send buffer full errors.",
                                       "Transfer buffer full errors.",
                                       "Print buffer full errors.",
                                       "Bad print code errors.",
-                                      "Bad escape sequence errors."};
+                                      "Bad escape sequence errors.",
+                                      "Bad print spacing code errors.",
+                                      "Bad key action code errors.",
+                                      "Bad serial action code errors."};
 
 // Warning text table.
-const char* warning_text[NUM_WARNINGS] = {NULL,
+const char* WARNING_TEXT[NUM_WARNINGS] = {NULL,
                                           "Short column scan warnings.",
                                           "Long column scan warnings.",
                                           "Unexpected column scan warnings."};
@@ -2693,20 +2746,20 @@ volatile byte row_out_pins[16] = {ROW_OUT_NO_PIN, ROW_OUT_1_PIN, ROW_OUT_2_PIN, 
                                   ROW_OUT_NO_PIN};
 
 // Databits parity stopbits tables.
-const int data_parity_stops[NUM_DPSS]       = {0, SERIAL_7O1, SERIAL_7E1, SERIAL_8N1, SERIAL_8O1, SERIAL_8E1,
+const int DATA_PARITY_STOPS[NUM_DPSS]       = {0, SERIAL_7O1, SERIAL_7E1, SERIAL_8N1, SERIAL_8O1, SERIAL_8E1,
                                                SERIAL_8N2, SERIAL_8O2, SERIAL_8E2};
-const int data_parity_stops_slow[NUM_DPSS]  = {0, SSS_SERIAL_7O1, SSS_SERIAL_7E1, SSS_SERIAL_8N1, SSS_SERIAL_8O1,
+const int DATA_PARITY_STOPS_SLOW[NUM_DPSS]  = {0, SSS_SERIAL_7O1, SSS_SERIAL_7E1, SSS_SERIAL_8N1, SSS_SERIAL_8O1,
                                                SSS_SERIAL_8E1, SSS_SERIAL_8N2, SSS_SERIAL_8O2, SSS_SERIAL_8E2};
-const char* data_parity_stops_text[NUM_DPSS] = {NULL, "7o1", "7e1", "8n1", "8o1", "8e1", "8n2", "8o2", "8e2"};
+const char* DATA_PARITY_STOPS_TEXT[NUM_DPSS] = {NULL, "7o1", "7e1", "8n1", "8o1", "8e1", "8n2", "8o2", "8e2"};
 
 // Baud rate table.  Note: Baud rates below 1200 are not usable with the hardware UART on Teensy 3.5, but are supported
 //                         by the SlowSoftSerial library.
 //                         Baud rates above 230400 are not supported by the MAX3232 chip.
-const int baud_rates[NUM_BAUDS] = {0, 50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400,
+const int BAUD_RATES[NUM_BAUDS] = {0, 50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400,
                                    57600, 76800, 115200, 230400, 460800, 921600};
 
 // Parity lookup tables.
-const byte odd_parity[128]  = {0x80, 0x01, 0x02, 0x83, 0x04, 0x85, 0x86, 0x07,
+const byte ODD_PARITY[128]  = {0x80, 0x01, 0x02, 0x83, 0x04, 0x85, 0x86, 0x07,
                                0x08, 0x89, 0x8a, 0x0b, 0x8c, 0x0d, 0x0e, 0x8f,
                                0x10, 0x91, 0x92, 0x13, 0x94, 0x15, 0x16, 0x97,
                                0x98, 0x19, 0x1a, 0x9b, 0x1c, 0x9d, 0x9e, 0x1f,
@@ -2722,7 +2775,7 @@ const byte odd_parity[128]  = {0x80, 0x01, 0x02, 0x83, 0x04, 0x85, 0x86, 0x07,
                                0x68, 0xe9, 0xea, 0x6b, 0xec, 0x6d, 0x6e, 0xef,
                                0x70, 0xf1, 0xf2, 0x73, 0xf4, 0x75, 0x76, 0xf7,
                                0xf8, 0x79, 0x7a, 0xfb, 0x7c, 0xfd, 0xfe, 0x7f};
-const byte even_parity[128] = {0x00, 0x81, 0x82, 0x03, 0x84, 0x05, 0x06, 0x87,
+const byte EVEN_PARITY[128] = {0x00, 0x81, 0x82, 0x03, 0x84, 0x05, 0x06, 0x87,
                                0x88, 0x09, 0x0a, 0x8b, 0x0c, 0x8d, 0x8e, 0x0f,
                                0x90, 0x11, 0x12, 0x93, 0x14, 0x95, 0x96, 0x17,
                                0x18, 0x99, 0x9a, 0x1b, 0x9c, 0x1d, 0x1e, 0x9f,
@@ -2740,10 +2793,10 @@ const byte even_parity[128] = {0x00, 0x81, 0x82, 0x03, 0x84, 0x05, 0x06, 0x87,
                                0x78, 0xf9, 0xfa, 0x7b, 0xfc, 0x7d, 0x7e, 0xff};
 
 // Print code validation table.
-const boolean pc_validation[256] = {
+const boolean PC_VALIDATION[256] = {
         TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
         TRUE,  TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
-        TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+        TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
         TRUE,  FALSE, TRUE,  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
         TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
         TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
@@ -2756,10 +2809,10 @@ const boolean pc_validation[256] = {
         TRUE,  TRUE,  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
         TRUE,  TRUE,  TRUE,  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
         TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, TRUE,  TRUE,  TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
-        FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE,  TRUE};
+        FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE,  TRUE,  TRUE};
 
 // Escape character table.
-const byte escape_character[128] = {ESC_IGNORE,       ESC_CONTROL,      ESC_CONTROL,      ESC_CONTROL,
+const byte ESCAPE_CHARACTER[128] = {ESC_IGNORE,       ESC_CONTROL,      ESC_CONTROL,      ESC_CONTROL,
                                     ESC_CONTROL,      ESC_CONTROL,      ESC_CONTROL,      ESC_CTRL_BEL,
                                     ESC_CTRL_BS_CR,   ESC_CTRL_BS_CR,   ESC_CTRL_BS_CR,   ESC_CTRL_BS_CR,
                                     ESC_CTRL_BS_CR,   ESC_CTRL_BS_CR,   ESC_CONTROL,      ESC_CONTROL,
@@ -2793,7 +2846,7 @@ const byte escape_character[128] = {ESC_IGNORE,       ESC_CONTROL,      ESC_CONT
                                     ESC_LOWERCASE,    ESC_LOWERCASE,    ESC_LOWERCASE,    ESC_IGNORE};
 
 // Escape FSA table.
-const byte escape_fsa[5][13] = {{ESC_NONE,  ESC_PRINT, ESC_PRINT, ESC_PRINT, ESC_EXIT, ESC_INIT, ESC_EXIT,
+const byte ESCAPE_FSA[5][13] = {{ESC_NONE,  ESC_PRINT, ESC_PRINT, ESC_PRINT, ESC_EXIT, ESC_INIT, ESC_EXIT,
                                  ESC_FUNC,  ESC_EXIT,  ESC_STR,   ESC_CSIP,  ESC_EXIT, ESC_EXIT},
                                 {ESC_NONE,  ESC_PRINT, ESC_PRINT, ESC_PRINT, ESC_EXIT, ESC_INIT, ESC_NONE,
                                  ESC_CSII,  ESC_EXIT,  ESC_EXIT,  ESC_EXIT,  ESC_EXIT, ESC_EXIT},
@@ -2803,6 +2856,43 @@ const byte escape_fsa[5][13] = {{ESC_NONE,  ESC_PRINT, ESC_PRINT, ESC_PRINT, ESC
                                  ESC_NONE,  ESC_EXIT,  ESC_EXIT,  ESC_EXIT,  ESC_EXIT, ESC_EXIT},
                                 {ESC_NONE,  ESC_PRINT, ESC_EXIT,  ESC_NONE,  ESC_EXIT, ESC_INIT, ESC_NONE,
                                  ESC_NONE,  ESC_NONE,  ESC_NONE,  ESC_NONE,  ESC_NONE, ESC_NONE}};
+
+// Test print string.
+const char* TEST_PRINT_STRING = "'Twas brillig, and the slithy toves\r"
+                                "\tDid gyre and gimble in the wabe:\r"
+                                "All mimsy were the borogoves,\r"
+                                "\tAnd the mome raths outgrabe.\r\r"
+
+                                "\"Beware the Jabberwock, my son!\r"
+                                "\tThe jaws that bite, the claws that catch!\r"
+                                "Beware the Jubjub bird, and shun\r"
+                                "\tThe frumious Bandersnatch!\"\r\r"
+
+                                "He took his vorpal sword in hand;\r"
+                                "\tLong time the manxome foe he sought-\r"
+                                "So rested he by the Tumtum tree\r"
+                                "\tAnd stood awhile in thought.\r\r"
+
+                                "And, as in uffish thought he stood,\r"
+                                "\tThe Jabberwock, with eyes of flame,\r"
+                                "Came whiffling through the tulgey wood,\r"
+                                "\tAnd burbled as it came!\r\r"
+
+                                "One, two! One, two! And through and through\r"
+                                "\tThe vorpal blade went snicker-snack!\r"
+                                "He left it dead, and with its head\r"
+                                "\tHe went galumphing back.\r\r"
+
+                                "\"And hast thou slain the Jabberwock?\r"
+                                "\tCome to my arms, my beamish boy!\r"
+                                "O frabjous day! Callooh! Callay!\"\r"
+                                "\tHe chortled in his joy.\r\r"
+
+                                "'Twas brillig, and the slithy toves\r"
+                                "\tDid gyre and gimble in the wabe:\r"
+                                "All mimsy were the borogoves,\r"
+                                "\tAnd the mome raths outgrabe.";
+#define NUM_TEST_PRINT_STRING  983  // Length of test print string.
 
 // Key action variables.
 volatile const struct key_action (*key_actions)[3 * NUM_WW_KEYS] = NULL;       // Current key action table.
@@ -2823,7 +2913,11 @@ volatile int warning_counts[NUM_WARNINGS];  // Count of warnings by warning code
 // Print variables.
 volatile int current_column = INITIAL_LMARGIN;              // Current typewriter print column.
 volatile int current_position = POSITION_INITIAL;           // Current rotational position of printwheel.
+volatile boolean in_composite_character = FALSE;            // Processing composite character.
 volatile const struct print_info *previous_element = NULL;  // Previous print element.
+volatile unsigned long shortest_scan_duration = 0UL;        // Duration of shortest full scan.
+volatile unsigned long longest_scan_duration = 0UL;         // Duration of longest full scan.
+volatile byte bad_print_code = 0;                           // Bad print code.
 
 // Software flow control variables.
 volatile boolean flow_in_on = TRUE;   // Input flow control turned on.
@@ -2990,9 +3084,9 @@ volatile byte tabs[200] = {SETTING_UNDEFINED};          // Tab settings.        
 //**********************************************************************************************************************
 
 // Dynamic print strings.
-const struct print_info *ibm_print_zero;
-const struct print_info *ibm_print_rmark;
-const struct print_info *ibm_print_gmark;
+volatile const struct print_info *ibm_print_zero;
+volatile const struct print_info *ibm_print_rmark;
+volatile const struct print_info *ibm_print_gmark;
 
 
 //**********************************************************************************************************************
@@ -3004,87 +3098,94 @@ const struct print_info *ibm_print_gmark;
 // <flag>, <slash 0>, <flag slash 0>, <flag 0>, <flag 1>, <flag 2>, <flag 3>, <flag 4>, <flag 5>, <flag 6>, <flag 7>,
 // <flag 8>, <slash 9> print strings.
 const struct print_info *IBM_STR_FLAG[] = {&WW_PRINT_12UP, &WW_PRINT_HYPHEN, &WW_PRINT_Backspace, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG};
+const struct print_info IBM_PRINT_FLAG  = {ELEMENT_COMPOSITE, SPACING_NONE, 0, 0, 0, &IBM_STR_FLAG};
 
 const struct print_info *IBM_STR_SLASH_0[] = {&WW_PRINT_0, &WW_PRINT_Backspace, &WW_PRINT_SLASH, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_SLASH_0  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_SLASH_0};
+const struct print_info IBM_PRINT_SLASH_0  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_SLASH_0};
 const struct print_info IBM_PRINT_0        = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ibm_print_zero};
 
 const struct print_info *IBM_STR_FLAG_SLASH_0[] = {&IBM_PRINT_FLAG, &IBM_PRINT_SLASH_0, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_SLASH_0  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_SLASH_0};
+const struct print_info IBM_PRINT_FLAG_SLASH_0  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_SLASH_0};
 
 const struct print_info *IBM_STR_FLAG_0[] = {&IBM_PRINT_FLAG, &IBM_PRINT_0, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_0  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_0};
+const struct print_info IBM_PRINT_FLAG_0  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_0};
 
 const struct print_info *IBM_STR_FLAG_1[] = {&IBM_PRINT_FLAG, &WW_PRINT_1, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_1  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_1};
+const struct print_info IBM_PRINT_FLAG_1  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_1};
 
 const struct print_info *IBM_STR_FLAG_2[] = {&IBM_PRINT_FLAG, &WW_PRINT_2, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_2  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_2};
+const struct print_info IBM_PRINT_FLAG_2  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_2};
 
 const struct print_info *IBM_STR_FLAG_3[] = {&IBM_PRINT_FLAG, &WW_PRINT_3, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_3  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_3};
+const struct print_info IBM_PRINT_FLAG_3  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_3};
 
 const struct print_info *IBM_STR_FLAG_4[] = {&IBM_PRINT_FLAG, &WW_PRINT_4, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_4  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_4};
+const struct print_info IBM_PRINT_FLAG_4  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_4};
 
 const struct print_info *IBM_STR_FLAG_5[] = {&IBM_PRINT_FLAG, &WW_PRINT_5, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_5  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_5};
+const struct print_info IBM_PRINT_FLAG_5  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_5};
 
 const struct print_info *IBM_STR_FLAG_6[] = {&IBM_PRINT_FLAG, &WW_PRINT_6, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_6  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_6};
+const struct print_info IBM_PRINT_FLAG_6  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_6};
 
 const struct print_info *IBM_STR_FLAG_7[] = {&IBM_PRINT_FLAG, &WW_PRINT_7, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_7  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_7};
+const struct print_info IBM_PRINT_FLAG_7  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_7};
 
 const struct print_info *IBM_STR_FLAG_8[] = {&IBM_PRINT_FLAG, &WW_PRINT_8, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_8  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_8};
+const struct print_info IBM_PRINT_FLAG_8  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_8};
 
 const struct print_info *IBM_STR_FLAG_9[] = {&IBM_PRINT_FLAG, &WW_PRINT_9, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_9  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_9};
+const struct print_info IBM_PRINT_FLAG_9  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_9};
 
 // <flag numblank> print string.
 const struct print_info *IBM_STR_FLAG_NUMBLANK[] = {&IBM_PRINT_FLAG, &WW_PRINT_AT, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_NUMBLANK  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_NUMBLANK};
+const struct print_info IBM_PRINT_FLAG_NUMBLANK  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0,
+                                                    &IBM_STR_FLAG_NUMBLANK};
 
 // <rmark>, <flag rmark>, <gmark>, <flag gmark> print strings.
 const struct print_info *IBM_STR_RMARK_IPW[] = {&WW_PRINT_EQUAL, &WW_PRINT_Backspace, &WW_PRINT_EXCLAMATION,
                                                 &WW_PRINT_Backspace, &WW_PRINT_i, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_RMARK_IPW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_RMARK_IPW};
+const struct print_info IBM_PRINT_RMARK_IPW  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_RMARK_IPW};
 const struct print_info *IBM_STR_RMARK_APW[] = {&WW_PRINT_EQUAL, &WW_PRINT_Backspace, &WW_PRINT_EXCLAMATION,
                                                 NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_RMARK_APW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_RMARK_APW};
+const struct print_info IBM_PRINT_RMARK_APW  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_RMARK_APW};
 const struct print_info IBM_PRINT_RMARK      = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ibm_print_rmark};
 
-const struct print_info *IBM_STR_FLAG_RMARK[] = {&IBM_PRINT_FLAG, &IBM_PRINT_RMARK, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_RMARK  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_RMARK};
+const struct print_info *IBM_STR_FLAG_RMARK_IPW[] = {&IBM_PRINT_FLAG, &IBM_PRINT_RMARK_IPW, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_RMARK_IPW  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0,
+                                                     &IBM_STR_FLAG_RMARK_IPW};
+const struct print_info *IBM_STR_FLAG_RMARK[]     = {&IBM_PRINT_FLAG, &IBM_PRINT_RMARK, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_RMARK      = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_RMARK};
 
 const struct print_info *IBM_STR_GMARK_IPW[] = {&WW_PRINT_UpMicro, &WW_PRINT_EQUAL, &WW_PRINT_Backspace,
                                                 &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_DownMicro,
                                                 &WW_PRINT_HYPHEN, &WW_PRINT_Backspace, &WW_PRINT_UpMicro,
                                                 &WW_PRINT_UpMicro, &WW_PRINT_EXCLAMATION, &WW_PRINT_Backspace,
                                                 &WW_PRINT_i, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_GMARK_IPW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_GMARK_IPW};
+const struct print_info IBM_PRINT_GMARK_IPW  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_GMARK_IPW};
 const struct print_info *IBM_STR_GMARK_APW[] = {&WW_PRINT_UpMicro, &WW_PRINT_EQUAL, &WW_PRINT_Backspace,
                                                 &WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_DownMicro,
                                                 &WW_PRINT_HYPHEN, &WW_PRINT_Backspace, &WW_PRINT_UpMicro,
                                                 &WW_PRINT_UpMicro, &WW_PRINT_EXCLAMATION, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_GMARK_APW  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_GMARK_APW};
+const struct print_info IBM_PRINT_GMARK_APW  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_GMARK_APW};
 const struct print_info IBM_PRINT_GMARK      = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ibm_print_gmark};
 
-const struct print_info *IBM_STR_FLAG_GMARK[] = {&IBM_PRINT_FLAG, &IBM_PRINT_GMARK, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_FLAG_GMARK  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_FLAG_GMARK};
+const struct print_info *IBM_STR_FLAG_GMARK_IPW[] = {&IBM_PRINT_FLAG, &IBM_PRINT_GMARK_IPW, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_GMARK_IPW  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0,
+                                                     &IBM_STR_FLAG_GMARK_IPW};
+const struct print_info *IBM_STR_FLAG_GMARK[]     = {&IBM_PRINT_FLAG, &IBM_PRINT_GMARK, NULL_PRINT_INFO};
+const struct print_info IBM_PRINT_FLAG_GMARK      = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_FLAG_GMARK};
 
 // <release start>, <invalid> print strings.
 const struct print_info *IBM_STR_RELEASESTART[] = {&WW_PRINT_DownMicro, &WW_PRINT_DownMicro, &WW_PRINT_R,
                                                    &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
                                                    &WW_PRINT_PaperUp, &WW_PRINT_S, &WW_PRINT_DownMicro,
                                                    &WW_PRINT_DownMicro, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_RELEASESTART  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_RELEASESTART};
+const struct print_info IBM_PRINT_RELEASESTART  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_RELEASESTART};
 
 const struct print_info *IBM_STR_INVALID[] = {&WW_PRINT_X, &WW_PRINT_Backspace, &WW_PRINT_EXCLAMATION,
                                               &WW_PRINT_Backspace, &WW_PRINT_i, NULL_PRINT_INFO};
-const struct print_info IBM_PRINT_INVALID  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &IBM_STR_INVALID};
+const struct print_info IBM_PRINT_INVALID  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &IBM_STR_INVALID};
 
 
 //**********************************************************************************************************************
@@ -4770,7 +4871,6 @@ void Setup_IBM (void) {
 
 // Print IBM 1620 Jr. setup title.
 void Print_IBM_setup_title (void) {
-
   (void)Print_string ("\r\r---- Cadetwriter: " IBM_VERSION " Setup\r\r");
 }
 
@@ -4821,8 +4921,7 @@ void Update_IBM_settings (void) {
 }
 
 // Print IBM 1620 Jr. character set.
-void Print_IBM_character_set ()  {
-
+void Print_IBM_character_set (void) {
   (void)Print_element (&WW_PRINT_CRtn);
   (void)Print_element (&WW_PRINT_SPACE);  (void)Print_element (&WW_PRINT_SPACE);
   (void)Print_element (&WW_PRINT_A);  (void)Print_element (&WW_PRINT_B);  (void)Print_element (&WW_PRINT_C);
@@ -4835,9 +4934,9 @@ void Print_IBM_character_set ()  {
   (void)Print_element (&WW_PRINT_V);  (void)Print_element (&WW_PRINT_W);  (void)Print_element (&WW_PRINT_X);
   (void)Print_element (&WW_PRINT_Y);  (void)Print_element (&WW_PRINT_Z);
   (void)Print_element (&WW_PRINT_SPACE);
-  (void)Print_element (&IBM_PRINT_SLASH_0);  (void)Print_element (&WW_PRINT_1);  (void)Print_element (&WW_PRINT_2);
-  (void)Print_element (&WW_PRINT_3);         (void)Print_element (&WW_PRINT_4);  (void)Print_element (&WW_PRINT_5);
-  (void)Print_element (&WW_PRINT_6);         (void)Print_element (&WW_PRINT_7);  (void)Print_element (&WW_PRINT_8);
+  (void)Print_element (&IBM_PRINT_0);  (void)Print_element (&WW_PRINT_1);  (void)Print_element (&WW_PRINT_2);
+  (void)Print_element (&WW_PRINT_3);   (void)Print_element (&WW_PRINT_4);  (void)Print_element (&WW_PRINT_5);
+  (void)Print_element (&WW_PRINT_6);   (void)Print_element (&WW_PRINT_7);  (void)Print_element (&WW_PRINT_8);
   (void)Print_element (&WW_PRINT_9);
   (void)Print_element (&WW_PRINT_SPACE);
   (void)Print_element (&IBM_PRINT_FLAG_0);  (void)Print_element (&IBM_PRINT_FLAG_1);
@@ -4966,15 +5065,15 @@ void Print_IBM_character_set ()  {
 //**********************************************************************************************************************
 
 // Dynamic print strings.
-const struct print_info *ascii_print_less;
-const struct print_info *ascii_print_greater;
-const struct print_info *ascii_print_bslash;
-const struct print_info *ascii_print_caret;
-const struct print_info *ascii_print_bapostrophe;
-const struct print_info *ascii_print_lbrace;
-const struct print_info *ascii_print_bar;
-const struct print_info *ascii_print_rbrace;
-const struct print_info *ascii_print_tilde;
+volatile const struct print_info *ascii_print_less;
+volatile const struct print_info *ascii_print_greater;
+volatile const struct print_info *ascii_print_bslash;
+volatile const struct print_info *ascii_print_caret;
+volatile const struct print_info *ascii_print_bapostrophe;
+volatile const struct print_info *ascii_print_lbrace;
+volatile const struct print_info *ascii_print_bar;
+volatile const struct print_info *ascii_print_rbrace;
+volatile const struct print_info *ascii_print_tilde;
 
 
 //**********************************************************************************************************************
@@ -4983,12 +5082,12 @@ const struct print_info *ascii_print_tilde;
 //
 //**********************************************************************************************************************
 
-// <space> print string.
+// Special <space> print strings.
 const struct print_info *ASCII_STR_SPACE2[] = {&WW_PRINT_SPACE, &WW_PRINT_SPACE, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_SPACE2  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_SPACE2};
+const struct print_info ASCII_PRINT_SPACE2  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_SPACE2};
 
 const struct print_info *ASCII_STR_SPACE3[] = {&WW_PRINT_SPACE, &WW_PRINT_SPACE, &WW_PRINT_Bksp1, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_SPACE3  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_SPACE3};
+const struct print_info ASCII_PRINT_SPACE3  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_SPACE3};
 
 // <, >, \, ^, `, {, |, }, ~ print strings (ASCII printwheel & Print Graphics).
 const byte ASCII_STR_LESS_APW[]              = {WW_Code, WW_LESS_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
@@ -5000,7 +5099,7 @@ const struct print_info *ASCII_STR_LESS_PG[] = {&WW_PRINT_DownMicro, &WW_PRINT_D
                                                 &WW_PRINT_Bksp1, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
                                                 &WW_PRINT_Backspace, &WW_PRINT_UpMicro, &WW_PRINT_UpMicro,
                                                 &WW_PRINT_PERIOD, &WW_PRINT_Bksp1, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_LESS_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_LESS_PG};
+const struct print_info ASCII_PRINT_LESS_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_LESS_PG};
 const struct print_info ASCII_PRINT_LESS     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_less};
 
 const byte ASCII_STR_GREATER_APW[]              = {WW_Code, WW_GREATER_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
@@ -5013,7 +5112,7 @@ const struct print_info *ASCII_STR_GREATER_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_B
                                                    &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
                                                    &WW_PRINT_Bksp1, &WW_PRINT_UpMicro, &WW_PRINT_PERIOD,
                                                    &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_GREATER_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_GREATER_PG};
+const struct print_info ASCII_PRINT_GREATER_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_GREATER_PG};
 const struct print_info ASCII_PRINT_GREATER     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_greater};
 
 const byte ASCII_STR_BSLASH_APW[]              = {WW_Code, WW_BSLASH_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
@@ -5028,7 +5127,7 @@ const struct print_info *ASCII_STR_BSLASH_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bk
                                                   &WW_PRINT_PERIOD, &WW_PRINT_Backspace, &WW_PRINT_Bksp1,
                                                   &WW_PRINT_DownMicro, &WW_PRINT_PERIOD, &WW_PRINT_UpMicro,
                                                   NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_BSLASH_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_BSLASH_PG};
+const struct print_info ASCII_PRINT_BSLASH_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_BSLASH_PG};
 const struct print_info ASCII_PRINT_BSLASH      = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_bslash};
 
 const byte ASCII_STR_CARET_APW[]              = {WW_LShift, WW_CARET_APW, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
@@ -5042,7 +5141,7 @@ const struct print_info *ASCII_STR_CARET_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bks
                                                  &WW_PRINT_DownMicro, &WW_PRINT_PERIOD, &WW_PRINT_UpMicro,
                                                  &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, &WW_PRINT_UpMicro,
                                                  NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_CARET_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_CARET_PG};
+const struct print_info ASCII_PRINT_CARET_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_CARET_PG};
 const struct print_info ASCII_PRINT_CARET     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_caret};
 
 const byte ASCII_STR_BAPOSTROPHE_APW[]              = {WW_BAPOSTROPHE_APW, WW_NULL_3, WW_NULL_14, WW_NULL};
@@ -5056,7 +5155,8 @@ const struct print_info *ASCII_STR_BAPOSTROPHE_PG[] = {&WW_PRINT_MarRel, &WW_PRI
                                                        &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
                                                        &WW_PRINT_UpMicro, &WW_PRINT_PERIOD, &WW_PRINT_UpMicro,
                                                        &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_BAPOSTROPHE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_BAPOSTROPHE_PG};
+const struct print_info ASCII_PRINT_BAPOSTROPHE_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0,
+                                                       &ASCII_STR_BAPOSTROPHE_PG};
 const struct print_info ASCII_PRINT_BAPOSTROPHE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_bapostrophe};
 
 const byte ASCII_STR_LBRACE_APW[]              = {WW_LShift, WW_LBRACE_APW, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
@@ -5067,7 +5167,7 @@ const struct print_info *ASCII_STR_LBRACE_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bk
                                                   &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_LPAREN,
                                                   &WW_PRINT_Backspace, &WW_PRINT_LBRACKET, &WW_PRINT_Bksp1,
                                                   NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_LBRACE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_LBRACE_PG};
+const struct print_info ASCII_PRINT_LBRACE_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_LBRACE_PG};
 const struct print_info ASCII_PRINT_LBRACE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_lbrace};
 
 const byte ASCII_STR_BAR_APW[]              = {WW_Code, WW_BAR_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
@@ -5076,7 +5176,7 @@ const struct print_info ASCII_PRINT_BAR_APW = {ELEMENT_SIMPLE, SPACING_FORWARD, 
                                                &ASCII_STR_BAR_APW};
 const struct print_info *ASCII_STR_BAR_PG[] = {&WW_PRINT_EXCLAMATION, &WW_PRINT_Backspace, &WW_PRINT_i,
                                                NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_BAR_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_BAR_PG};
+const struct print_info ASCII_PRINT_BAR_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_BAR_PG};
 const struct print_info ASCII_PRINT_BAR     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_bar};
 
 const byte ASCII_STR_RBRACE_APW[]              = {WW_RBRACE_APW, WW_NULL_12, WW_NULL_14, WW_NULL};
@@ -5088,7 +5188,7 @@ const struct print_info *ASCII_STR_RBRACE_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bk
                                                   &WW_PRINT_Backspace, &WW_PRINT_RBRACKET, &WW_PRINT_Bksp1,
                                                   &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1, &WW_PRINT_HYPHEN,
                                                   &WW_PRINT_Bksp1, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_RBRACE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_RBRACE_PG};
+const struct print_info ASCII_PRINT_RBRACE_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_RBRACE_PG};
 const struct print_info ASCII_PRINT_RBRACE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_rbrace};
 
 const byte ASCII_STR_TILDE_APW[]              = {WW_LShift, WW_TILDE_APW, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL};
@@ -5104,12 +5204,12 @@ const struct print_info *ASCII_STR_TILDE_PG[] = {&WW_PRINT_MarRel, &WW_PRINT_Bks
                                                  &WW_PRINT_Bksp1, &WW_PRINT_DownMicro, &WW_PRINT_PERIOD,
                                                  &WW_PRINT_RIGHTARROW, &WW_PRINT_Bksp1, &WW_PRINT_Bksp1,
                                                  &WW_PRINT_UpMicro, &WW_PRINT_UpMicro, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_TILDE_PG  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_TILDE_PG};
+const struct print_info ASCII_PRINT_TILDE_PG  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_TILDE_PG};
 const struct print_info ASCII_PRINT_TILDE     = {ELEMENT_DYNAMIC, 0, 0, 0, 0, &ascii_print_tilde};
 
 // CR, LF print strings.
 const struct print_info *ASCII_STR_CR[] = {&WW_PRINT_CRtn, &WW_PRINT_UPARROW, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_CR  = {ELEMENT_COMPOSITE, 0, 0, 0, 0, &ASCII_STR_CR};
+const struct print_info ASCII_PRINT_CR  = {ELEMENT_COMPOSITE, SPACING_RETURN, 0, 0, 0, &ASCII_STR_CR};
 
 const byte ASCII_STR_LF[]              = {WW_DOWNARROW_DownLine, WW_NULL_2, WW_NULL_14, WW_NULL};
 const struct print_info ASCII_PRINT_LF = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
@@ -5124,7 +5224,7 @@ const struct print_info ASCII_PRINT_LF = {ELEMENT_SIMPLE, SPACING_NONE, POSITION
 //**********************************************************************************************************************
 
 const struct serial_action ASCII_SERIAL_ACTIONS[128] = { 
-  {CMD_NONE,          NULL},                      // NUL
+  {CMD_NONE,          &WW_PRINT_NULL},            // NUL - Used for adding null scans to pad composite characters.
   {CMD_NONE,          NULL},                      // SOH
   {CMD_NONE,          NULL},                      // STX
   {CMD_NONE,          NULL},                      // ETX
@@ -6558,7 +6658,6 @@ void Setup_ASCII (void) {
 
 // Print ASCII Terminal setup title.
 void Print_ASCII_setup_title (void) {
-
   (void)Print_string ("\r\r---- Cadetwriter: " ASCII_VERSION " Setup\r\r");
 }
 
@@ -6680,8 +6779,7 @@ void Update_ASCII_settings (void) {
 }
 
 // Print ASCII Terminal character set.
-void Print_ASCII_character_set ()  {
-
+void Print_ASCII_character_set (void) {
   (void)Print_element (&WW_PRINT_CRtn);
   (void)Print_element (&WW_PRINT_SPACE);  (void)Print_element (&WW_PRINT_SPACE);
   (void)Print_element (&WW_PRINT_A);  (void)Print_element (&WW_PRINT_B);  (void)Print_element (&WW_PRINT_C);
@@ -7421,7 +7519,7 @@ void setup (void) {
 
   // Wait for any initial printing to finish.
   if (emulation != EMULATION_STANDALONE) {
-    Wait_print_buffer_empty (3000);
+    Wait_print_buffer_empty (2000);
   }
 }
 
@@ -7439,7 +7537,7 @@ void loop (void) {
 
     // Handle escape sequences.
     if (escaping) {
-      switch ((int)escape_fsa[escape_state][escape_character[chr]]) {
+      switch ((int)ESCAPE_FSA[escape_state][ESCAPE_CHARACTER[chr]]) {
         case ESC_NONE:
           continue;
         case ESC_PRINT:
@@ -7517,8 +7615,8 @@ void loop (void) {
   while (sb_count > 0) {
     byte c = send_buffer[sb_read] & 0x7f;
     if (serial == SERIAL_USB) {
-      if (parity == PARITY_ODD) c = odd_parity[c];
-      else if (parity == PARITY_EVEN) c = even_parity[c];
+      if (parity == PARITY_ODD) c = ODD_PARITY[c];
+      else if (parity == PARITY_EVEN) c = EVEN_PARITY[c];
     }
     if (Serial_write (c) != 1) break;
     if (++sb_read >= SIZE_SEND_BUFFER) sb_read = 0;
@@ -7737,6 +7835,7 @@ void loop (void) {
       // Future emulation specific actions.
 
       default:
+        Report_error (ERROR_BAD_SERIAL_ACTION);
         break;
     }
   }
@@ -7764,7 +7863,7 @@ void loop (void) {
       Setup_IBM ();
       run_mode = MODE_RUNNING;
       (void)Print_string ("---- All settings reset to factory defaults.\r\r");
-      Wait_print_buffer_empty (3000);
+      Wait_print_buffer_empty (1000);
 
     // Interactive setup.
     } else {
@@ -7826,7 +7925,7 @@ void loop (void) {
       Setup_ASCII ();
       run_mode = MODE_RUNNING;
       (void)Print_string ("---- All settings reset to factory defaults.\r\r");
-      Wait_print_buffer_empty (3000);
+      Wait_print_buffer_empty (1000);
 
     // Interactive setup.
     } else {
@@ -7887,7 +7986,7 @@ void loop (void) {
       Setup_FUTURE ();
       run_mode = MODE_RUNNING;
       (void)Print_string ("---- All settings reset to factory defaults.\r\r");
-      Wait_print_buffer_empty (3000);
+      Wait_print_buffer_empty (1000);
 
     // Interactive setup.
     } else {
@@ -8047,14 +8146,16 @@ void ISR_common (void) {
       if (last_scan_time != 0UL) last_scan_duration = interrupt_time - last_scan_time;
       last_scan_time = interrupt_time;
       if (last_scan_duration < SHORT_SCAN_DURATION) {
+        if ((shortest_scan_duration == 0) || (last_scan_duration < shortest_scan_duration))
+          shortest_scan_duration = last_scan_duration;
         Report_warning (WARNING_SHORT_SCAN);
       } else if (last_scan_duration > LONG_SCAN_DURATION) {
+        if (last_scan_duration > longest_scan_duration) longest_scan_duration = last_scan_duration;
         Report_warning (WARNING_LONG_SCAN);
         if (in_printer_timing) {
           Clear_counter (&pb_count);
           pb_write = pb_read;
           print_buffer[pb_write] = WW_NULL;
-          longest_scan_duration = max (longest_scan_duration, last_scan_duration);
         }
       }
     }
@@ -8518,6 +8619,7 @@ void Initialize_global_variables (void) {
 
   current_column = INITIAL_LMARGIN;
   current_position = POSITION_INITIAL;
+  in_composite_character = FALSE;
   previous_element = NULL;
 
   cb_read = 0;
@@ -8684,7 +8786,6 @@ void Initialize_configuration_settings (boolean reset) {
 
 // Clear all row drive lines.
 inline void Clear_all_row_lines (void) {
-
   digitalWriteFast (ROW_ENABLE_PIN, HIGH);
   digitalWriteFast (ROW_OUT_1_PIN, LOW);
   digitalWriteFast (ROW_OUT_2_PIN, LOW);
@@ -8698,7 +8799,6 @@ inline void Clear_all_row_lines (void) {
 
 // Detect and process a key press.
 inline void Process_key (int pin, int key) {
-
   if (digitalReadFast (pin) == LOW) {  // Key pressed?
     if (!key_pressed_states[key]) {  // First time seen?
       key_pressed_states[key] = TRUE;
@@ -8713,7 +8813,6 @@ inline void Process_key (int pin, int key) {
 
 // Detect and process a repeating key press.
 inline void Process_repeating_key (int pin, int key) {
-
   if (digitalReadFast (pin) == LOW) {  // Key pressed?
     if (!key_pressed_states[key]) {  // First time seen?
       key_pressed_states[key] = TRUE;
@@ -8733,7 +8832,6 @@ inline void Process_repeating_key (int pin, int key) {
 
 // Detect and process a return key press.
 inline void Process_return_key (int pin, int key) {
-
   if (digitalReadFast (pin) == LOW) {  // Key pressed?
     if (!key_pressed_states[key]) {  // First time seen?
       key_pressed_states[key] = TRUE;
@@ -8757,7 +8855,6 @@ inline void Process_return_key (int pin, int key) {
 
 // Detect and process a shift key press.
 inline void Process_shift_key (int pin, int key) {
-
   if (digitalReadFast (pin) == LOW) {  // Key pressed?
     if (!key_pressed_states[key]) {  // First time seen?
       key_pressed_states[key] = TRUE;
@@ -8776,7 +8873,6 @@ inline void Process_shift_key (int pin, int key) {
 
 // Detect and process a shift lock key press.
 inline void Process_shift_lock_key (int pin, int key) {
-
   if (digitalReadFast (pin) == LOW) {  // Key pressed?
     if (!key_pressed_states[key]) {  // First time seen?
       key_pressed_states[key] = TRUE;
@@ -8799,7 +8895,6 @@ inline void Process_shift_lock_key (int pin, int key) {
 
 // Detect and process a code key press.
 inline void Process_code_key (int pin, int key) {
-
   if (digitalReadFast (pin) == LOW) {  // Key pressed?
     if (!key_pressed_states[key]) {  // First time seen?
       key_pressed_states[key] = TRUE;
@@ -8817,7 +8912,6 @@ inline void Process_code_key (int pin, int key) {
 
 // Send a single character.
 inline boolean Send_character (char chr) {
-
   if (sb_count < SIZE_SEND_BUFFER) {
     send_buffer[sb_write] = chr;
     if (++sb_write >= SIZE_SEND_BUFFER) sb_write = 0;
@@ -8841,7 +8935,6 @@ inline boolean Send_characters (const char str[]) {
 
 // Transfer a print string to main for processing.
 inline boolean Transfer_print_string (const struct print_info *str) {
-
   if (tb_count < SIZE_TRANSFER_BUFFER) {
     transfer_buffer[tb_write] = str;
     if (++tb_write >= SIZE_TRANSFER_BUFFER) tb_write = 0;
@@ -8910,7 +9003,7 @@ boolean Print_integer (int val, int wid) {
 inline boolean Print_character (char chr) {
   struct serial_action act = ASCII_SERIAL_ACTIONS[chr & 0x7f];
 
-  if (act.element != NULL) {
+  if (act.element != NULL_PRINT_INFO) {
     if (!Print_element (act.element)) return FALSE;  // Character doesn't fit in print buffer.
   }
   return TRUE;
@@ -8922,7 +9015,7 @@ inline boolean Print_string (const char str[]) {
 
   while (*ptr != 0) {
     struct serial_action act = ASCII_SERIAL_ACTIONS[*(ptr++) & 0x7f];
-    if (act.element != NULL) {
+    if (act.element != NULL_PRINT_INFO) {
       if (!Print_element (act.element)) return FALSE;  // Character doesn't fit in print buffer.
     }
   }
@@ -8938,33 +9031,51 @@ boolean Print_element (const struct print_info *elem) {
   int tab;
   int next;
   int temp;
+  boolean ret;
+  const byte *pelem;
 
   // Process special print elements.
   if (elem->type == ELEMENT_COMPOSITE) {
+    boolean comp = in_composite_character;
+    in_composite_character = TRUE;
     const struct print_info **ptr = elem->pelement;
-    while (*ptr != NULL) {
-      if (!Print_element (*ptr++)) return FALSE;
+    while (*ptr != NULL_PRINT_INFO) {
+      if (!Print_element (*ptr++)) {
+        in_composite_character = comp;
+        return FALSE;
+      }
     }
+    for (int i = 0; i < elem->timing; i += FSCAN_0_CHANGES) {
+      if (!Print_character (0x00)) {
+        in_composite_character = comp;
+        return FALSE;
+      }
+    }
+    in_composite_character = comp;
+    if (!in_composite_character) Update_print_position (elem);
+    previous_element = elem;
     return TRUE; 
   } else if (elem->type == ELEMENT_DYNAMIC) {
-    return Print_element (*(elem->pelement));
+    ret = Print_element (*(elem->pelement));
+    if (ret) previous_element = elem;
+    return ret;
   }
 
   // Inject an automatic carriage return, if enabled, when the right margin is hit and the next character isn't a
   // carriage return, left arrow, right arrow, backspace, bksp 1, set right margin, set tab, clear tab, clear all tabs,
-  // or beep.  If the line overflows and automatic return is disabled, then trigger a warning, beep, and ignore the
-  // character.
+  // or beep.  Right arrow is a special case to allow setting the right margin beyond where it is currently set.
+  // If the line overflows and automatic return is disabled, then trigger a warning, beep, and ignore the character.
   if ((current_column > rmargin) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_CRtn)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_LEFTARROW)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_RIGHTARROW)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_Backspace)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_Bksp1)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_RMar)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_TSet)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_TClr)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_TClrAll)) &&
-      (elem->element != (const byte (*)[1000])(&WW_STR_BEEP))) {
+      (elem->element != (const byte*)&WW_STR_CRtn) &&
+      (elem->element != (const byte*)&WW_STR_LEFTARROW) &&
+      (elem->element != (const byte*)&WW_STR_RIGHTARROW) &&
+      (elem->element != (const byte*)&WW_STR_Backspace) &&
+      (elem->element != (const byte*)&WW_STR_Bksp1) &&
+      (elem->element != (const byte*)&WW_STR_RMar) &&
+      (elem->element != (const byte*)&WW_STR_TSet) &&
+      (elem->element != (const byte*)&WW_STR_TClr) &&
+      (elem->element != (const byte*)&WW_STR_TClrAll) &&
+      (elem->element != (const byte*)&WW_STR_BEEP)) {
     if (autoreturn == SETTING_TRUE) {
       if (!Print_element (&WW_PRINT_CRtn)) return FALSE;  // Carriage return doesn't fit in print buffer.
     } else {
@@ -8973,16 +9084,20 @@ boolean Print_element (const struct print_info *elem) {
     }
   }
 
-  // For ASCII Terminal - A space following '\', '{', or '}' needs special handling to print.
-  if (emulation == EMULATION_ASCII) {
-    if (elem == &WW_PRINT_SPACE) {
-      if (previous_element == &ASCII_PRINT_BSLASH_PG) {
-        elem = &ASCII_PRINT_SPACE2;
-      } else if ((previous_element == &ASCII_PRINT_LBRACE_PG) || (previous_element == &ASCII_PRINT_RBRACE_PG)) {
-        elem = &ASCII_PRINT_SPACE3;
-      }
+  // For ASCII Terminal using Period Graphic characters, a space following '\', '{', or '}' needs special handling to
+  // print.
+  if ((emulation == EMULATION_ASCII) && (asciiwheel == SETTING_FALSE) && (elem == &WW_PRINT_SPACE)) {
+    if (previous_element == &ASCII_PRINT_BSLASH) {
+      previous_element = NULL;
+      ret = Print_element (&ASCII_PRINT_SPACE2);
+      if (ret) previous_element = elem;
+      return ret;
+    } else if ((previous_element == &ASCII_PRINT_LBRACE) || (previous_element == &ASCII_PRINT_RBRACE)) {
+      previous_element = NULL;
+      ret = Print_element (&ASCII_PRINT_SPACE3);
+      if (ret) previous_element = elem;
+      return ret;
     }
-    previous_element = elem;
   }
 
   // Prepare for copying.
@@ -8990,16 +9105,18 @@ boolean Print_element (const struct print_info *elem) {
   pbw = pb_write;
   pbc = pb_count;
   inc = 0;
+  pelem = elem->element;
 
   // Copy element print codes to buffer.
-  for (int i = 0; ; ++i) {
-    byte pchr = (*elem->element)[i];
+  while (true) {
+    byte pchr = *pelem++;
     if (pchr == WW_NULL) break;
     if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // Element doesn't fit in print buffer.
       Report_error (ERROR_PB_FULL);
       return FALSE;
     }
-    if (!pc_validation[pchr]) {
+    if (!PC_VALIDATION[pchr]) {
+      bad_print_code = pchr;
       Report_error (ERROR_BAD_CODE);
       return FALSE;
     }
@@ -9058,6 +9175,16 @@ boolean Print_element (const struct print_info *elem) {
   print_buffer[start] = WW_SKIP;
 
   // Update current print position, tab stops, and margins.
+  if (!in_composite_character) Update_print_position (elem);
+
+  previous_element = elem;
+  return TRUE;
+}
+
+// Update current print position, tab stops, and margins.
+void Update_print_position (const struct print_info *elem) {
+  int tab;
+
   switch (elem->spacing) {
     case SPACING_NONE:      // No horizontal movement.
     case SPACING_UNKNOWN:
@@ -9107,24 +9234,22 @@ boolean Print_element (const struct print_info *elem) {
         Write_EEPROM (EEPROM_TABS + i, SETTING_FALSE);
       }
       break;
-    default:                // Invalid spacing code, ignore.
+    default:                // Invalid spacing code.
+      Report_error (ERROR_BAD_SPACING);
       break;
   }
-
-  return TRUE;
 }
 
 // Test if print buffer is empty.
 inline boolean Test_print_buffer_empty (void) {
-
-  return ((pb_count == 0) && (interrupt_column == WW_COLUMN_1) &&
-          (last_scan_duration < LONG_SCAN_DURATION) && (last_last_scan_duration < LONG_SCAN_DURATION));
+  return ((pb_count == 0) && (last_scan_duration < LONG_SCAN_DURATION) &&
+          (last_last_scan_duration < LONG_SCAN_DURATION));
 }
 
 // Wait for the print buffer to be empty and optionally for printing to finish.
 inline void Wait_print_buffer_empty (int wait) {
-  while (!Test_print_buffer_empty) delay (1);
-  if (wait >= 0) delay (wait);
+  while (!Test_print_buffer_empty ()) delay (1);
+  if (wait > 0) delay (wait);
 }
 
 // Assert a key's row line in current column.
@@ -9140,27 +9265,37 @@ inline void Assert_key (byte key) {
 inline byte Test_print (int column) {
   byte pchr = print_buffer[pb_read];
 
-  // Test if printing has caught up.
-  if (pchr == WW_CATCH_UP) {
-    if (!Test_print_buffer_empty ()) return ROW_OUT_NO_PIN;
-    if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
-    pchr = print_buffer[pb_read];
-    Update_counter (&pb_count, -1);
-  }
+  while (true) {
 
-  // Count character when timing printer.
-  if (pchr == WW_COUNT) {
-    ++print_character_count;
-    if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
-    pchr = print_buffer[pb_read];
-    Update_counter (&pb_count, -1);
-  }
+    // Skip any skip print codes.
+    if (pchr == WW_SKIP) {
+      if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
+      pchr = print_buffer[pb_read];
+      Update_counter (&pb_count, -1);
+      continue;
+    }
 
-  // Skip any skip print codes.
-  while (pchr == WW_SKIP) {
-    if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
-    pchr = print_buffer[pb_read];
-    Update_counter (&pb_count, -1);
+    // Count character when timing printer.
+    else if (pchr == WW_COUNT) {
+      ++print_character_count;
+      if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
+      pchr = print_buffer[pb_read];
+      Update_counter (&pb_count, -1);
+      continue;
+    }
+
+    // Test if printing has caught up.
+    else if (pchr == WW_CATCH_UP) {
+      if ((last_scan_duration >= LONG_SCAN_DURATION) || (last_last_scan_duration >= LONG_SCAN_DURATION))
+                                                                                                  return ROW_OUT_NO_PIN;
+      if (++pb_read >= SIZE_PRINT_BUFFER) pb_read = 0;
+      pchr = print_buffer[pb_read];
+      Update_counter (&pb_count, -1);
+      continue;
+    }
+
+    else
+      break;
   }
 
   // If next print code is in this column, assert associated row line.
@@ -9320,7 +9455,8 @@ void Take_action (int key) {
       run_mode = MODE_FUTURE_BEING_SETUP;
       break;
 
-    default:                                  // Invalid action, ignore.
+    default:                                  // Invalid action.
+      Report_error (ERROR_BAD_KEY_ACTION);
       break;
   }
 }
@@ -9351,7 +9487,6 @@ __attribute__((noinline)) void Update_counter (volatile int *counter, int increm
 
 // Read an EEPROM entry and update if undefined.
 inline byte Read_EEPROM (int location, byte value) {
-
   byte temp = EEPROM.read (location);
   if (temp == 0) {
     EEPROM.write (location, value);
@@ -9363,13 +9498,11 @@ inline byte Read_EEPROM (int location, byte value) {
 
 // Write an EEPROM entry.
 inline void Write_EEPROM (int location, byte value) {
-
   EEPROM.write (location, value);
 }
 
 // Report an error.
 void Report_error (int error) {
-
   if ((run_mode == MODE_RUNNING) && (errors == SETTING_TRUE) && (error > ERROR_NULL) && (error < NUM_ERRORS)) {
     ++total_errors;
     ++error_counts[error];
@@ -9379,7 +9512,6 @@ void Report_error (int error) {
 
 // Report a warning.
 void Report_warning (int warning) {
-
   if ((run_mode == MODE_RUNNING) && (warnings == SETTING_TRUE) &&
       (warning > WARNING_NULL) && (warning < NUM_WARNINGS)) {
     ++total_warnings;
@@ -9599,7 +9731,7 @@ byte Read_baud_setting (const char str[], byte value) {
 
   // Print prompt.
   (void)Print_string ("  ");  (void)Print_string (str);
-  (void)Print_string (" [50-230400, ");  (void)Print_integer (baud_rates[value], 0);  (void)Print_string ("]: ");
+  (void)Print_string (" [50-230400, ");  (void)Print_integer (BAUD_RATES[value], 0);  (void)Print_string ("]: ");
   Space_to_column (COLUMN_RESPONSE);
 
   // Read and print response.
@@ -9695,7 +9827,7 @@ byte Read_baud_setting (const char str[], byte value) {
     return BAUD_9600;
 
   } else /* chr == '\r' */ {
-    (void)Print_integer (baud_rates[value], 0);
+    (void)Print_integer (BAUD_RATES[value], 0);
     (void)Print_character ('\r');
     return value;
   }
@@ -9816,7 +9948,7 @@ byte Read_dps_setting (const char str[], byte value) {
     }
 
   } else /* chr == '\r' */ {
-    (void)Print_string (data_parity_stops_text[value]);
+    (void)Print_string (DATA_PARITY_STOPS_TEXT[value]);
     (void)Print_character ('\r');
     return value;
   }
@@ -10036,55 +10168,51 @@ void Developer_functions (void) {
 
 // Check print timing.
 void Check_print_timing (void) {
-  byte warn;
+  unsigned long start;
+  unsigned long time;
+  int cps;
 
-  // Temporarily disable, code under development.  DJB
-  (void)Print_string ("\r    Not implemented yet.\r\r");
-  return;
-
-  // Initialize variables.
-  warn = warnings;
-  warnings = SETTING_TRUE;
-  Reset_warnings ();
-
-  // Check ASCII Period Graphic characters.
-  Print_composite ("CHECK_ASCII_LESS_PG", &ASCII_PRINT_LESS_PG, length / 4);
-  Print_composite ("CHECK_ASCII_GREATER_PG", &ASCII_PRINT_GREATER_PG, length / 4);
-  Print_composite ("CHECK_ASCII_BSLASH_PG", &ASCII_PRINT_BSLASH_PG, length / 4);
-  Print_composite ("CHECK_ASCII_CARET_PG", &ASCII_PRINT_CARET_PG, length / 4);
-  Print_composite ("CHECK_ASCII_BAPOSTROPHE_PG", &ASCII_PRINT_BAPOSTROPHE_PG, length / 4);
-  Print_composite ("CHECK_ASCII_LBRACE_PG", &ASCII_PRINT_LBRACE_PG, length / 4);
-  Print_composite ("CHECK_ASCII_BAR_PG", &ASCII_PRINT_BAR_PG, length / 4);
-  Print_composite ("CHECK_ASCII_RBRACE_PG", &ASCII_PRINT_RBRACE_PG, length / 4);
-  Print_composite ("CHECK_ASCII_TILDE_PG", &ASCII_PRINT_TILDE_PG, length / 4);
-
-  // Check IBM 1620 composite characters.
-  Print_composite ("CHECK_IBM_SLASH_0", &IBM_PRINT_SLASH_0, length / 4);
-  Print_composite ("CHECK_IBM_FLAG_SLASH_0", &IBM_PRINT_FLAG_SLASH_0, length / 4);
-  Print_composite ("CHECK_IBM_FLAG_DIGIT", &IBM_PRINT_FLAG_0, length / 4);
-  Print_composite ("CHECK_IBM_FLAG_NUMBLANK", &IBM_PRINT_FLAG_NUMBLANK, length / 4);
-  Print_composite ("CHECK_IBM_RMARK", &IBM_PRINT_RMARK, length / 4);
-  Print_composite ("CHECK_IBM_FLAG_RMARK", &IBM_PRINT_FLAG_RMARK, length / 4);
-  Print_composite ("CHECK_IBM_GMARK", &IBM_PRINT_GMARK, length / 4);
-  Print_composite ("CHECK_IBM_FLAG_GMARK", &IBM_PRINT_FLAG_GMARK, length / 4);
-  Print_composite ("CHECK_IBM_RELEASESTART", &IBM_PRINT_RELEASESTART, length / 4);
-  Print_composite ("CHECK_IBM_INVALID", &IBM_PRINT_INVALID, length / 4);
-
-  // Check average text.
-  // TBD
+  // Check normal text.
+  Wait_print_buffer_empty (1000);
+  start = millis ();
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string (TEST_PRINT_STRING);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (0);
+  time = millis () - start;
+  Wait_print_buffer_empty (1000);
+  cps = (int)((10000UL * NUM_TEST_PRINT_STRING + time / 2UL) / time);
+  (void)Print_string ("speed: ");
+  (void)Print_integer (cps / 10, 0);
+  (void)Print_string (".");
+  (void)Print_integer (cps % 10, 0);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
 
   // Check random characters.
-  // TBD
+  Wait_print_buffer_empty (1000);
+  start = millis ();
+  (void)Print_element (&WW_PRINT_CRtn);
+  for (int i = 0; i < (10 * length); ++i) {
+    (void)Print_element (PRINT_CHARACTERS[random (NUM_PRINT_CHARACTERS)]);
+  }
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (0);
+  time = millis () - start;
+  Wait_print_buffer_empty (1000);
+  cps = (int)((100000UL * length + 2 + time / 2UL) / time);
+  (void)Print_string ("speed: ");
+  (void)Print_integer (cps / 10, 0);
+  (void)Print_string (".");
+  (void)Print_integer (cps % 10, 0);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
 
-  // Restore variables.
-  warnings = warn;
-  Reset_warnings ();
-
+  (void)Print_element (&WW_PRINT_CRtn);
 }
 
 // Measure keyboard timing.
 void Measure_keyboard_timing (void) {
-
   (void)Print_string ("\r    Not implemented yet.\r\r");
 }
 
@@ -10097,6 +10225,7 @@ void Measure_printer_timing (void) {
   unsigned long time;
   unsigned long btime;
 
+/* DJB - Only measure spin timing this time.
   // Measure typewriter buffer size.
   (void)Print_element (&WW_PRINT_CRtn);
   delay (1000);
@@ -10122,6 +10251,7 @@ void Measure_printer_timing (void) {
   Measure_shm_timing ("TIME_HIT_MOVE", NULL, &WW_PRINT_a, &WW_PRINT_a,
                       TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3,
                       TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3, length);
+*/
   Measure_shm_timing ("TIME_SPIN(12)_HIT_MOVE", NULL, &WW_PRINT_e, &WW_PRINT_z,
                       TIME_PRESS_NOSHIFT_7 + TIME_RELEASE_NOSHIFT_7,
                       TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3, length);
@@ -10135,6 +10265,7 @@ void Measure_printer_timing (void) {
                       TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9,
                       TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10, length);
 
+/* DJB - Only measure spin timing this time.
   // Measure baseline time.
   btime = Measure_tab_return_timing ("TIME_BASE", 0, FALSE, 0UL, &bcnt);
 
@@ -10215,9 +10346,37 @@ void Measure_printer_timing (void) {
   (void)Print_integer (max((int)(time / cnt), (int)(scan / buffer_size)), 0);
   (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (2000);
+*/
 
+/* DJB - Not ready for release yet.
+  // Check ASCII Period Graphic characters.
+  Print_composite ("CHECK_ASCII_LESS_PG", &ASCII_PRINT_LESS_PG, length);
+  Print_composite ("CHECK_ASCII_GREATER_PG", &ASCII_PRINT_GREATER_PG, length);
+  Print_composite ("CHECK_ASCII_BSLASH_PG", &ASCII_PRINT_BSLASH_PG, length);
+  Print_composite ("CHECK_ASCII_CARET_PG", &ASCII_PRINT_CARET_PG, length);
+  Print_composite ("CHECK_ASCII_BAPOSTROPHE_PG", &ASCII_PRINT_BAPOSTROPHE_PG, length);
+  Print_composite ("CHECK_ASCII_LBRACE_PG", &ASCII_PRINT_LBRACE_PG, length);
+  Print_composite ("CHECK_ASCII_BAR_PG", &ASCII_PRINT_BAR_PG, length);
+  Print_composite ("CHECK_ASCII_RBRACE_PG", &ASCII_PRINT_RBRACE_PG, length);
+  Print_composite ("CHECK_ASCII_TILDE_PG", &ASCII_PRINT_TILDE_PG, length);
+
+  // Check IBM 1620 composite characters.
+  Print_composite ("CHECK_IBM_SLASH_0", &IBM_PRINT_SLASH_0, length);
+  Print_composite ("CHECK_IBM_FLAG_SLASH_0", &IBM_PRINT_FLAG_SLASH_0, length);
+  Print_composite ("CHECK_IBM_FLAG_DIGIT", &IBM_PRINT_FLAG_1, length);
+  Print_composite ("CHECK_IBM_FLAG_NUMBLANK", &IBM_PRINT_FLAG_NUMBLANK, length);
+  Print_composite ("CHECK_IBM_RMARK", &IBM_PRINT_RMARK_IPW, length);
+  Print_composite ("CHECK_IBM_FLAG_RMARK", &IBM_PRINT_FLAG_RMARK_IPW, length);
+  Print_composite ("CHECK_IBM_GMARK", &IBM_PRINT_GMARK_IPW, length);
+  Print_composite ("CHECK_IBM_FLAG_GMARK", &IBM_PRINT_FLAG_GMARK_IPW, length);
+  Print_composite ("CHECK_IBM_RELEASESTART", &IBM_PRINT_RELEASESTART, length);
+  Print_composite ("CHECK_IBM_INVALID", &IBM_PRINT_INVALID, length);
+*/
+
+/* DJB - Only measure spin timing this time.
   // Restore tabs and margins.
   Set_margins_tabs (FALSE);
+*/
 
   (void)Print_element (&WW_PRINT_CRtn);
 }
@@ -10246,15 +10405,15 @@ void Measure_column_scanning (void) {
   (void)Print_string ("empty column scan (min): ");
   (void)Print_integer ((int)minimum_scan_time, 4);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
   (void)Print_string ("empty column scan (avg): ");
   (void)Print_integer ((int)(total_scan_time / column_scan_count), 4);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
   (void)Print_string ("empty column scan (max): ");
   (void)Print_integer ((int)maximum_scan_time, 4);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
 
   // Initiate key press and release column scan time measurements.
   total_key_pressed_scan_time = 0UL;
@@ -10293,29 +10452,29 @@ void Measure_column_scanning (void) {
   (void)Print_string ("key pressed column scan (min): ");
   (void)Print_integer ((int)minimum_key_pressed_scan_time, 5);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
   (void)Print_string ("key pressed column scan (avg): ");
   (void)Print_integer ((int)(total_key_pressed_scan_time / length), 5);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
   (void)Print_string ("key pressed column scan (max): ");
   (void)Print_integer ((int)maximum_key_pressed_scan_time, 5);
   (void)Print_element (&WW_PRINT_CRtn);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
   (void)Print_string ("key released column scan (min): ");
   (void)Print_integer ((int)minimum_key_released_scan_time, 5);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
   (void)Print_string ("key released column scan (avg): ");
   (void)Print_integer ((int)(total_key_released_scan_time / length), 5);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
   (void)Print_string ("key released column scan (max): ");
   (void)Print_integer ((int)maximum_key_released_scan_time, 5);
   (void)Print_element (&WW_PRINT_CRtn);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (9000);
+  Wait_print_buffer_empty (1000);
 
   // Initiate flood column scan time measurements.
   column_scan_count = 0;
@@ -10344,14 +10503,13 @@ void Measure_column_scanning (void) {
   (void)Print_string ("flood column scan: ");
   (void)Print_integer ((int)flood_key_scan_time, 0);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (3000);
+  Wait_print_buffer_empty (1000);
 
   (void)Print_element (&WW_PRINT_CRtn);
 }
 
 // Change typewriter settings.
 void Change_typewriter_settings (void) {
-
   (void)Print_string ("\r    Not implemented yet.\r\r");
 }
 
@@ -10368,7 +10526,7 @@ char Read_developer_function (void) {
 
   // Validate and return setup command.
   if ((cmd == 'c') || (cmd == 'C')) {
-    (void)Print_string ("composite\r");
+    (void)Print_string ("check\r");
     return 'c';
   } else if ((cmd == 'k') || (cmd == 'K')) {
     (void)Print_string ("keyboard\r");
@@ -10391,19 +10549,18 @@ char Read_developer_function (void) {
 // Print composite character.
 void Print_composite (const char *name, const struct print_info *str, int len) {
 
+/*
   // Print title.
   (void)Print_element (&WW_PRINT_CRtn);
   (void)Print_string (name);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (2000);
+  Wait_print_buffer_empty (1000);
+*/
 
-  // Print composite character.
-  for (int i = 0; i <  len; ++i) {
-    (void)Print_element (str);
-  }
+  // Measure and print composite timing.
+  (void)Measure_composite_timing (str, 0, len);
   (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (6000);
-
+  Wait_print_buffer_empty (1000);
 }
 
 // Measure and optionally print timing of spin, hit, and move.
@@ -10430,13 +10587,13 @@ void Measure_shm_timing (const char *name, const struct print_info *str1, const 
   Wait_print_buffer_empty (4000);
 
   // Measure and print timing.
-  if (str1 != NULL) {
+  if (str1 != NULL_PRINT_INFO) {
     (void)Print_element (str1);
     Wait_print_buffer_empty (6000);
   }
   ltime = Measure_print_timing (NULL, str2, str3, 0, pad2, pad3, len, TRUE, FALSE, &lcnt, NULL);
   Wait_print_buffer_empty (6000);
-  if (str1 != NULL) {
+  if (str1 != NULL_PRINT_INFO) {
     (void)Print_element (str1);
     Wait_print_buffer_empty (6000);
   }
@@ -10445,12 +10602,12 @@ void Measure_shm_timing (const char *name, const struct print_info *str1, const 
   if (cnt > (len - 10)) {
     pad = 5000;
   } else {
-    pad = max (1000 * ((3 * (len - lcnt - 10)) / (cnt - lcnt)), 5000);
+    pad = max (1000 * ((2 * (len - lcnt - 10)) / (cnt - lcnt)), 5000);
   }
   while (scan != 0) {
     ltime = time;
     lcnt = cnt;
-    if (str1 != NULL) {
+    if (str1 != NULL_PRINT_INFO) {
       (void)Print_element (str1);
       Wait_print_buffer_empty (6000);
     }
@@ -10458,7 +10615,7 @@ void Measure_shm_timing (const char *name, const struct print_info *str1, const 
     Wait_print_buffer_empty (6000);
     pad += 1000;
   }
-  if (str1 != NULL) {
+  if (str1 != NULL_PRINT_INFO) {
     (void)Print_element (str1);
     Wait_print_buffer_empty (6000);
   }
@@ -10535,7 +10692,7 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   int cps;
 
   // Initialize variables.
-  if (str1 != NULL) {
+  if (str1 != NULL_PRINT_INFO) {
     tstr1 = *str1;
     if (tstr1.spacing == SPACING_TAB) tstr1.spacing = SPACING_TABX;
     if (tstr1.spacing == SPACING_RETURN) tstr1.spacing = SPACING_RETURNX;
@@ -10566,7 +10723,7 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   print_buffer[pb_write] = WW_NULL;
   Update_counter (&pb_count, +1);
   residual_time = 0;
-  if (str1 != NULL) {
+  if (str1 != NULL_PRINT_INFO) {
     (void)Print_element ((const struct print_info *)(&tstr1));
   }
   for (int i = 1; i <  len; ++i) {
@@ -10594,6 +10751,7 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   Wait_print_buffer_empty (6000);
   cnt = print_character_count;
   scan = 1000 * longest_scan_duration;
+  longest_scan_duration = 0UL;
   digitalWriteFast (BLUE_LED_PIN, blue_led_off);
   (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (3000);
@@ -10632,18 +10790,85 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
   return time;
 }
 
+// Measure timing of a composite character.
+unsigned long Measure_composite_timing (const struct print_info *str, int pad, int len) {
+  byte warn;
+  int begin;
+  unsigned long start;
+  unsigned long end;
+  unsigned long time;
+  int cnt;
+  int scan;
+
+  // Initialize variables.
+  warn = warnings;
+  warnings = SETTING_TRUE;
+  Reset_warnings ();
+
+  // Load composite characters into buffer.
+  begin = pb_write;
+  if (++pb_write >= SIZE_PRINT_BUFFER) pb_write = 0;
+  print_buffer[pb_write] = WW_NULL;
+  Update_counter (&pb_count, +1);
+  residual_time = 0;
+  for (int i = 1; i <  len; ++i) {
+    print_buffer[pb_write] = WW_COUNT;
+    if (++pb_write >= SIZE_PRINT_BUFFER) pb_write = 0;
+    Update_counter (&pb_count, +1);
+    (void)Print_element (str);
+  }
+
+  // Print characters.
+  print_character_count = 0;
+  longest_scan_duration = 0UL;
+  in_printer_timing = TRUE;
+  start = micros ();
+  print_buffer[begin] = WW_SKIP;
+  while (pb_count > 0) delay (1);
+  end = micros ();
+  time = end - start;
+  if (end < start) time = ~time + 1;
+  in_printer_timing = FALSE;
+  Wait_print_buffer_empty (6000);
+  cnt = print_character_count;
+  scan = 1000 * longest_scan_duration;
+  longest_scan_duration = 0UL;
+  digitalWriteFast (BLUE_LED_PIN, blue_led_off);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+
+  // Print timing results.
+  (void)Print_integer (pad, 0);
+  (void)Print_string (", ");
+  (void)Print_integer (cnt, 0);
+  (void)Print_string (", ");
+  (void)Print_integer ((int)(time / cnt), 0);
+  (void)Print_string (", ");
+  (void)Print_integer (scan / 32, 0);
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (3000);
+
+  // Restore variables.
+  warnings = warn;
+  Reset_warnings ();
+
+  // Return results.
+  return time;
+}
+
 // Reset all errors.
 inline void Reset_errors (void) {
-
   total_errors = 0;
+  bad_print_code = 0;
   memset ((void *)error_counts, 0, sizeof(error_counts));
   digitalWriteFast (ORANGE_LED_PIN, LOW);
 }
 
 // Reset all warnings.
 inline void Reset_warnings (void) {
-
   total_warnings = 0;
+  shortest_scan_duration = 0UL;
+  longest_scan_duration = 0UL;
   memset ((void *)warning_counts, 0, sizeof(warning_counts));
   digitalWriteFast (BLUE_LED_PIN, blue_led_off);
 }
@@ -10664,8 +10889,13 @@ void Print_errors_warnings (void) {
       if (error_counts[i] > 0) {
         (void)Print_integer (error_counts[i], 8);
         (void)Print_element (&WW_PRINT_SPACE);
-        (void)Print_string (error_text[i]);
+        (void)Print_string (ERROR_TEXT[i]);
         (void)Print_element (&WW_PRINT_CRtn);
+        if (i == ERROR_BAD_CODE) {
+          (void)Print_string ("         bad print code: ");
+          (void)Print_integer ((int)bad_print_code, 0);
+          (void)Print_element (&WW_PRINT_CRtn);
+        }
       }
     }
     if (Ask_yesno_question ("\rReset errors", FALSE)) {
@@ -10682,8 +10912,18 @@ void Print_errors_warnings (void) {
       if (warning_counts[i] > 0) {
         (void)Print_integer (warning_counts[i], 8);
         (void)Print_element (&WW_PRINT_SPACE);
-        (void)Print_string (warning_text[i]);
+        (void)Print_string (WARNING_TEXT[i]);
         (void)Print_element (&WW_PRINT_CRtn);
+        if (i == WARNING_SHORT_SCAN) {
+          (void)Print_string ("         shortest scan duration: ");
+          (void)Print_integer ((int)shortest_scan_duration, 0);
+          (void)Print_element (&WW_PRINT_CRtn);
+        }
+        if (i == WARNING_LONG_SCAN) {
+          (void)Print_string ("         longest scan duration: ");
+          (void)Print_integer ((int)longest_scan_duration, 0);
+          (void)Print_element (&WW_PRINT_CRtn);
+        }
       }
     }
     if (Ask_yesno_question ("\rReset warnings", FALSE)) {
@@ -10697,7 +10937,6 @@ void Print_errors_warnings (void) {
 
 // Read a setup character.
 byte Read_setup_character (void) {
-
   while (cb_count == 0) delay (1);
   byte chr = command_buffer[cb_read];
   if (++cb_read >= SIZE_COMMAND_BUFFER) cb_read = 0;
@@ -10707,7 +10946,6 @@ byte Read_setup_character (void) {
 
 // Read a setup character from a defined set.
 byte Read_setup_character_from_set (const char *charset) {
-
   while (TRUE) {
     while (cb_count == 0) delay (1);
     byte chr = command_buffer[cb_read];
@@ -10723,7 +10961,6 @@ byte Read_setup_character_from_set (const char *charset) {
 
 // Space to print column.
 void Space_to_column (int col) {
-
   if ((col >= 1) && (col <= length)) {
     while (current_column < col) {
       (void)Print_element (&WW_PRINT_SPACE);
@@ -10741,12 +10978,12 @@ void Serial_begin (void) {
   } else /* serial == SERIAL_RS232 */ {
 
     if (baud >= MINIMUM_HARDWARE_BAUD) {
-      Serial1.begin (baud_rates[baud], data_parity_stops[dps]);
+      Serial1.begin (BAUD_RATES[baud], DATA_PARITY_STOPS[dps]);
       Serial1.clear ();  // Workaround to clear FIFO scrambling permitted by driver.
       rs232_mode = RS232_UART;
       rts_size = Serial1.availableForWrite ();
     } else {  // The baud rate is too slow for UART, switch to SlowSoftSerial.
-      slow_serial_port.begin (baud_rates[baud], data_parity_stops_slow[dps]);
+      slow_serial_port.begin (BAUD_RATES[baud], DATA_PARITY_STOPS_SLOW[dps]);
       rs232_mode = RS232_SLOW;
       rts_size = slow_serial_port.availableForWrite ();
     }
@@ -10777,7 +11014,6 @@ void Serial_begin (void) {
 
 // Close serial communications port.
 void Serial_end (byte port) {
-
   if (port == SERIAL_USB) {
     Serial.end ();
   } else /* port == SERIAL_RS232 */ {
@@ -10791,7 +11027,6 @@ void Serial_end (byte port) {
 
 // Test character available on serial communication port.
 inline boolean Serial_available (void) {
-
   if (serial == SERIAL_USB) {
     return Serial.available ();
   } else /* serial == SERIAL_RS232 */{
@@ -10805,7 +11040,6 @@ inline boolean Serial_available (void) {
 
 // Read serial communication port.
 inline byte Serial_read (void) {
-
   if (serial == SERIAL_USB) {
     return Serial.read ();
   } else /* serial == SERIAL_RS232 */ {
@@ -10819,7 +11053,6 @@ inline byte Serial_read (void) {
 
 // Write serial communication port.
 int Serial_write (byte chr) {
-
   if (flow_out_on) {
     if (serial == SERIAL_USB) {
       return Serial.write (chr);
@@ -10853,7 +11086,6 @@ int Serial_write (byte chr) {
 
 // Send now to serial communication port.
 inline void Serial_send_now (void) {
-
   if (serial == SERIAL_USB) {
     Serial.send_now ();
   } else /* serial == SERIAL_RS232 */ {
