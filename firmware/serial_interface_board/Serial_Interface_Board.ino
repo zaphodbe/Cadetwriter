@@ -19,8 +19,8 @@
 //                      SlowSoftSerial library (https://github.com/MustBeArt/SlowSoftSerial).
 //                      Compile options - Teensy 3.5, USB Serial, 120 MHz, Fastest with LTO.
 //
-//  Memory:             99788 bytes (19%) of program storage space.
-//                      109752 bytes (41%) of dynamic memory for global variables.
+//  Memory:             107736 bytes (20%) of program storage space.
+//                      109764 bytes (41%) of dynamic memory for global variables.
 //
 //  Documentation:      IBM 1620 Jr. Console Typewriter Protocol, version 1.10, 5/24/2019.
 //                      IBM 1620 Jr. Console Typewriter Test Program, version 1.10, 5/24/2019.
@@ -93,16 +93,17 @@
 //                                           Warning:  The 20cps timing isn't calibrated yet.  No characters are lost,
 //                                                     but the firmware drives the print mechanism too fast and there is
 //                                                     lots of beeping.
-//                      6R0   3/25/2021  Developed new Spin-Hit-Move (SHM) printer timing model.
+//                      6R0    4/3/2021  Developed new Spin-Hit-Move (SHM) printer timing model.
 //                                       Added developer column scan timing measurements and rewrote printer timing.
 //                                       Added configuration setting for ASCII printwheel (#1353909).
+//                                       Added configuration setting for impression control.
+//                                       Added capability to change typewriter settings.
 //                                       Updated timings for 20cps print mechanism from Chris Coley.
+//                                       Miscellaneous changes and fixes for minor issues.
 //
 //  Future ideas:       1. Support other Wheelwriter models.
 //
-//                      2. Extend the developer feature to include keyboard bounce measurements, board tests, change
-//                         typewriter settings (Bold, Caps, Center, Word & Continuous Underlining, Language, Line
-//                         Spacings, Right Flush, Decimal Alignment, Indent, Spell Check, and PowerWise), etc.
+//                      2. Extend the developer feature to include keyboard measurements.
 //
 //                      3. Implement a subset of ANSI Escape Sequences that make sense for a printing terminal.
 //
@@ -117,7 +118,7 @@
 //
 //                      8. Translate common Unicode characters (e.g., curly quotes) to nearest ASCII equivalents.
 //
-//                      9. Add stand-alone BASIC and FORTH interpreters.
+//                      9. Add stand-alone, built-in BASIC and/or FORTH interpreters.
 //
 //======================================================================================================================
 
@@ -340,6 +341,17 @@
 //                   transferred to the main program for handling.  This is done to keep ISRs very small & fast and to
 //                   avoid synchronization issues.  More details are described below with the ISR routines.
 //
+//  Spin-Hit-Move - As of version 6R0, the firmware implements a new, more accurate model - Spin-Hit-Move (SHM) - for
+//                  predicting character print times.  It reflects the actual mechanics of the printer mechanism where
+//                  the printwheel first spins to the correct position, then the print hammer hits the character
+//                  leaving an image on the paper, and finally the carriage moves one position to the right.  The hit
+//                  and move times are fixed and don't vary by character.  The spin time is the variable component.
+//                  Once a character is printed, the printwheel usually stays in the same position, so spin time depends
+//                  on where the new character to be printed is relative to the last character printed.  The printwheel
+//                  can turn clockwise or counter-clockwise, so the typewriter motherboard chooses the rotation
+//                  direction which takes the least time.  For each character to be printed, the firmware calculates the
+//                  spin time based on the location on the printwheel of the previous and current character.
+//
 //  Printing - Printing is the most complex thing that this code does.  To accomplish it, "fake" key presses (done by
 //             asserting row driver lines during the correct column scans) are sent to the typewriter's logic board in
 //             the correct sequence with the correct timing.  The logic board thinks it is seeing key presses from the
@@ -355,11 +367,13 @@
 //             the designated column scan.  This is done to signal a key release or to synchronize key pressing with
 //             printer timing.
 //
-//             There are two special print codes used in the print buffer - null (value 0x0000) and skip (value 0xffff).
-//             The null print code marks the current end of things to print in the print buffer.  The null value
-//             effectively stops the ISR from advancing through the print buffer since it doesn't match any of the
-//             valid column values.  When seen during any column scan, skip print codes are ignored and the print
-//             buffer is advanced to the next print code.
+//             There are four special print codes used in the print buffer - null (value 0x00), count (0xfd), catch_up
+//             (0xfe), and skip (value 0xff).  The null print code marks the current end of things to print in the
+//             print buffer.  The null value effectively stops the ISR from advancing through the print buffer since it
+//             doesn't match any of the valid column values.  When seen during any column scan, skip print codes are
+//             ignored and the print buffer is advanced to the next print code.  Catch_up is used to block advancing
+//             through the print buffer until the motherboard has fully read the last print code.  Count increments the
+//             count of characters printed and is only used when timing the print mechanism.
 //
 //             The main program is responsible for filling the print buffer with print codes.  The characters to print
 //             come from two sources - the main program processing input from the USB or RS-232 port via the receive
@@ -373,13 +387,13 @@
 //
 //             The Teensy-based Serial Interface Board is capable of pumping print codes into the logic board much
 //             faster than they can be printed.  The Wheelwriter has a small, 32 character buffer which can fill
-//             quickly.  When it is almost full, the typewriter beeps three times.  When it is full, the logic board
+//             quickly.  When it is partialy full, the typewriter beeps three times.  When it is full, the logic board
 //             stretches the current column scan pulse by as much as 3.5 seconds, stalling "keyboard" input until the
 //             print mechanism fully catches up.  This is a safe thing to do as a stand-alone typewriter, but as a
-//             computer terminal it can cause loss of input data from the actual keyboard.  This firmware tries hard to
-//             keep from filling the typewriter's buffer by carefully balancing the time it takes to print a character
-//             and the total column scan time that it takes to assert the row drive lines for all of the character's
-//             print codes.
+//             computer terminal it can cause loss of input data from the actual keyboard.  This firmware avoids filling
+//             the typewriter's buffer by carefully balancing the time it takes to print a character and the total
+//             column scan time that it takes to assert the row drive lines for all of the character's print codes.
+//             Null full scans are added after every character's print codes to match it's total print time.
 //
 //             There are several types of "characters" that can be printed:
 //             *  Standard typewriter characters which are present on the printwheel, such as 'A' or '$'.  These need
@@ -397,10 +411,18 @@
 //
 //             Every print character has a unique data structure which gives all of the information and data needed to
 //             print that character.  These data structures contain:
+//             *  A type code which describes the type of character it is - simple, complex, dynamic.
 //             *  A spacing code which indicates how this character affects the horizontal position on the line.
 //             *  A timing value which is the difference between the time it takes to physically print this character
 //                (under normal conditions) and the time it takes to assert all of its print codes.
-//             *  A pointer to the string of print codes for this character.
+//             *  A pointer to the character's print data.  This can be one of three addresses:
+//                -  For simple characters, it points to a null-terminated array of bytes containing the scan codes to
+//                   assert.
+//                -  For complex characters, it points to an array of pointers to other print information structures.
+//                   Complex characters can be nested to any level.
+//                -  For dynamic characters, it points to a pointer which points to a print information structure.  This
+//                   is used for characters which have alternate print sequences depending on runtime settings.
+//
 //             The main program queues a character for printing by first copying the character's print codes to the
 //             print buffer.  Then it "pads out" the print buffer with as many empty full scan print codes as needed to
 //             balance the timing of physical printing and print code scanning as given by an accumulation of the timing
@@ -420,88 +442,50 @@
 //
 //             Here are the print codes, timing, and scan schedule for printing an 'm':
 //               Print codes:  WW_m_M, WW_NULL_9, WW_NULL_14, WW_NULL
-//               Timing:  TIME_CHARACTER - (2 * FSCAN_1_CHANGE)
+//               Timing:  TIME_SPIN + TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9)
 //               Scan schedule:
 //                           C1    C2    C3    C4    C5    C6    C7    C8    C9    C10   C11   C12   C13   C14
 //                                                                            m
-//                                                                          NULL9                         NULL14  NULL
+//                                                                          NULL9                         NULL14
+//                         ----------------------------- null pad as needed ----------------------------- NULL14  NULL
 // 
 //             Here are the print codes, timing, and scan schedule for printing an 'M':
 //               Print codes:  WW_LShift, WW_m_M, WW_LShift, WW_NULL_1, WW_NULL_14, WW_NULL;
-//               Timing:  TIME_CHARACTER - (2 * FSCAN_1_CHANGE + FSCAN_2_CHANGES)
+//               Timing:  TIME_SPIN + TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_9 + TIME_RELEASE_SHIFT_9)
 //               Scan schedule:
 //                           C1    C2    C3    C4    C5    C6    C7    C8    C9    C10   C11   C12   C13   C14
 //                         LShift                                             M
 //                         LShift                                          (null9)
-//                         NULL1                                                                          NULL14  NULL
+//                         NULL1                                                                          NULL14
+//                         ----------------------------- null pad as needed ----------------------------- NULL14  NULL
 //
-//             Here are the print codes, timing, and scan schedule for printing the IBM 1620's record mark character:
-//               Print codes:  WW_EQUAL_PLUS, WW_NULL_10, WW_Backspace_Bksp1, WW_NULL_13, WW_LShift,
-//                             WW_1_EXCLAMATION_Spell, WW_LShift, WW_NULL_1, WW_Backspace_Bksp1, WW_NULL_13,
-//                             WW_i_I_Word, WW_NULL_10, WW_NULL_14, WW_NULL
-//               Timing: (3 * TIME_CHARACTER + 2 * TIME_HMOVEMENT) - (6 * FSCAN_1_CHANGE + 3 * FSCAN_2_CHANGES))
+//             The IBM 1620's record mark character is a composite character made up of a sequence of other print
+//             characters:
+//               Print characters:  WW_PRINT_EQUAL, WW_PRINT_Backspace, WW_PRINT_EXCLAMATION, WW_PRINT_Backspace,
+//                                  WW_PRINT_i, NULL_PRINT_INFO
+//               Timing:  TIME_SPIN + TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10) +
+//                        TIME_HMOVE - (TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13) +
+//                        TIME_SPIN + TIME_HIT + TIME_MOVE - (TIME_PRESS_SHIFT_3 + TIME_RELEASE_SHIFT_3) +
+//                        TIME_HMOVE - (TIME_PRESS_NOSHIFT_13 + TIME_RELEASE_NOSHIFT_13) +
+//                        TIME_SPIN + TIME_HIT + TIME_MOVE - (TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10)
 //               Scan schedule:
 //                           C1    C2    C3    C4    C5    C6    C7    C8    C9    C10   C11   C12   C13   C14
 //                                                                                  =
-//                                                                               NULL10            Backsp
-//                                                                                                 NULL13
+//                                                                               NULL10                   NULL14
+//                         ----------------------------- null pad as needed ----------------------------- NULL14
+//                                                                                                 Backsp
+//                                                                                                 NULL13 NULL14
+//                         ----------------------------- null pad as needed ----------------------------- NULL14
 //                         LShift         !
 //                         LShift      (null3)
-//                         NULL1                                                                   Backsp
-//                                                                                                 NULL13
+//                         NULL1                                                                          NULL14
+//                         ----------------------------- null pad as needed ----------------------------- NULL14
+//                                                                                                 Backsp
+//                                                                                                 NULL13 NULL14
+//                         ----------------------------- null pad as needed ----------------------------- NULL14
 //                                                                                  i
-//                                                                               NULL10                   NULL14  NULL
-//
-//             Here are the print codes, timing, and scan schedule for printing the ASCII Terminal's '<' character:
-//               Print codes:  WW_Code, WW_PaperDown_DownMicro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-//                             WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_PaperDown_DownMicro, WW_Code, WW_Code,
-//                             WW_PaperDown_DownMicro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11,
-//                             WW_Backspace_Bksp1, WW_NULL_13, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-//                             WW_PaperUp_UpMicro, WW_Code, WW_NULL_2, WW_PERIOD_PERIOD, WW_NULL_11, WW_Code,
-//                             WW_PaperUp_UpMicro, WW_Code, WW_Code, WW_PaperUp_UpMicro, WW_Code, WW_Code,
-//                             WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-//                             WW_Backspace_Bksp1, WW_Code, WW_Code, WW_Backspace_Bksp1, WW_Code, WW_Code,
-//                             WW_Backspace_Bksp1, WW_Code, WW_NULL_5, WW_SPACE_REQSPACE, WW_NULL_4, WW_NULL_14, WW_NULL
-//               Timing:  ((3 * TIME_CHARACTER + 7 * TIME_HMOVEMENT + 6 * TIME_VMOVEMENT + 10 * TIME_ADJUST) -
-//                         (29 * FSCAN_1_CHANGE + 4 * FSCAN_2_CHANGES + 3 * FSCAN_3_CHANGES))
-//               Scan schedule:
-//                           C1    C2    C3    C4    C5    C6    C7    C8    C9    C10   C11   C12   C13   C14
-//                                                  Code
-//                               DMicro             Code
-//                                NULL2           (null5)                                 .
-//                                                                                     NULL11
-//                                                                                                 Backsp
-//                                                                                                 NULL13
-//                                                  Code
-//                               DMicro             Code
-//                              (null2)             Code
-//                               DMicro             Code
-//                                NULL2           (null5)                                 .
-//                                                                                     NULL11
-//                                                                                                 Backsp
-//                                                                                                 NULL13
-//                                                  Code                                            Bksp1
-//                                                  Code                                          (null13)
-//                               UMicro             Code
-//                                NULL2           (null5)                                 .
-//                                                                                     NULL11
-//                                                  Code
-//                               UMicro             Code
-//                              (null2)             Code
-//                               UMicro             Code
-//                                                  Code                                            Bksp1
-//                                                  Code                                          (null13)
-//                                                  Code                                            Bksp1
-//                                                  Code                                          (null13)
-//                                                  Code                                            Bksp1
-//                                                  Code                                          (null13)
-//                                                  Code                                            Bksp1
-//                                                  Code                                          (null13)
-//                                                  Code                                            Bksp1
-//                                                  Code
-//                                                 NULL5
-//                                           SPACE
-//                                           NULL4                                                        NULL14  NULL
+//                                                                               NULL10                   NULL14
+//                         ----------------------------- null pad as needed ----------------------------- NULL14  NULL
 //
 //  Period graphics - Two approaches are currently used to create printed characters that aren't on the Wheelwriter's
 //                    printwheel.
@@ -540,6 +524,11 @@
 //                    left or right, the printer can move a half-character up and down and a micro space up, left, and
 //                    down, but not right.
 //
+//                    The third limitation is the speed of printing period graphic characters.  Depending on the
+//                    complexity of the character, it can take up to 10x print time for all of the carriage movements
+//                    and printed periods.  Furthermore, the Wheelwriter's motherboard injects additional column scan
+//                    delays when multiple micro-column movements are used.  Why is not known.
+//
 //                    The space occupied by each printed character breaks down into 6 micro-spaces horizontally and 8
 //                    micro-spaces vertically.  Most printed characters occupy a 5x5 area within the 6 x 8 overall
 //                    space, as shown in the first diagram below.  For example, the printed 'H' character fills the 5x5
@@ -563,8 +552,8 @@
 //                    Creating a period graphic character involves combining explicit and implicit carriage movements
 //                    with printing periods.  A character always starts in the "home" position and must end in the home
 //                    position one character space to the right.  Every time a period is printed, the carriage is
-//                    automatically moved one character position to the right and usually has to be moved back to the
-//                    character being printed.  For example, here are the period graphic versions of the less than,
+//                    automatically moved one full character position to the right and usually has to be moved back to
+//                    the character being printed.  For example, here are the period graphic versions of the less than,
 //                    backslash, and tilde ASCII characters.
 //
 //                            1  2  3  4  5   6             1  2  3  4  5   6             1  2  3  4  5   6
@@ -603,17 +592,14 @@
 //                         character will print correctly when surrounded by other characters.  Rearranging the movement
 //                         operations can avoid this problem.
 //                      *  The period is horizontally in the center of the character "block".  In order to print in
-//                         micro-columns 1 and 2, the carriage needs to move to the left.  This is not possible when the
-//                         carriage is in the true column 1 position and up against the left stop.  So, the column
-//                         offset setting, which is 1 by default, relocates all columns one print position to the
-//                         right.  The affected period graphic characters need appropriate MarRel operations to move
-//                         into micro-columns 1 and 2.  This allows period graphic characters printed in column "1"
-//                         (physical column 2) to print correctly.  Note that the column marker on the front of the
-//                         typewriter will be off by one column, but otherwise everything will work correctly.
-//                      *  Period graphic characters take more time to print and have longer print code strings.  This
-//                         can cause the logic board's input buffer to fill up and trigger a [very] long column scan,
-//                         slowing down printing even more.  Rearranging the order of print codes or inserting null
-//                         full scans can avoid this problem.
+//                         micro-columns 1 and 2, the carriage needs to move to the left.  This is prevented when the
+//                         carriage is in the virtual column 1 position.  So, a MarRel is needed to allow a backspace or
+//                         bksp1 to move left into micro-columns 1 and 2.  If the carriage is in the physical column 1
+//                         position, then it is up against a mechanical stop and there is no way to move into
+//                         micro-columns 1 and 2.  To deal with this, the firmware supports a line offset setting, which
+//                         is 1 by default, that relocates all columns one print position to the right.  Note that the
+//                         column marker on the front of the typewriter will be off by one column, but otherwise
+//                         everything will work correctly.
 //                    Even with the special cases, period graphic characters are a better choice than substitute or
 //                    overprinted characters.
 //
@@ -680,6 +666,8 @@
 //                                                                                IBM 1620 Jr. = all FALSE,
 //                                                                                ASCII Terminal = TRUE every 8 columns.
 //               *  Column offset setting (0 - 9) used by all emulations.  Initial value = 0 (IBM), 1 (ASCII).
+//               *  ASCII printwheel setting (TRUE, FALSE) used by all emulations.  Initial value = FALSE;
+//               *  Impression setting (LIGHT, NORMAL, HEAVY) used by all emulations.  Initial value = NORMAL.
 //               *  Slashed zeroes setting (TRUE, FALSE) of the IBM 1620 Jr. Console Typewriter.  Initial value = TRUE.
 //               *  Print bold input setting (TRUE, FALSE) of the IBM 1620 Jr. Console Typewriter.  Initial value =
 //                  FALSE.
@@ -691,7 +679,6 @@
 //                  (RS-232 only).  Initial value = 8N1.
 //               *  Software flow control setting (NONE, XON_XOFF) of the ASCII Terminal.  Initial value = XON_XOFF.
 //               *  Hardware flow control setting (NONE, RTS_CTS, RTR_CTS) of the ASCII Terminal.  Initial value = NONE.
-//               *  ASCII printwheel setting (TRUE, FALSE) of the ASCII Terminal.  Initial value = FALSE;
 //               *  Uppercase only setting (TRUE, FALSE) of the ASCII Terminal.  Initial value = FALSE.
 //               *  Auto return setting (TRUE, FALSE) of the ASCII Terminal.  Initial value = TRUE.
 //               *  Transmit EOL setting (EOL_CR, EOL_CRLF, EOL_LF, EOL_LFCR) of the ASCII TERMINAL.
@@ -778,15 +765,61 @@
 //                                 detect and process the switch closure.
 //
 //  Setup function - All emulations support a manual setup function.  It is initiated by pressing the Code/Ctrl key and
-//                   "Setup" keys on the keyboard.  The "Setup" key is the upper-rightmost key, labelled "Paper Up
-//                   Micro" on an unmodified Wheelwriter.  The setup function allows operating parameters of the
-//                   typewriter and/or emulation to be changed, the emulator's character set to be printed, and error &
-//                   warning counts to printed and optionally reset.  Settings are viewed and changed interactively.
-//                   For each setting, the options are presented and the current value is in uppercase.  Typing the
-//                   first letter of an option selects it, pressing the carriage return retains the current value.
-//                   There are a few exceptions when more than one character must be typed to uniquely identify the
-//                   option value, such as the ASCII Terminal's RS-232 baud rate setting which can require two or three
-//                   digits be typed.  New settings pertain only to the current session unless explicitly saved.
+//                   "SetUp" keys on the keyboard.  The "SetUp" key is the upper-rightmost key, labelled "Paper Up
+//                   Micro" on an unmodified Wheelwriter.  The commands available in Setup are:
+//                   *  settings - This command allows operating parameters of the typewriter and/or emulation to be
+//                                 changed, Settings are viewed and changed interactively.  For each setting, the
+//                                 options are presented and the current value is in uppercase.  Typing the first
+//                                 letter of an option selects it, pressing the carriage return retains the current
+//                                 value.  There are a few exceptions when more than one character must be typed to
+//                                 uniquely identify the option value, such as the ASCII Terminal's RS-232 baud rate
+//                                 setting which can require two or three digits be typed.  New settings pertain only
+//                                 to the current session unless explicitly saved.
+//                   *  errors - This prints counts of all errors and warnings that have occurred since the last reset.
+//                               The user can optionally reset the error and warning counts to 0.
+//                   *  character set - This causes the emulator's full character set to be printed.
+//                   *  typewriter - This allows the user to change built-in typewriter options & features.  Many of the
+//                                   typewriter features are toggles with no definitive way to turn them off.  Some of
+//                                   them, like underline, are automatically off when the typewriter is turned on.
+//                                   Others, line spell check and bold, are preserved during power off.  The firmware
+//                                   cannot tell whether these features are on or off and need user intervention to
+//                                   set/clear them.  A few must be manually turned off for correct Cadetwriter
+//                                   operation.  A few typewriter options - line spacing and powerwise - might be useful
+//                                   to the user in some situations.  Finally, there are options for setting and
+//                                   clearing margins and tabs.  The available options are:
+//                                   1. spell check - This toggles the typewriter's spell check option every time a "1"
+//                                                    is pressed.  When on, the feature sounds double beeps when it
+//                                                    thinks a word is misspelled, which happens a lot with computer
+//                                                    output.  It should be turned off.  If the typewriter beeps after
+//                                                    pressing "1", then the feature was just turned on.  If the
+//                                                    printwheel jiggles, then spell check was just turned off.
+//                                   2. line spacing - This changes the typewriter's line spacing every time a "2" is
+//                                                     pressed.  It varies from 1 to 1.5 to 2 to 3 and back to 1.  The
+//                                                     current spacing is shown by indicator lights.
+//                                   3. powerwise - This changes the typewriter's powerwise setting.  It can be set to
+//                                                  0 (for off) or 1 - 90 minutes to control how long the typewriter
+//                                                  waits before partially powering down due to inactivity.  After
+//                                                  pressing "3", the firmware asks for a number between 0 and 90, ended
+//                                                  with a return.
+//                                   4. a rtn - This toggles the typewriter's automatic carriage return setting every
+//                                              time a "4" is pressed.  The feature's current state is shown by the
+//                                              "A Rtn" indicator.  This option must be turned off for correct
+//                                              Cadetwriter operation.
+//                                   5. bold - This toggles whether characters are printed bolded.  Its current state is
+//                                             shown by the "Bold" indicator.  It does not affect correct Cadetwriter
+//                                             operation.
+//                                   6. change margins & tabs - This option allows the user to position the left margin,
+//                                                              right margin, and all tab stops.  When "6" is pressed,
+//                                                              the firmware prints directions, column numbers, and the
+//                                                              current placement of the margins and tabs.  The user can
+//                                                              then place the margins and tabs at new positions.
+//                                                              Pressing the carriage return ends the operation.
+//                                   7. restore margins & tabs - This option resets all margins and tabs to their
+//                                                               "default" settings - left margin at column 1, right
+//                                                               margin at "line length" column, and tabs at every 8
+//                                                               positions.
+//                                   q. quit - This ends typewriter changes and returns to main setup menu.
+//                   *  quit - This ends Setup mode.
 //
 //                   There is also a "restore to factory defaults" option in all emulations.  It is triggered by
 //                   pressing either of the Shift keys with the Code/Ctrl key and "Setup" key on the keyboard.
@@ -862,6 +895,38 @@
 //                        sequences unless they contain at least one Intermediate character.
 //                     *  Any ESC (0x1B) after the first, except in Strings, immediately aborts the current sequence and
 //                        starts another one.
+//
+//  Developer functions - To aid developers who wish to adapt other model Wheelwriter typewriters, there is a "hidden"
+//                        set of developer tests built into this firmware.  The tests are accessed from the Setup menu
+//                        by pressing code/control-d.  The available functions are:
+//                        *  communication - This test will check the communication with a remote computer by echoing
+//                                           all characters received and sending all characters typed.  This is not
+//                                           implemented yet.
+//                        *  keyboard - This will allow the developer to measure physical keyboard timing values (key
+//                                      press, key release, n-key rollover, key bounce, etc.) and check the operation
+//                                      and column/row scan codes of all keyboard keys.  These test results help
+//                                      determine the correct values for the KEY_*_DEBOUNCE constants.  This is not
+//                                      implemented yet.
+//                        *  measure - Once all of the typewriter's timing values have been measured and the associated
+//                                     program constants set, this should be the last test run.  It prints two blocks of
+//                                     text - Jabberwocky and 10 lines of random characters - and measures the effective
+//                                     print speed, in characters-per-second (cps), for each.  If all of the timing
+//                                     constants are set correctly, the typewriter should print at it's maximum speed,
+//                                     have no pauses, produce no warnings/errors, and trigger no triple beeps.
+//                        *  printer - This test automatically measures all of the basic timing components of the
+//                                     Wheelwriter's printer mechanism.  This includes the size of the typewriter's
+//                                     character buffer, the time of "null" character printing, the Spin/Hit/Move 
+//                                     timing values, the tab & return timing values, the times for horizontal &
+//                                     vertical movements, and the timing of miscellaneous typewriter operations such as
+//                                     beep * jiggle.  These test results help determine the correct values for the
+//                                     TIME_* constants.  This should be the second test run.
+//                        *  scanning - This automatically measures the typewriter's column scanning timing.  This 
+//                                      includes the time of "null" column scans, the column scan times for a pressed &
+//                                      released key, and the total time for flooding the typewriter with a full line of
+//                                      worst-case print characters.  These test results help determine the correct
+//                                      values for the CSCAN_*, FSCAN_*, and *_SCAN_DURATION constants.  To date, all
+//                                      model Wheelwriters adapted have had consistent 820/3680 microsecond column
+//                                      timing.  When converting a new Wheelwriter, this should be the first test run.
 //                     
 //  Board revisions - This firmware automatically supports all revisions of the Serial Interface Board.
 //                    1.6: The first production board.  The basic board has a hardware problem with random characters
@@ -909,9 +974,9 @@
 //**********************************************************************************************************************
 
 // Wheelwriter 1000
-//#define FEATURE_20CPS           FALSE
-//#define FEATURE_WIDE_CARRIAGE   FALSE
-//#define FEATURE_VERSION_SUFFIX  ""
+// #define FEATURE_20CPS           FALSE
+// #define FEATURE_WIDE_CARRIAGE   FALSE
+// #define FEATURE_VERSION_SUFFIX  ""
 
 // Wheelwriter 1500
 #define FEATURE_20CPS           TRUE
@@ -937,7 +1002,7 @@
 
 // Firmware version values.
 #define VERSION       61
-#define VERSION_TEXT  "6R0beta4" FEATURE_VERSION_SUFFIX
+#define VERSION_TEXT  "6R0beta5" FEATURE_VERSION_SUFFIX
 
 #define VERSION_ESCAPEOFFSET_CHANGED  60  // Version when escape sequences and line offset changed.
 
@@ -1323,14 +1388,14 @@
 #define CMD_ASCII_XON     32  // XON ASCII Terminal action.
 #define CMD_ASCII_XOFF    33  // XOFF ASCII Terminal action.
 
-// Run mode types.
+// Run mode values.
 #define MODE_INITIALIZING        0  // Typewriter is initializing.
 #define MODE_RUNNING             1  // Typewriter is running.
 #define MODE_IBM_BEING_SETUP     2  // IBM 1620 Jr. is being setup.
 #define MODE_ASCII_BEING_SETUP   3  // ASCII Terminal is being setup.
 #define MODE_FUTURE_BEING_SETUP  4  // Future is being setup.
 
-// Print element types.
+// Print element values.
 #define ELEMENT_SIMPLE     0  // Simple print element.
 #define ELEMENT_COMPOSITE  1  // Composite print element.
 #define ELEMENT_DYNAMIC    2  // Dynamic print element.
@@ -1351,6 +1416,7 @@
 #define SPACING_TSET       12  // No horizontal movement, set tab.
 #define SPACING_TCLR       13  // No horizontal movement, clear tab.
 #define SPACING_TCLRALL    14  // No horizontal movement, clear all tabs.
+#define SPACING_MARTABS    15  // Reset all margins and tabs.
 
 // Print element position values.
 #define POSITION_INITIAL      0  // Initial printwheel rotational position.
@@ -1368,19 +1434,19 @@
 #if FEATURE_20CPS
   #define TIME_NULL             29000
   #define TIME_SPIN_MIN             0
-  #define TIME_SPIN_MAX         54000
-  #define TIME_SPIN_FACTOR       1130
+  #define TIME_SPIN_MAX         56000
+  #define TIME_SPIN_FACTOR       1180
   #define TIME_HIT               2500
   #define TIME_MOVE             48000
-  #define TIME_TAB_OFFSET      290000
-  #define TIME_TAB_FACTOR        5400
-  #define TIME_RETURN_OFFSET   240000
+  #define TIME_TAB_OFFSET      220000
+  #define TIME_TAB_FACTOR        6000
+  #define TIME_RETURN_OFFSET   220000
   #define TIME_RETURN_FACTOR     5400
-  #define TIME_HMOVE            48000
-  #define TIME_HMOVE_MICRO      46000
-  #define TIME_VMOVE           147000
-  #define TIME_VMOVE_HALF      103000
-  #define TIME_VMOVE_MICRO      63000
+  #define TIME_HMOVE            50000  // Adjusted to account for extra composite character slowdown
+  #define TIME_HMOVE_MICRO      50000  // Adjusted to account for extra composite character slowdown
+  #define TIME_VMOVE           150000  // Adjusted to account for extra composite character slowdown
+  #define TIME_VMOVE_HALF      150000  // Adjusted to account for extra composite character slowdown
+  #define TIME_VMOVE_MICRO     150000  // Adjusted to account for extra composite character slowdown
   #define TIME_BEEP            180000
   #define TIME_JIGGLE          230000
   #define TIME_LOADPAPER      3000000
@@ -1392,15 +1458,15 @@
   #define TIME_SPIN_FACTOR        940
   #define TIME_HIT               2500
   #define TIME_MOVE             59000
-  #define TIME_TAB_OFFSET      205000
+  #define TIME_TAB_OFFSET      200000
   #define TIME_TAB_FACTOR        5400
-  #define TIME_RETURN_OFFSET   205000
+  #define TIME_RETURN_OFFSET   200000
   #define TIME_RETURN_FACTOR     5400
-  #define TIME_HMOVE            59000
-  #define TIME_HMOVE_MICRO      58000
-  #define TIME_VMOVE           147000
-  #define TIME_VMOVE_HALF      106000
-  #define TIME_VMOVE_MICRO      63000
+  #define TIME_HMOVE            60000  // Adjusted to account for extra composite character slowdown
+  #define TIME_HMOVE_MICRO      60000  // Adjusted to account for extra composite character slowdown
+  #define TIME_VMOVE           150000  // Adjusted to account for extra composite character slowdown
+  #define TIME_VMOVE_HALF      150000  // Adjusted to account for extra composite character slowdown
+  #define TIME_VMOVE_MICRO     150000  // Adjusted to account for extra composite character slowdown
   #define TIME_BEEP            180000
   #define TIME_JIGGLE          230000
   #define TIME_LOADPAPER      3000000
@@ -1522,7 +1588,7 @@
 #define RTS_EMPTYING_HW  4  // RTS is emptying hardware buffer.
 #define RTS_TIMEOUT      5  // RTS is in timeout.
 
-// Escape character types.
+// Escape character values.
 #define ESC_IGNORE         0  // Ignore escape character type.
 #define ESC_CONTROL        1  // Control escape character type.
 #define ESC_CTRL_BEL       2  // Control BEL escape character type.
@@ -1566,6 +1632,7 @@
 #define EEPROM_RMARGIN         6  // EEPROM location of right margin setting byte.               Used by all emulations.
 #define EEPROM_OFFSET         30  // EEPROM location of line offset byte.                        Used by all emulations.
 #define EEPROM_ASCIIWHEEL     34  // EEPROM location of ASCII printwheel setting byte.           Used by all emulations.
+#define EEPROM_IMPRESSION     35  // EEPROM location of impression setting byte.                 Used by all emulations.
 
 #define EEPROM_SLASH          10  // EEPROM location of slash zero setting byte.                 Used by IBM 1620 Jr.
 #define EEPROM_BOLD           11  // EEPROM location of bold setting byte.                       Used by IBM 1620 Jr.
@@ -1600,11 +1667,13 @@
 #define ERROR_PB_FULL             5  // Print buffer full error.
 #define ERROR_BAD_CODE            6  // Bad print code error.
 #define ERROR_BAD_ESCAPE          7  // Bad escape sequence error.
-#define ERROR_BAD_SPACING         8  // Bad print spacing code.
-#define ERROR_BAD_KEY_ACTION      9  // Bad key action code.
-#define ERROR_BAD_SERIAL_ACTION  10  // Bad serial action code.
+#define ERROR_BAD_TYPE            8  // Bad element type code.
+#define ERROR_BAD_SPACING         9  // Bad print spacing code.
+#define ERROR_BAD_POSITION       10  // Bad printwheel position code.
+#define ERROR_BAD_KEY_ACTION     11  // Bad key action code.
+#define ERROR_BAD_SERIAL_ACTION  12  // Bad serial action code.
 
-#define NUM_ERRORS               11  // Number of error codes.
+#define NUM_ERRORS               13  // Number of error codes.
 
 // Warning codes.
 #define WARNING_NULL             0  // Null warning.
@@ -1622,22 +1691,22 @@
 #define EMULATION_FUTURE      3  //  X     - Reserved for future emulation.
 #define EMULATION_STANDALONE  4  //  X  X  - Standalone Typewriter emulation.
 
-// True or false setting types.
+// True or false setting values.
 #define SETTING_UNDEFINED  0  // Undefined setting.
 #define SETTING_TRUE       1  // True setting.
 #define SETTING_FALSE      2  // False setting.
 
-// Serial types.
+// Serial values.
 #define SERIAL_UNDEFINED  0  // Undefined serial setting.
 #define SERIAL_USB        1  // USB serial.
 #define SERIAL_RS232      2  // RS-232 serial (UART or SlowSoftSerial).
 
-// RS-232 types (not stored in EEPROM).
+// RS-232 values (not stored in EEPROM).
 #define RS232_UNDEFINED   0  // Undefined RS-232 mode.
 #define RS232_UART        1  // Hardware UART.
 #define RS232_SLOW        2  // SlowSoftSerial port.
 
-// Duplex types.
+// Duplex values.
 #define DUPLEX_UNDEFINED  0  // Undefined duplex setting.
 #define DUPLEX_HALF       1  // Half duplex setting.
 #define DUPLEX_FULL       2  // Full duplex setting.
@@ -1669,7 +1738,7 @@
 #define NUM_BAUDS              22  // Number of baud values.
 #define MINIMUM_HARDWARE_BAUD  BAUD_1200
 
-// Parity types.
+// Parity values.
 #define PARITY_UNDEFINED  0  // Undefined parity setting.
 #define PARITY_NONE       1  // None parity setting.
 #define PARITY_ODD        2  // Odd parity setting.
@@ -1688,25 +1757,31 @@
 
 #define NUM_DPSS       9  // Number of dps values.
 
-// Software flow control types.
+// Impression values.
+#define IMPRESSION_UNDEFINED  0  // Undefined impression setting.
+#define IMPRESSION_LIGHT      1  // Light impression setting.
+#define IMPRESSION_NORMAL     2  // Normal impression setting.
+#define IMPRESSION_HEAVY      3  // Heavy impression setting.
+
+// Software flow control values.
 #define SWFLOW_UNDEFINED  0  // Undefined software flow control setting.
 #define SWFLOW_NONE       1  // No software flow control setting.
 #define SWFLOW_XON_XOFF   2  // XON/XOFF flow control setting.
 
-// Hardware flow control types.
+// Hardware flow control values.
 #define HWFLOW_UNDEFINED  0  // Undefined hardware flow control setting.
 #define HWFLOW_NONE       1  // No hardware flow control setting.
 #define HWFLOW_RTS_CTS    2  // RTS/CTS flow control setting.
 #define HWFLOW_RTR_CTS    3  // RTR/CTS flow control setting.
 
-// End of line types.
+// End of line values.
 #define EOL_UNDEFINED  0  // Undefined end-of-line setting.
 #define EOL_CR         1  // CR end-of-line setting.
 #define EOL_CRLF       2  // CR LF end-of-line setting.
 #define EOL_LF         3  // LF end-of-line setting.
 #define EOL_LFCR       4  // LF CR end-of-line setting.
 
-// Escape sequence types.
+// Escape sequence values.
 #define ESCAPE_UNDEFINED  0  // Undefined escape sequence setting.
 #define ESCAPE_NONE       1  // None escape sequences setting.
 #define ESCAPE_IGNORE     2  // Ignore escape sequence setting.
@@ -1722,32 +1797,35 @@
 #endif
 
 // Configuration parameters initial values.
-#define INITIAL_EMULATION       EMULATION_NULL   // Current emulation.
-#define INITIAL_ERRORS          SETTING_TRUE     // Report errors.
-#define INITIAL_WARNINGS        SETTING_FALSE    // Report warnings.
-#define INITIAL_BATTERY         SETTING_FALSE    // Battery installed.
-#define INITIAL_LMARGIN         1                // Left margin.
-#define INITIAL_RMARGIN         LENGTH_DEFAULT   // Right margin.
-#define INITIAL_OFFSET          0                // Column offset.
-#define INITIAL_ASCIIWHEEL      SETTING_FALSE    // ASCII printwheel.
-#define INITIAL_SLASH           SETTING_TRUE     // Print slashed zeroes.
-#define INITIAL_BOLD            SETTING_FALSE    // Print bold input.
-#define INITIAL_SERIAL          SERIAL_USB       // Serial type.
-#define INITIAL_DUPLEX          DUPLEX_FULL      // Duplex.
-#define INITIAL_BAUD            BAUD_9600        // Baud rate.
-#define INITIAL_PARITY          PARITY_NONE      // Parity.
-#define INITIAL_DPS             DPS_8N1          // Databits, parity, stopbits.
-#define INITIAL_SWFLOW          SWFLOW_XON_XOFF  // Software flow control.
-#define INITIAL_HWFLOW          HWFLOW_NONE      // Hardware flow control.
-#define INITIAL_UPPERCASE       SETTING_FALSE    // Uppercase only.
-#define INITIAL_AUTORETURN      SETTING_TRUE     // Auto return.
-#define INITIAL_TRANSMITEOL     EOL_CR           // Send end-of-line.
-#define INITIAL_RECEIVEEOL      EOL_CRLF         // Receive end-of-line.
-#define INITIAL_ESCAPESEQUENCE  ESCAPE_IGNORE    // Escape sequences.
-#define INITIAL_LENGTH          LENGTH_DEFAULT   // Line length.
-#define INITIAL_IBM_OFFSET      0                // Column offset for IBM 1620 Jr.
-#define INITIAL_ASCII_OFFSET    1                // Column offset for ASCII Terminal.
-#define INITIAL_FUTURE_OFFSET   1                // Column offset for future emulation.
+#define INITIAL_EMULATION       EMULATION_NULL     // Current emulation.
+#define INITIAL_ERRORS          SETTING_TRUE       // Report errors.
+#define INITIAL_WARNINGS        SETTING_FALSE      // Report warnings.
+#define INITIAL_BATTERY         SETTING_FALSE      // Battery installed.
+#define INITIAL_LMARGIN         1                  // Left margin.
+#define INITIAL_RMARGIN         LENGTH_DEFAULT     // Right margin.
+#define INITIAL_OFFSET          0                  // Column offset.
+#define INITIAL_ASCIIWHEEL      SETTING_FALSE      // ASCII printwheel.
+#define INITIAL_SLASH           SETTING_TRUE       // Print slashed zeroes.
+#define INITIAL_BOLD            SETTING_FALSE      // Print bold input.
+#define INITIAL_SERIAL          SERIAL_USB         // Serial type.
+#define INITIAL_DUPLEX          DUPLEX_FULL        // Duplex.
+#define INITIAL_BAUD            BAUD_9600          // Baud rate.
+#define INITIAL_PARITY          PARITY_NONE        // Parity.
+#define INITIAL_DPS             DPS_8N1            // Databits, parity, stopbits.
+#define INITIAL_IMPRESSION      IMPRESSION_NORMAL  // Impression.
+#define INITIAL_SWFLOW          SWFLOW_XON_XOFF    // Software flow control.
+#define INITIAL_HWFLOW          HWFLOW_NONE        // Hardware flow control.
+#define INITIAL_UPPERCASE       SETTING_FALSE      // Uppercase only.
+#define INITIAL_AUTORETURN      SETTING_TRUE       // Auto return.
+#define INITIAL_TRANSMITEOL     EOL_CR             // Send end-of-line.
+#define INITIAL_RECEIVEEOL      EOL_CRLF           // Receive end-of-line.
+#define INITIAL_ESCAPESEQUENCE  ESCAPE_IGNORE      // Escape sequences.
+#define INITIAL_LENGTH          LENGTH_DEFAULT     // Line length.
+#define INITIAL_IBM_OFFSET      0                  // Column offset for IBM 1620 Jr.
+#define INITIAL_ASCII_OFFSET    1                  // Column offset for ASCII Terminal when no ASCII printwheel.
+#define INITIAL_ASCII_OFFSETX   0                  // Column offset for ASCII Terminal when ASCII printwheel.
+#define INITIAL_FUTURE_OFFSET   1                  // Column offset for future emulation when no ASCII printwheel.
+#define INITIAL_FUTURE_OFFSETX  0                  // Column offset for future emulation when ASCII printwheel.
 
 
 //**********************************************************************************************************************
@@ -2539,7 +2617,7 @@ const struct print_info WW_PRINT_Reloc = {ELEMENT_SIMPLE, SPACING_UNKNOWN, POSIT
                                           TIME_UNKNOWN - (TIME_PRESS_NOSHIFT_2 + TIME_RELEASE_NOSHIFT_2),
                                           &WW_STR_Reloc};
 
-// L Mar, R Mar, Mar Rel, T Set, T Clr, Clr All print strings.
+// L Mar, R Mar, Mar Rel, T Set, T Clr, Clr All, Mar Tabs print strings.
 const byte WW_STR_LMar[]              = {WW_LMar, WW_NULL_4, WW_NULL_14, WW_NULL};
 const struct print_info WW_PRINT_LMar = {ELEMENT_SIMPLE, SPACING_LMAR, POSITION_RESET, 0,
                                          TIME_JIGGLE - (TIME_PRESS_NOSHIFT_4 + TIME_RELEASE_NOSHIFT_4),
@@ -2550,10 +2628,14 @@ const struct print_info WW_PRINT_RMar = {ELEMENT_SIMPLE, SPACING_RMAR, POSITION_
                                          TIME_JIGGLE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
                                          &WW_STR_RMar};
 
-const byte WW_STR_MarRel[]              = {WW_MarRel_RePrt, WW_NULL_14, WW_NULL};
-const struct print_info WW_PRINT_MarRel = {ELEMENT_SIMPLE, SPACING_MARREL, POSITION_RESET, 0,
-                                           TIME_JIGGLE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
-                                           &WW_STR_MarRel};
+const byte WW_STR_MarRel[]               = {WW_MarRel_RePrt, WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_MarRel  = {ELEMENT_SIMPLE, SPACING_MARREL, POSITION_RESET, 0,
+                                            TIME_JIGGLE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                            &WW_STR_MarRel};
+const struct print_info WW_PRINT_MarRelX = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_RESET, 0,
+                                            TIME_JIGGLE - (TIME_PRESS_NOSHIFT_14 + TIME_RELEASE_NOSHIFT_14),
+                                            &WW_STR_MarRel};
+                                              // Special case for Return_column_1() that always prints.
 
 const byte WW_STR_TSet[]              = {WW_TSet, WW_NULL_14, WW_NULL};
 const struct print_info WW_PRINT_TSet = {ELEMENT_SIMPLE, SPACING_TSET, POSITION_RESET, 0,
@@ -2577,7 +2659,16 @@ const struct print_info WW_PRINT_TClrAllX = {ELEMENT_SIMPLE, SPACING_NONE, POSIT
                                              &WW_STR_TClrAll};
                                                // Special case for Set_margins_tabs() that doesn't clear tabs[].
 
+const byte WW_STR_MARTABS[]              = {WW_NULL_14, WW_NULL};
+const struct print_info WW_PRINT_MARTABS = {ELEMENT_SIMPLE, SPACING_MARTABS, POSITION_RESET, 0, 0, &WW_STR_MARTABS};
+
 // Special function print strings.
+      byte WW_STR_POWERWISE[]              = {WW_Code, WW_x_X_POWERWISE, WW_Code, WW_Code, WW_0_RPAREN, WW_Code,
+                                              WW_Code, WW_0_RPAREN, WW_Code, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL}; 
+const struct print_info WW_PRINT_POWERWISE = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
+                                              TIME_NULL - (TIME_PRESS_CODE_6 + TIME_RELEASE_CODE_6),
+                                              &WW_STR_POWERWISE};
+
 const byte WW_STR_POWERWISE_OFF[]              = {WW_Code, WW_x_X_POWERWISE, WW_Code, WW_0_RPAREN, WW_Code, WW_NULL_5,
                                                   WW_NULL_14, WW_NULL}; 
 const struct print_info WW_PRINT_POWERWISE_OFF = {ELEMENT_SIMPLE, SPACING_NONE, POSITION_NOCHANGE, 0,
@@ -2729,7 +2820,9 @@ const char* ERROR_TEXT[NUM_ERRORS] = {NULL,
                                       "Print buffer full errors.",
                                       "Bad print code errors.",
                                       "Bad escape sequence errors.",
+                                      "Bad element type code errors.",
                                       "Bad print spacing code errors.",
+                                      "Bad printwheel position code errors.",
                                       "Bad key action code errors.",
                                       "Bad serial action code errors."};
 
@@ -2894,6 +2987,34 @@ const char* TEST_PRINT_STRING = "'Twas brillig, and the slithy toves\r"
                                 "\tAnd the mome raths outgrabe.";
 #define NUM_TEST_PRINT_STRING  983  // Length of test print string.
 
+// Typewriter settings strings.
+const char* TYPEWRITER_LEGEND = "  1. spell check   2. line spacing   3. powerwise   4. a rtn     5. bold\r"
+                                "  6. change margins & tabs           7. restore margins & tabs   Q. QUIT";
+const char* TYPEWRITER_PROMPT = "  cmd> ";
+const char* TYPEWRITER_SPELL_CHECK = "spell check: on = beep, off = printwheel jiggle  (must be off)";
+const char* TYPEWRITER_LINE_SPACING = "line spacing: see 1, 1 1/2, 2, 3 indicators";
+const char* TYPEWRITER_POWERWISE = "powerwise: 0 (off) - 90 minutes inactivity, enter value = ";
+const char* TYPEWRITER_ARTN = "a rtn: see A Rtn indicator  (must be off)";
+const char* TYPEWRITER_BOLD = "bold: see Bold indicator";
+const char* TYPEWRITER_CHANGE_MARGINS_TABS = "change margins & tabs using:\r"
+                                             "       left & right arrows = move carriage position\r"
+                                             "                       Tab = tab to next tab stop\r"
+                                             "                Code-C Rtn = return carriage\r"
+                                             "                  Code-Esc = release left margin\r"
+                                             "                     L Mar = set left margin (L)\r"
+                                             "                     R Mar = set right margin (R)\r"
+                                             "                     T Set = set tab (+)\r"
+                                             "                     T Clr = clear tab (-)\r"
+                                             "                Code-T Clr = clear all tabs (=)\r"
+                                             "                     C Rtn = end margin & tab changing";
+const char* TYPEWRITER_CHANGE_MARGINS_TABSX = "change margins & tabs";
+const char* TYPEWRITER_RESTORE_MARGINS_TABS = "restore margins & tabs";
+const char* TYPEWRITER_QUIT = "quit";
+
+// Digit characters.
+const byte DIGIT_CHARACTERS[] = {WW_0_RPAREN, WW_1_EXCLAMATION_Spell, WW_2_AT_Add, WW_3_POUND_Del, WW_4_DOLLAR_Vol,
+                                 WW_5_PERCENT, WW_6_CENT, WW_7_AMPERSAND, WW_8_ASTERISK, WW_9_LPAREN_Stop};
+
 // Key action variables.
 volatile const struct key_action (*key_actions)[3 * NUM_WW_KEYS] = NULL;       // Current key action table.
 volatile const struct key_action (*key_actions_save)[3 * NUM_WW_KEYS] = NULL;  // Save current key action table.
@@ -2914,6 +3035,7 @@ volatile int warning_counts[NUM_WARNINGS];  // Count of warnings by warning code
 volatile int current_column = INITIAL_LMARGIN;              // Current typewriter print column.
 volatile int current_position = POSITION_INITIAL;           // Current rotational position of printwheel.
 volatile boolean in_composite_character = FALSE;            // Processing composite character.
+volatile boolean in_margin_tab_setting = FALSE;             // Processing margin and tab setting.
 volatile const struct print_info *previous_element = NULL;  // Previous print element.
 volatile unsigned long shortest_scan_duration = 0UL;        // Duration of shortest full scan.
 volatile unsigned long longest_scan_duration = 0UL;         // Duration of longest full scan.
@@ -2964,6 +3086,7 @@ volatile byte lmargin = INITIAL_LMARGIN;                // Left margin.         
 volatile byte rmargin = INITIAL_RMARGIN;                // Right margin.                Used by all emulations.
 volatile byte offset = INITIAL_OFFSET;                  // Column offset.               Used by all emulations.
 volatile byte asciiwheel = INITIAL_ASCIIWHEEL;          // ASCII printwheel.            Used by all emulations.
+volatile byte impression = INITIAL_IMPRESSION;          // Impression.                  Used by all emulations.
 
 volatile byte slash = INITIAL_SLASH;                    // Print slashed zeroes.        Used by IBM 1620 Jr.
 volatile byte bold = INITIAL_BOLD;                      // Print bold input.            Used by IBM 1620 Jr.
@@ -3351,7 +3474,7 @@ const struct key_action IBM_ACTIONS_MODE0[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
   {ACTION_NONE,                                    0,    0, NULL},                     // A
   {ACTION_NONE,                                    0,    0, NULL},                     // <space>
-  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_LOADPAPER},      // <load paper>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
@@ -3418,21 +3541,21 @@ const struct key_action IBM_ACTIONS_MODE0[3 * NUM_WW_KEYS] = {
   // Shifted.
   {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
   {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &WW_PRINT_RIGHTARROW},     // <right arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     //
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                     //
-  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'v',  0, &WW_PRINT_DOWNARROW},      // <down arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // Z
   {ACTION_NONE,                                    0,    0, NULL},                     // Q
   {ACTION_NONE,                                    0,    0, NULL},                     //
   {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
   {ACTION_NONE,                                    0,    0, NULL},                     // A
   {ACTION_NONE,                                    0,    0, NULL},                     // <space>
-  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_LOADPAPER},      // <load paper>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
@@ -3481,8 +3604,8 @@ const struct key_action IBM_ACTIONS_MODE0[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
   {ACTION_NONE,                                    0,    0, NULL},                     // +
   {ACTION_NONE,                                    0,    0, NULL},                     // $
-  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &WW_PRINT_LEFTARROW},      // <left arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &WW_PRINT_UPARROW},        // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
@@ -3506,7 +3629,7 @@ const struct key_action IBM_ACTIONS_MODE0[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_IBM_SETUP,                               0,    0, NULL},                     // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                     //
-  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UpMicro},        // <down arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // Z
   {ACTION_NONE,                                    0,    0, NULL},                     // Q
   {ACTION_NONE,                                    0,    0, NULL},                     //
@@ -3563,7 +3686,7 @@ const struct key_action IBM_ACTIONS_MODE0[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // +
   {ACTION_NONE,                                    0,    0, NULL},                     // $
   {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DownMicro},      // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
@@ -3597,7 +3720,7 @@ const struct key_action IBM_ACTIONS_MODE1[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                     '#',  0, &IBM_PRINT_RELEASESTART},  // <release start>
   {ACTION_NONE,                                    0,    0, NULL},                     // A
   {ACTION_NONE,                                    0,    0, NULL},                     // <space>
-  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_LOADPAPER},      // <load paper>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
@@ -3664,21 +3787,21 @@ const struct key_action IBM_ACTIONS_MODE1[3 * NUM_WW_KEYS] = {
   // Shifted.
   {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
   {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &WW_PRINT_RIGHTARROW},     // <right arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     //
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                     //
-  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'v',  0, &WW_PRINT_DOWNARROW},      // <down arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // Z
   {ACTION_NONE,                                    0,    0, NULL},                     // Q
   {ACTION_NONE,                                    0,    0, NULL},                     //
   {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
   {ACTION_NONE,                                    0,    0, NULL},                     // A
   {ACTION_NONE,                                    0,    0, NULL},                     // <space>
-  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_LOADPAPER},      // <load paper>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
@@ -3727,8 +3850,8 @@ const struct key_action IBM_ACTIONS_MODE1[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
   {ACTION_NONE,                                    0,    0, NULL},                     // +
   {ACTION_NONE,                                    0,    0, NULL},                     // $
-  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &WW_PRINT_LEFTARROW},      // <left arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &WW_PRINT_UPARROW},        // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
@@ -3752,7 +3875,7 @@ const struct key_action IBM_ACTIONS_MODE1[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                     //
-  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UpMicro},        // <down arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // Z
   {ACTION_NONE,                                    0,    0, NULL},                     // Q
   {ACTION_NONE,                                    0,    0, NULL},                     //
@@ -3809,7 +3932,7 @@ const struct key_action IBM_ACTIONS_MODE1[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // +
   {ACTION_NONE,                                    0,    0, NULL},                     // $
   {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DownMicro},      // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
@@ -4089,7 +4212,7 @@ const struct key_action IBM_ACTIONS_MODE2[3 * NUM_WW_KEYS] = {
   {ACTION_SEND | ACTION_PRINT,                     '#',  0, &IBM_PRINT_RELEASESTART},  // <release start>
   {ACTION_SEND | ACTION_PRINT,                     'A',  0, &WW_PRINT_A},              // A
   {ACTION_SEND | ACTION_PRINT,                     ' ',  0, &WW_PRINT_SPACE},          // <space>
-  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_LOADPAPER},      // <load paper>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
@@ -4156,21 +4279,21 @@ const struct key_action IBM_ACTIONS_MODE2[3 * NUM_WW_KEYS] = {
   // Shifted.
   {ACTION_NONE,                                    0,    0, NULL},                     // <left shift>
   {ACTION_NONE,                                    0,    0, NULL},                     // <right shift>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <right arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '>',  0, &WW_PRINT_RIGHTARROW},     // <right arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     //
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                     //
-  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_SEND | ACTION_PRINT,                     'v',  0, &WW_PRINT_DOWNARROW},      // <down arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // Z
   {ACTION_NONE,                                    0,    0, NULL},                     // Q
   {ACTION_NONE,                                    0,    0, NULL},                     //
   {ACTION_NONE,                                    0,    0, NULL},                     // <release start>
   {ACTION_NONE,                                    0,    0, NULL},                     // A
   {ACTION_NONE,                                    0,    0, NULL},                     // <space>
-  {ACTION_PRINT,                                   0,    0, &WW_PRINT_LOADPAPER},      // <load paper>
+  {ACTION_SEND | ACTION_PRINT,                     ';',  0, &WW_PRINT_LOADPAPER},      // <load paper>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
@@ -4219,8 +4342,8 @@ const struct key_action IBM_ACTIONS_MODE2[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // <record mark>
   {ACTION_NONE,                                    0,    0, NULL},                     // +
   {ACTION_NONE,                                    0,    0, NULL},                     // $
-  {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '<',  0, &WW_PRINT_LEFTARROW},      // <left arrow>
+  {ACTION_SEND | ACTION_PRINT,                     '^',  0, &WW_PRINT_UPARROW},        // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
@@ -4244,7 +4367,7 @@ const struct key_action IBM_ACTIONS_MODE2[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                     //
-  {ACTION_NONE,                                    0,    0, NULL},                     // <down arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UpMicro},        // <down arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // Z
   {ACTION_NONE,                                    0,    0, NULL},                     // Q
   {ACTION_NONE,                                    0,    0, NULL},                     //
@@ -4301,7 +4424,7 @@ const struct key_action IBM_ACTIONS_MODE2[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                     // +
   {ACTION_NONE,                                    0,    0, NULL},                     // $
   {ACTION_NONE,                                    0,    0, NULL},                     // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                     // <up arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DownMicro},      // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                     // <backspace>
@@ -4877,6 +5000,7 @@ void Print_IBM_setup_title (void) {
 // Update IBM 1620 Jr. settings.
 void Update_IBM_settings (void) {
   byte obattery = battery;
+  byte oimpression = impression;
   byte ooffset = offset;
 
   // Query new settings.
@@ -4884,6 +5008,8 @@ void Update_IBM_settings (void) {
   errors = Read_truefalse_setting ("record errors", errors);
   warnings = Read_truefalse_setting ("record warnings", warnings);
   battery = Read_truefalse_setting ("batteries installed", battery);
+  impression = Read_impression_setting ("impression", impression);
+  Change_impression (oimpression, impression);
   slash = Read_truefalse_setting ("slash zeroes", slash);
   if (slash == SETTING_TRUE) {
     ibm_print_zero = &IBM_PRINT_SLASH_0;
@@ -4909,6 +5035,7 @@ void Update_IBM_settings (void) {
     Write_EEPROM (EEPROM_BATTERY, battery);
     Write_EEPROM (EEPROM_OFFSET, offset);
     Write_EEPROM (EEPROM_ASCIIWHEEL, asciiwheel);
+    Write_EEPROM (EEPROM_IMPRESSION, impression);
     Write_EEPROM (EEPROM_SLASH, slash);
     Write_EEPROM (EEPROM_BOLD, bold);
   }
@@ -4961,6 +5088,7 @@ void Print_IBM_character_set (void) {
   (void)Print_element (&WW_PRINT_SPACE);
   (void)Print_element (&IBM_PRINT_RELEASESTART);
   (void)Print_element (&WW_PRINT_CRtn);  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
 }
 
 
@@ -5083,11 +5211,8 @@ volatile const struct print_info *ascii_print_tilde;
 //**********************************************************************************************************************
 
 // Special <space> print strings.
-const struct print_info *ASCII_STR_SPACE2[] = {&WW_PRINT_SPACE, &WW_PRINT_SPACE, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_SPACE2  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_SPACE2};
-
-const struct print_info *ASCII_STR_SPACE3[] = {&WW_PRINT_SPACE, &WW_PRINT_SPACE, &WW_PRINT_Bksp1, NULL_PRINT_INFO};
-const struct print_info ASCII_PRINT_SPACE3  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_SPACE3};
+const struct print_info *ASCII_STR_SPACEX[] = {&WW_PRINT_SPACE, &WW_PRINT_SPACE, &WW_PRINT_Bksp1, NULL_PRINT_INFO};
+const struct print_info ASCII_PRINT_SPACEX  = {ELEMENT_COMPOSITE, SPACING_FORWARD, 0, 0, 0, &ASCII_STR_SPACEX};
 
 // <, >, \, ^, `, {, |, }, ~ print strings (ASCII printwheel & Print Graphics).
 const byte ASCII_STR_LESS_APW[]              = {WW_Code, WW_LESS_APW, WW_Code, WW_NULL_5, WW_NULL_14, WW_NULL};
@@ -5535,7 +5660,7 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                      //
-  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UpMicro},         // <down arrow>
   {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
   {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
   {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
@@ -5592,7 +5717,7 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
   {ACTION_NONE,                                    0,    0, NULL},                      // ', "
   {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DownMicro},       // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
@@ -5601,7 +5726,7 @@ const struct key_action ASCII_ACTIONS_HALF[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
   {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
   {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MARTABS},         // <tab>
   {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
   {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
   {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
@@ -5781,7 +5906,7 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                      //
-  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UpMicro},         // <down arrow>
   {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
   {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
   {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
@@ -5838,7 +5963,7 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
   {ACTION_NONE,                                    0,    0, NULL},                      // ', "
   {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DownMicro},       // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
@@ -5847,7 +5972,7 @@ const struct key_action ASCII_ACTIONS_HALF_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
   {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
   {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MARTABS},         // <tab>
   {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
   {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
   {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
@@ -6027,7 +6152,7 @@ const struct key_action ASCII_ACTIONS_FULL[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                      //
-  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UpMicro},         // <down arrow>
   {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
   {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
   {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
@@ -6084,7 +6209,7 @@ const struct key_action ASCII_ACTIONS_FULL[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
   {ACTION_NONE,                                    0,    0, NULL},                      // ', "
   {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DownMicro},       // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
@@ -6093,7 +6218,7 @@ const struct key_action ASCII_ACTIONS_FULL[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
   {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
   {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MARTABS},         // <tab>
   {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
   {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
   {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
@@ -6273,7 +6398,7 @@ const struct key_action ASCII_ACTIONS_FULL_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_ASCII_SETUP,                             0,    0, NULL},                      // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                      //
-  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_UpMicro},         // <down arrow>
   {ACTION_SEND,                                    0x1a, 0, NULL},                      // z, Z, SUB
   {ACTION_SEND,                                    0x11, 0, NULL},                      // q, Q, DC1/XON
   {ACTION_NONE,                                    0,    0, NULL},                      // 1, !
@@ -6330,7 +6455,7 @@ const struct key_action ASCII_ACTIONS_FULL_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // ;, :
   {ACTION_NONE,                                    0,    0, NULL},                      // ', "
   {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_DownMicro},       // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
@@ -6339,7 +6464,7 @@ const struct key_action ASCII_ACTIONS_FULL_UPPERCASE[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
   {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
   {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_PRINT,                                   0,    0, &WW_PRINT_MARTABS},         // <tab>
   {ACTION_PRINT,                                   0,    0, &WW_PRINT_MarRel},          // <margin release>
   {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
   {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
@@ -6350,14 +6475,14 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   // Unshifted.
   {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
   {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_COMMAND,                                 0x81, 0, NULL},                      // <right arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_COMMAND,                                 '\\', 0, NULL},                      // \, |
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                      //
-  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_COMMAND,                                 0x91, 0, NULL},                      // <down arrow>
   {ACTION_COMMAND,                                 'z',  0, NULL},                      // z, Z, SUB
   {ACTION_COMMAND,                                 'q',  0, NULL},                      // q, Q, DC1/XON
   {ACTION_COMMAND,                                 '1',  0, NULL},                      // 1, !
@@ -6366,11 +6491,11 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_COMMAND,                                 ' ',  0, NULL},                      // <space>
   {ACTION_NONE,                                    0,    0, NULL},                      //
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_COMMAND,                                 0x85, 0, NULL},                      // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear>
+  {ACTION_COMMAND,                                 0x88, 0, NULL},                      // <tab clear>
   {ACTION_NONE,                                    0,    0, NULL},                      // <control>
   {ACTION_COMMAND,                                 'x',  0, NULL},                      // x, X, CAN
   {ACTION_COMMAND,                                 'w',  0, NULL},                      // w, W, ETB
@@ -6413,8 +6538,8 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_COMMAND,                                 '-',  0, NULL},                      // -, _, US
   {ACTION_COMMAND,                                 ';',  0, NULL},                      // ;, :
   {ACTION_COMMAND,                                 '\'', 0, NULL},                      // ', "
-  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_COMMAND,                                 0x80, 0, NULL},                      // <left arrow>
+  {ACTION_COMMAND,                                 0x90, 0, NULL},                      // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
@@ -6422,23 +6547,23 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_COMMAND,                                 0x0d, 0, NULL},                      // <return>
   {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
   {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_COMMAND,                                 0x86, 0, NULL},                      // <right margin>
+  {ACTION_COMMAND,                                 0x82, 0, NULL},                      // <tab>
   {ACTION_NONE,                                    0,    0, NULL},                      // <escape>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_COMMAND,                                 0x87, 0, NULL},                      // <tab set>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Shifted.
   {ACTION_NONE,                                    0,    0, NULL},                      // <left shift>
   {ACTION_NONE,                                    0,    0, NULL},                      // <right shift>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <right arrow>
+  {ACTION_COMMAND,                                 0x81, 0, NULL},                      // <right arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_COMMAND,                                 '|',  0, NULL},                      // \, |
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <setup>
   {ACTION_NONE,                                    0,    0, NULL},                      //
-  {ACTION_NONE,                                    0,    0, NULL},                      // <down arrow>
+  {ACTION_COMMAND,                                 0x91, 0, NULL},                      // <down arrow>
   {ACTION_COMMAND,                                 'Z',  0, NULL},                      // z, Z, SUB
   {ACTION_COMMAND,                                 'Q',  0, NULL},                      // q, Q, DC1/XON
   {ACTION_COMMAND,                                 '!',  0, NULL},                      // 1, !
@@ -6447,11 +6572,11 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_COMMAND,                                 ' ',  0, NULL},                      // <space>
   {ACTION_NONE,                                    0,    0, NULL},                      //
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                    0,    0, NULL},                      // <left margin>
+  {ACTION_COMMAND,                                 0x85, 0, NULL},                      // <left margin>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear>
+  {ACTION_COMMAND,                                 0x88, 0, NULL},                      // <tab clear>
   {ACTION_NONE,                                    0,    0, NULL},                      // <control>
   {ACTION_COMMAND,                                 'X',  0, NULL},                      // x, X, CAN
   {ACTION_COMMAND,                                 'W',  0, NULL},                      // w, W, ETB
@@ -6494,8 +6619,8 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_COMMAND,                                 '_',  0, NULL},                      // -, _, US
   {ACTION_COMMAND,                                 ':',  0, NULL},                      // ;, :
   {ACTION_COMMAND,                                 '"',  0, NULL},                      // ', "
-  {ACTION_NONE,                                    0,    0, NULL},                      // <left arrow>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <up arrow>
+  {ACTION_COMMAND,                                 0x80, 0, NULL},                      // <left arrow>
+  {ACTION_COMMAND,                                 0x90, 0, NULL},                      // <up arrow>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
@@ -6503,10 +6628,10 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_COMMAND,                                 0x0d, 0, NULL},                      // <return>
   {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
   {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
+  {ACTION_COMMAND,                                 0x86, 0, NULL},                      // <right margin>
+  {ACTION_COMMAND,                                 0x82, 0, NULL},                      // <tab>
   {ACTION_NONE,                                    0,    0, NULL},                      // <escape>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
+  {ACTION_COMMAND,                                 0x87, 0, NULL},                      // <tab set>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
 
   // Control.
@@ -6532,7 +6657,7 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                    0,    0, NULL},                      // <tab clear all>
+  {ACTION_COMMAND,                                 0x89, 0, NULL},                      // <tab clear all>
   {ACTION_NONE,                                    0,    0, NULL},                      // <control>
   {ACTION_NONE,                                    0,    0, NULL},                      // x, X, CAN
   {ACTION_NONE,                                    0,    0, NULL},                      // w, W, ETB
@@ -6581,12 +6706,12 @@ const struct key_action ASCII_ACTIONS_SETUP[3 * NUM_WW_KEYS] = {
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
   {ACTION_NONE,                                    0,    0, NULL},                      // <backspace>
   {ACTION_NONE,                                    0,    0, NULL},                      // *** not available on WW1000
-  {ACTION_NONE,                                    0,    0, NULL},                      // <return>
+  {ACTION_COMMAND,                                 0x83, 0, NULL},                      // <return>
   {ACTION_NONE,                                    0,    0, NULL},                      // <delete>
   {ACTION_NONE,                                    0,    0, NULL},                      // <shift lock>
   {ACTION_NONE,                                    0,    0, NULL},                      // <right margin>
   {ACTION_NONE,                                    0,    0, NULL},                      // <tab>
-  {ACTION_NONE,                                    0,    0, NULL},                      // <margin release>
+  {ACTION_COMMAND,                                 0x84, 0, NULL},                      // <margin release>
   {ACTION_NONE,                                    0,    0, NULL},                      // <tab set>
   {ACTION_NONE,                                    0,    0, NULL}                       // *** not available on WW1000
 };
@@ -6668,6 +6793,7 @@ void Update_ASCII_settings (void) {
   byte oparity = parity;
   byte obaud = baud;
   byte odps = dps;
+  byte oimpression = impression;
   byte olength = length;
   byte ooffset = offset;
   byte ohwflow = hwflow;
@@ -6685,6 +6811,8 @@ void Update_ASCII_settings (void) {
     baud = Read_baud_setting ("baud rate", baud);
     dps = Read_dps_setting ("dps", dps);
   }
+  impression = Read_impression_setting ("impression", impression);
+  Change_impression (oimpression, impression);
   swflow = Read_swflow_setting ("sw flow control", swflow);
   if (serial == SERIAL_USB) {
     hwflow = HWFLOW_NONE;
@@ -6753,6 +6881,7 @@ void Update_ASCII_settings (void) {
     Write_EEPROM (EEPROM_BAUD, baud);
     Write_EEPROM (EEPROM_PARITY, parity);
     Write_EEPROM (EEPROM_DPS, dps);
+    Write_EEPROM (EEPROM_IMPRESSION, impression);
     Write_EEPROM (EEPROM_SWFLOW, swflow);
     Write_EEPROM (EEPROM_HWFLOW, hwflow);
     Write_EEPROM (EEPROM_UPPERCASE, uppercase);
@@ -6827,6 +6956,7 @@ void Print_ASCII_character_set (void) {
   (void)Print_element (&ASCII_PRINT_BAR);          (void)Print_element (&ASCII_PRINT_RBRACE);
   (void)Print_element (&ASCII_PRINT_TILDE);
   (void)Print_element (&WW_PRINT_CRtn);  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
 }
 
 
@@ -7494,10 +7624,18 @@ void setup (void) {
   // Initialize configuration settings.
   Initialize_configuration_settings (FALSE);
 
-  // Initialize typewriter if the batteries are not installed.
+  // Wait for the typewriter to fully power up and initialize all of its mechanical components.
+  delay (2000);
+
+  // Initialize powerwise and spell check typewriter settings if the batteries are not installed.
   if ((emulation != EMULATION_STANDALONE) && (battery == SETTING_FALSE)) {
     (void)Print_element (&WW_PRINT_POWERWISE_OFF);
     (void)Print_element (&WW_PRINT_SPELL_CHECK);
+  }
+
+  // Initialize impression typewriter setting.
+  if (emulation != EMULATION_STANDALONE) {
+    Change_impression (IMPRESSION_NORMAL, impression);
   }
 
   // Complete the emulation setup.
@@ -7511,15 +7649,13 @@ void setup (void) {
     Serial_begin ();
   }
 
-  // Wait for the typewriter to fully power up and initialize all of its mechanical components.
-  delay (2000);
-
   // Set the typewriter run mode to running.
   run_mode = MODE_RUNNING;
 
   // Wait for any initial printing to finish.
   if (emulation != EMULATION_STANDALONE) {
-    Wait_print_buffer_empty (2000);
+    (void)Print_element (&WW_PRINT_CRtn);
+    Wait_print_buffer_empty (1000);
   }
 }
 
@@ -7879,6 +8015,8 @@ void loop (void) {
           Print_errors_warnings ();
         } else if (cmd == 'c') {
           Print_IBM_character_set ();
+        } else if (cmd == 't') {
+          Change_typewriter_settings ();
         } else if (cmd == 'd') {
           Developer_functions ();
         } else /* cmd == 'q' */ {
@@ -7938,6 +8076,8 @@ void loop (void) {
           Print_errors_warnings ();
         } else if (cmd == 'c') {
           Print_ASCII_character_set ();
+        } else if (cmd == 't') {
+          Change_typewriter_settings ();
         } else if (cmd == 'd') {
           Developer_functions ();
         } else /* cmd == 'q' */ {
@@ -8042,7 +8182,7 @@ void loop (void) {
 //  Shifts - Pressing and releasing the <left shift>, <right shift>, Lock, or Code keys do not trigger actions, but the
 //           "shift" state is updated.  The shift keys must be held down to cause subsequent keys to be shifted.  The
 //           Lock key causes the shift state to be toggled.  When Lock is active, pressing and releasing a shift key
-//           will also deactivate Lock.  The Code key functions as a special shift, similar to a ctrl key.  If both a
+//           will also deactivate Lock.  The Code key functions as a special shift, similar to a control key.  If both a
 //           shift and the Code key are depressed, the Code key takes precedence.
 //
 //  Key bouncing - The Wheelwriter keyboard key bounce is typically less than 20 milliseconds, but could be more a lot
@@ -8145,9 +8285,9 @@ void ISR_common (void) {
       last_last_scan_duration = last_scan_duration;
       if (last_scan_time != 0UL) last_scan_duration = interrupt_time - last_scan_time;
       last_scan_time = interrupt_time;
-      if (last_scan_duration < SHORT_SCAN_DURATION) {
-        if ((shortest_scan_duration == 0) || (last_scan_duration < shortest_scan_duration))
-          shortest_scan_duration = last_scan_duration;
+      if ((last_scan_duration > 0UL) && (last_scan_duration < SHORT_SCAN_DURATION)) {
+        if ((shortest_scan_duration == 0UL) || (last_scan_duration < shortest_scan_duration))
+                                                                            shortest_scan_duration = last_scan_duration;
         Report_warning (WARNING_SHORT_SCAN);
       } else if (last_scan_duration > LONG_SCAN_DURATION) {
         if (last_scan_duration > longest_scan_duration) longest_scan_duration = last_scan_duration;
@@ -8620,6 +8760,7 @@ void Initialize_global_variables (void) {
   current_column = INITIAL_LMARGIN;
   current_position = POSITION_INITIAL;
   in_composite_character = FALSE;
+  in_margin_tab_setting = FALSE;
   previous_element = NULL;
 
   cb_read = 0;
@@ -8665,14 +8806,22 @@ void Initialize_configuration_settings (boolean reset) {
   battery = INITIAL_BATTERY;
   lmargin = INITIAL_LMARGIN;
   rmargin = INITIAL_RMARGIN;
+  asciiwheel = INITIAL_ASCIIWHEEL;
   if (emulation == EMULATION_IBM) {
     offset = INITIAL_IBM_OFFSET;
   } else if (emulation == EMULATION_ASCII) {
-    offset = INITIAL_ASCII_OFFSET;
+    if (asciiwheel == SETTING_FALSE) {
+      offset = INITIAL_ASCII_OFFSET;
+    } else {
+      offset = INITIAL_ASCII_OFFSETX;
+    }
   } else /* emulation == EMULATION_FUTURE */ {
-    offset = INITIAL_FUTURE_OFFSET;
+    if (asciiwheel == SETTING_FALSE) {
+      offset = INITIAL_FUTURE_OFFSET;
+    } else {
+      offset = INITIAL_FUTURE_OFFSETX;
+    }
   } 
-  asciiwheel = INITIAL_ASCIIWHEEL;
   slash = INITIAL_SLASH;
   bold = INITIAL_BOLD;
   serial = INITIAL_SERIAL;
@@ -8680,6 +8829,7 @@ void Initialize_configuration_settings (boolean reset) {
   baud = INITIAL_BAUD;
   parity = INITIAL_PARITY;
   dps = INITIAL_DPS;
+  impression = INITIAL_IMPRESSION;
   swflow = INITIAL_SWFLOW;
   hwflow = INITIAL_HWFLOW;
   uppercase = INITIAL_UPPERCASE;
@@ -8712,6 +8862,7 @@ void Initialize_configuration_settings (boolean reset) {
     Write_EEPROM (EEPROM_BAUD, baud);
     Write_EEPROM (EEPROM_PARITY, parity);
     Write_EEPROM (EEPROM_DPS, dps);
+    Write_EEPROM (EEPROM_IMPRESSION, impression);
     Write_EEPROM (EEPROM_SWFLOW, swflow);
     Write_EEPROM (EEPROM_HWFLOW, hwflow);
     Write_EEPROM (EEPROM_UPPERCASE, uppercase);
@@ -8762,6 +8913,7 @@ void Initialize_configuration_settings (boolean reset) {
     baud = Read_EEPROM (EEPROM_BAUD, baud);
     parity = Read_EEPROM (EEPROM_PARITY, parity);
     dps = Read_EEPROM (EEPROM_DPS, dps);
+    impression = Read_EEPROM (EEPROM_IMPRESSION, impression);
     swflow = Read_EEPROM (EEPROM_SWFLOW, swflow);
     hwflow = Read_EEPROM (EEPROM_HWFLOW, hwflow);
     uppercase = Read_EEPROM (EEPROM_UPPERCASE, uppercase);
@@ -8951,9 +9103,21 @@ int Read_integer (int value) {
   char chr;
   boolean neg = FALSE;
   int tmp = 0;
-  int otmp = 0;
+  int tmpx;
 
-  chr = Read_setup_character_from_set ("-0123456789\r");
+  // Read response.
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("-0123456789\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if (chr == '\r') {
     (void)Print_integer (value, 0);
     return value;
@@ -8964,26 +9128,26 @@ int Read_integer (int value) {
     (void)Print_character (chr);
     tmp = chr - '0';
   }
-  
-  while (tmp >= otmp) {
+  while (TRUE) {
     chr = Read_setup_character_from_set ("0123456789\r");
-    if (chr == '\r') return (neg ? - tmp : tmp);
+    if (chr == '\r') break;
+    tmpx = 10 * tmp + (chr - '0');
+    if (tmpx < 0) return (neg ? INT_MIN : INT_MAX);
     (void)Print_character (chr);
-    otmp = tmp;
-    tmp = 10 * tmp + (chr - '0');
+    tmp = tmpx;
   }
 
-  return (neg ? INT_MIN : INT_MAX);
+  return (neg ? - tmp : tmp);
 }
 
 // Print an integer.
 boolean Print_integer (int val, int wid) {
   int tmp = abs (val);
-  int idx = 11;
+  int idx = 10;
   char chr[12];
 
   memset ((void *)chr, ' ', sizeof(chr));
-  chr[idx--] = 0x00;
+  chr[sizeof(chr) - 1] = 0x00;
 
   do {
     chr[idx--] = '0' + (tmp % 10);
@@ -8994,6 +9158,35 @@ boolean Print_integer (int val, int wid) {
 
   if (wid > 0) {
     return Print_string (&chr[11 - wid]);
+  } else {
+    return Print_string (&chr[idx + 1]);
+  }
+}
+
+// Print a scaled integer.
+boolean Print_scaled_integer (int val, int fract, int wid) {
+  int tmp = abs (val);
+  int idx = 12;
+  char chr[14];
+
+  memset ((void *)chr, ' ', sizeof(chr));
+  chr[sizeof(chr) - 1] = 0x00;
+
+  for (int i = 0; i < fract; ++i) {
+    chr[idx--] = '0' + (tmp % 10);
+    tmp /= 10;
+  }
+  chr[idx--] = '.';
+
+  do {
+    chr[idx--] = '0' + (tmp % 10);
+    tmp /= 10;
+  } while (tmp > 0);
+
+  if (val < 0) chr[idx--] = '-';
+
+  if (wid > 0) {
+    return Print_string (&chr[13 - wid]);
   } else {
     return Print_string (&chr[idx + 1]);
   }
@@ -9059,13 +9252,31 @@ boolean Print_element (const struct print_info *elem) {
     ret = Print_element (*(elem->pelement));
     if (ret) previous_element = elem;
     return ret;
+  } else if (elem->type != ELEMENT_SIMPLE) {
+    Report_error (ERROR_BAD_TYPE);
+    return FALSE;
   }
+
+  // Discard needless MarRel elements if not at left margin.
+  if ((elem->spacing == SPACING_MARREL) && (current_column != lmargin)) return TRUE;
+
+  // Discard Tab elements if at or beyond right margin.
+  if ((elem->spacing == SPACING_TAB) && (current_column >= rmargin)) return TRUE;
+
+  // Discard Backspace elements if at physical left stop and not setting margins & tabs or at left margin and not a
+  // composite character and not setting margins & tabs.
+  if ((elem->spacing == SPACING_BACKWARD) && (((current_column == (- offset + 1)) && !in_margin_tab_setting) ||
+                                             ((current_column == lmargin) && !in_composite_character &&
+                                              !in_margin_tab_setting))) return TRUE;
+
+  // Discard L Mar elements if before column 1.
+  if ((elem->spacing == SPACING_LMAR) && (current_column < 1)) return TRUE;
 
   // Inject an automatic carriage return, if enabled, when the right margin is hit and the next character isn't a
   // carriage return, left arrow, right arrow, backspace, bksp 1, set right margin, set tab, clear tab, clear all tabs,
   // or beep.  Right arrow is a special case to allow setting the right margin beyond where it is currently set.
   // If the line overflows and automatic return is disabled, then trigger a warning, beep, and ignore the character.
-  if ((current_column > rmargin) &&
+  if ((current_column > rmargin) && (!in_margin_tab_setting) &&
       (elem->element != (const byte*)&WW_STR_CRtn) &&
       (elem->element != (const byte*)&WW_STR_LEFTARROW) &&
       (elem->element != (const byte*)&WW_STR_RIGHTARROW) &&
@@ -9085,19 +9296,14 @@ boolean Print_element (const struct print_info *elem) {
   }
 
   // For ASCII Terminal using Period Graphic characters, a space following '\', '{', or '}' needs special handling to
-  // print.
-  if ((emulation == EMULATION_ASCII) && (asciiwheel == SETTING_FALSE) && (elem == &WW_PRINT_SPACE)) {
-    if (previous_element == &ASCII_PRINT_BSLASH) {
-      previous_element = NULL;
-      ret = Print_element (&ASCII_PRINT_SPACE2);
-      if (ret) previous_element = elem;
-      return ret;
-    } else if ((previous_element == &ASCII_PRINT_LBRACE) || (previous_element == &ASCII_PRINT_RBRACE)) {
-      previous_element = NULL;
-      ret = Print_element (&ASCII_PRINT_SPACE3);
-      if (ret) previous_element = elem;
-      return ret;
-    }
+  // print correctly.
+  if ((emulation == EMULATION_ASCII) && (asciiwheel == SETTING_FALSE) && (elem == &WW_PRINT_SPACE) &&
+      ((previous_element == &ASCII_PRINT_BSLASH) || (previous_element == &ASCII_PRINT_LBRACE) ||
+       (previous_element == &ASCII_PRINT_RBRACE))) {
+    previous_element = NULL;
+    ret = Print_element (&ASCII_PRINT_SPACEX);
+    if (ret) previous_element = elem;
+    return ret;
   }
 
   // Prepare for copying.
@@ -9108,7 +9314,7 @@ boolean Print_element (const struct print_info *elem) {
   pelem = elem->element;
 
   // Copy element print codes to buffer.
-  while (true) {
+  while (TRUE) {
     byte pchr = *pelem++;
     if (pchr == WW_NULL) break;
     if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // Element doesn't fit in print buffer.
@@ -9146,10 +9352,13 @@ boolean Print_element (const struct print_info *elem) {
     current_position = next;
   } else if (elem->position == POSITION_RESET) {
     current_position = 0;
+  } else if (elem->position < POSITION_NOCHANGE) {
+    Report_error (ERROR_BAD_POSITION);
+    return FALSE;
   }
 
   // Add empty full scans as needed.
-  while (residual_time >= FSCAN_0_CHANGES) {
+  while (residual_time >= (in_composite_character ? 0 : FSCAN_0_CHANGES)) {
     ++inc;
     if (pbc++ >= (SIZE_PRINT_BUFFER - 1)) {  // Element doesn't fit in print buffer.
       Report_error (ERROR_PB_FULL);
@@ -9194,7 +9403,7 @@ void Update_print_position (const struct print_info *elem) {
       ++current_column;
       break;
     case SPACING_BACKWARD:  // Backward horizontal movement.
-      if (current_column > 1) --current_column;
+      if (current_column > (- offset + 1)) --current_column;
       break;
     case SPACING_TAB:       // Tab horizontal movement.
     case SPACING_TABX:
@@ -9234,6 +9443,9 @@ void Update_print_position (const struct print_info *elem) {
         Write_EEPROM (EEPROM_TABS + i, SETTING_FALSE);
       }
       break;
+    case SPACING_MARTABS:   // Reset all margins and tabs.
+      Set_margins_tabs (TRUE);
+      break;
     default:                // Invalid spacing code.
       Report_error (ERROR_BAD_SPACING);
       break;
@@ -9265,7 +9477,7 @@ inline void Assert_key (byte key) {
 inline byte Test_print (int column) {
   byte pchr = print_buffer[pb_read];
 
-  while (true) {
+  while (TRUE) {
 
     // Skip any skip print codes.
     if (pchr == WW_SKIP) {
@@ -9475,6 +9687,7 @@ __attribute__((noinline)) void Clear_counter (volatile int *counter) {
     asm volatile ("strex %0, %2, %1" : "=&r" (result), "=Q" (*counter) : "r" (value));
   } while (result);
 }
+
 __attribute__((noinline)) void Update_counter (volatile int *counter, int increment) {
   int value;
   int result;
@@ -9523,35 +9736,29 @@ void Report_warning (int warning) {
 // Set margins and tab stops.
 void Set_margins_tabs (boolean reset) {
 
-  // Reset tab stops.
+  // Disable right margin checking.
+  in_margin_tab_setting = TRUE;
+
+  // Reset margin and tab stop values.
   if (reset) {
+    lmargin = 1;
+    Write_EEPROM (EEPROM_LMARGIN, lmargin);
+    rmargin = length;
+    Write_EEPROM (EEPROM_RMARGIN, rmargin);
     memset ((void *)tabs, SETTING_FALSE, sizeof(tabs));
     if (emulation == EMULATION_ASCII) {
-      for (int i = 8; i < 200; i += 8) {
-        tabs[i] = SETTING_TRUE;
-      }
+      for (unsigned int i = 8; i < sizeof(tabs); i += 8) tabs[i] = SETTING_TRUE;
     }
     tabs[rmargin] = SETTING_TRUE;
-    for (int i = 0; i < 200; ++i) {
-      Write_EEPROM (EEPROM_TABS + i, tabs[i]);
-    }
+    for (unsigned int i = 0; i < sizeof(tabs); ++i) Write_EEPROM (EEPROM_TABS + i, tabs[i]);
   }
 
   // Set left margin.
-  (void)Print_element (&WW_PRINT_CRtn);
-  Wait_print_buffer_empty (1000);
-  (void)Print_element (&WW_PRINT_MarRel);
-  for (int i = 0; i < 20; ++i) {
-    (void)Print_element (&WW_PRINT_Backspace);
-  }
-  for (int i = 0; i < offset; ++i) {
-    (void)Print_element (&WW_PRINT_SPACE);
-  }
-  current_column = 1;
-  for (int i = 1; i < lmargin; ++i) {
-    (void)Print_element (&WW_PRINT_SPACE);
-  }
+  Return_column_1 ();
+  for (int i = 1; i < lmargin; ++i) (void)Print_element (&WW_PRINT_SPACE);
+  Wait_print_buffer_empty (100);
   (void)Print_element (&WW_PRINT_LMar);
+  Wait_print_buffer_empty (100);
 
   // Set tab stops.
   (void)Print_element (&WW_PRINT_TClrAllX);  // Special case that doesn't clear tabs[].
@@ -9559,21 +9766,98 @@ void Set_margins_tabs (boolean reset) {
     if (tabs[i] == SETTING_TRUE) (void)Print_element (&WW_PRINT_TSet);
     if (i < rmargin) (void)Print_element (&WW_PRINT_SPACE);
   }
+  Wait_print_buffer_empty (100);
 
   // Set right margin.
   (void)Print_element (&WW_PRINT_RMar);
   (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
+
+  // Enable right margin checking.
+  in_margin_tab_setting = FALSE;
+}
+
+// Print margins and tab stops.
+boolean Print_margins_tabs (boolean index) {
+
+  // Disable right margin checking.
+  in_margin_tab_setting = TRUE;
+
+  // Print column index if requested.
+  if (index) {
+    Return_column_1 ();
+    for (int i = 1; i <= length; ++i) {
+      if ((i % 10) == 9) {
+        if (!Print_integer ((i + 1) / 10, 2)) {in_margin_tab_setting = FALSE; return FALSE;}
+                                                                               // Character doesn't fit in print buffer.
+      } else if ((i % 10) != 0) {
+        if (!Print_element (&WW_PRINT_SPACE)) {in_margin_tab_setting = FALSE; return FALSE;}
+                                                                               // Character doesn't fit in print buffer.
+      }
+    }
+    Return_column_1 ();
+    for (int i = 1; i <= length; ++i) {
+      if (!Print_integer (i % 10, 0)) {in_margin_tab_setting = FALSE; return FALSE;}
+                                                                               // Character doesn't fit in print buffer.
+    }
+  }
+
+  // Print margin and tab stop markers.
+  if (!Print_element (&WW_PRINT_CRtn)) {in_margin_tab_setting = FALSE; return FALSE;}
+                                                                               // Character doesn't fit in print buffer.
+  for (int i = lmargin; i <= rmargin; ++i) {
+    if (i == lmargin) {if (!Print_element (&WW_PRINT_L)) {in_margin_tab_setting = FALSE; return FALSE;}}
+                                                                               // Character doesn't fit in print buffer.
+    else if (i == rmargin) {if (!Print_element (&WW_PRINT_R)) {in_margin_tab_setting = FALSE; return FALSE;}}
+                                                                               // Character doesn't fit in print buffer.
+    else if (tabs[i] == SETTING_TRUE) {if (!Print_element (&WW_PRINT_T)) {in_margin_tab_setting = FALSE; return FALSE;}}
+                                                                               // Character doesn't fit in print buffer.
+    else {if (!Print_element (&WW_PRINT_SPACE)) {in_margin_tab_setting = FALSE; return FALSE;}}
+                                                                               // Character doesn't fit in print buffer.
+  }
+  if (!Print_element (&WW_PRINT_CRtn)) {in_margin_tab_setting = FALSE; return FALSE;}
+                                                                               // Character doesn't fit in print buffer.
+  Wait_print_buffer_empty (1000);
+
+  // Enable right margin checking.
+  in_margin_tab_setting = FALSE;
+
+  return TRUE;
+}
+
+// Change typewriter impression setting.
+void Change_impression (byte cur, byte next) {
+  if (((cur == IMPRESSION_LIGHT)  && (next == IMPRESSION_NORMAL)) ||
+      ((cur == IMPRESSION_NORMAL) && (next == IMPRESSION_HEAVY)) ||
+      ((cur == IMPRESSION_HEAVY)  && (next == IMPRESSION_LIGHT))) {
+    (void)Print_element (&WW_PRINT_Impr);
+  } else if (((cur == IMPRESSION_LIGHT)  && (next == IMPRESSION_HEAVY)) ||
+             ((cur == IMPRESSION_NORMAL) && (next == IMPRESSION_LIGHT)) ||
+             ((cur == IMPRESSION_HEAVY)  && (next == IMPRESSION_NORMAL))) {
+    (void)Print_element (&WW_PRINT_Impr);
+    (void)Print_element (&WW_PRINT_Impr);
+  }
 }
 
 // Read a setup command character.
 char Read_setup_command (void) {
+  char cmd;
 
   // Print command prompt.
-  (void)Print_string ("Command [settings/errors/character set/QUIT]: ");
+  (void)Print_string ("Command [settings/errors/character set/typewriter/QUIT]: ");
   Space_to_column (COLUMN_COMMAND);
 
   // Read a command character.
-  char cmd = Read_setup_character_from_set ("sSeEcC\004qQ\r");
+  while (TRUE) {
+    cmd = Read_setup_character_from_set ("sSeEcCtT\x04\x90\x91qQ\r");
+    if (cmd == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (cmd == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
 
   // Return setup command.
   if ((cmd == 's') || (cmd == 'S')) {
@@ -9585,7 +9869,10 @@ char Read_setup_command (void) {
   } else if ((cmd == 'c') || (cmd == 'C')) {
     (void)Print_string ("character set\r");
     return 'c';
-  } else if (cmd == '\004') {  // Control-D
+  } else if ((cmd == 't') || (cmd == 'T')) {
+    (void)Print_string ("typewriter\r");
+    return 't';
+  } else if (cmd == '\x04') {  // Control-D
     (void)Print_string ("developer\r");
     return 'd';
   } else /* (cmd == 'q') || (cmd == 'Q') || (cmd == '\r') */ {
@@ -9596,6 +9883,7 @@ char Read_setup_command (void) {
 
 // Ask a yes or no question.
 boolean Ask_yesno_question (const char str[], boolean value) {
+  char chr;
   boolean val;
 
   // Print prompt.
@@ -9608,7 +9896,18 @@ boolean Ask_yesno_question (const char str[], boolean value) {
   Space_to_column (COLUMN_QUESTION);
 
   // Read response.
-  char chr = Read_setup_character_from_set ("yYnN\r");
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("yYnN\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if ((chr == 'y') || (chr == 'Y')) {
     val = TRUE;
   } else if ((chr == 'n') || (chr == 'N')) {
@@ -9629,6 +9928,7 @@ boolean Ask_yesno_question (const char str[], boolean value) {
 
 // Read a true or false setting.
 byte Read_truefalse_setting (const char str[], byte value) {
+  char chr;
   byte val;
 
   // Print prompt.
@@ -9641,7 +9941,18 @@ byte Read_truefalse_setting (const char str[], byte value) {
   Space_to_column (COLUMN_RESPONSE);
 
   // Read response.
-  char chr = Read_setup_character_from_set ("tTfF\r");
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("tTfF\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if ((chr == 't') || (chr == 'T')) {
     val = SETTING_TRUE;
   } else if ((chr == 'f') || (chr == 'F')) {
@@ -9662,6 +9973,7 @@ byte Read_truefalse_setting (const char str[], byte value) {
 
 // Read a serial setting.
 byte Read_serial_setting (const char str[], byte value) {
+  char chr;
   byte val;
 
   // Print prompt.
@@ -9674,7 +9986,18 @@ byte Read_serial_setting (const char str[], byte value) {
   Space_to_column (COLUMN_RESPONSE);
 
   // Read response.
-  char chr = Read_setup_character_from_set ("uUrR\r");
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("uUrR\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if ((chr == 'u') || (chr == 'U')) {
     val = SERIAL_USB;
   } else if ((chr == 'r') || (chr == 'R')) {
@@ -9695,6 +10018,7 @@ byte Read_serial_setting (const char str[], byte value) {
 
 // Read a duplex setting.
 byte Read_duplex_setting (const char str[], byte value) {
+  char chr;
   byte val;
 
   // Print prompt.
@@ -9707,7 +10031,18 @@ byte Read_duplex_setting (const char str[], byte value) {
   Space_to_column (COLUMN_RESPONSE);
 
   // Read response.
-  char chr = Read_setup_character_from_set ("hHfF\r");
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("hHfF\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if ((chr == 'h') || (chr == 'H')) {
     val = DUPLEX_HALF;
   } else if ((chr == 'f') || (chr == 'F')) {
@@ -9728,15 +10063,26 @@ byte Read_duplex_setting (const char str[], byte value) {
 
 // Read a baud setting.
 byte Read_baud_setting (const char str[], byte value) {
+  char chr;
 
   // Print prompt.
   (void)Print_string ("  ");  (void)Print_string (str);
   (void)Print_string (" [50-230400, ");  (void)Print_integer (BAUD_RATES[value], 0);  (void)Print_string ("]: ");
   Space_to_column (COLUMN_RESPONSE);
 
-  // Read and print response.
-  char chr = Read_setup_character_from_set ("12345679\r");
+  // Read response.
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("12345679\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
 
+  // Process response.
   if (chr == '1') {
     (void)Print_character ('1');
     chr = Read_setup_character_from_set ("123589");
@@ -9835,6 +10181,7 @@ byte Read_baud_setting (const char str[], byte value) {
 
 // Read a parity setting.
 byte Read_parity_setting (const char str[], byte value) {
+  char chr;
   byte val;
 
   // Print prompt.
@@ -9849,7 +10196,18 @@ byte Read_parity_setting (const char str[], byte value) {
   Space_to_column (COLUMN_RESPONSE);
 
   // Read response.
-  char chr = Read_setup_character_from_set ("nNoOeE\r");
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("nNoOeE\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if ((chr == 'n') || (chr == 'N')) {
     val = PARITY_NONE;
   } else if ((chr == 'o') || (chr == 'O')) {
@@ -9874,6 +10232,7 @@ byte Read_parity_setting (const char str[], byte value) {
 
 // Read a databits, parity, stopbits setting.
 byte Read_dps_setting (const char str[], byte value) {
+  char chr;
 
   // Print prompt.
   (void)Print_string ("  ");  (void)Print_string (str);
@@ -9896,9 +10255,19 @@ byte Read_dps_setting (const char str[], byte value) {
   }
   Space_to_column (COLUMN_RESPONSE);
 
-  // Read and print response.
-  char chr = Read_setup_character_from_set ("78\r");
+  // Read response.
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("78\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
 
+  // Process response.
   if (chr == '7') {
     (void)Print_character ('7');
     chr = Read_setup_character_from_set ("oOeE");
@@ -9954,8 +10323,60 @@ byte Read_dps_setting (const char str[], byte value) {
   }
 }
 
+// Read an impression setting.
+byte Read_impression_setting (const char str[], byte value) {
+  char chr;
+  byte val;
+
+  // Print prompt.
+  (void)Print_string ("  ");  (void)Print_string (str);
+  if (value == IMPRESSION_LIGHT) {
+    (void)Print_string (" [LIGHT/normal/heavy]: ");
+  } else if (value == IMPRESSION_NORMAL) {
+    (void)Print_string (" [light/NORMAL/heavy]: ");
+  } else /* value == IMPRESSION_HEAVY */ {
+    (void)Print_string (" [light/normal/HEAVY]: ");
+  }
+  Space_to_column (COLUMN_RESPONSE);
+
+  // Read response.
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("lLnNhH\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
+  if ((chr == 'l') || (chr == 'L')) {
+    val = IMPRESSION_LIGHT;
+  } else if ((chr == 'n') || (chr == 'N')) {
+    val = IMPRESSION_NORMAL;
+  } else if ((chr == 'h') || (chr == 'H')) {
+    val = IMPRESSION_HEAVY;
+  } else /* chr == '\r' */ {
+    val = value;
+  }
+
+  // Print response.
+  if (val == IMPRESSION_LIGHT) {
+    (void)Print_string ("light\r");
+  } else if (val == IMPRESSION_NORMAL) {
+    (void)Print_string ("normal\r");
+  } else /* val == IMPRESSION_HEAVY */ {
+    (void)Print_string ("heavy\r");
+  }
+
+  return val;
+}
+
 // Read a software flow control setting.
 byte Read_swflow_setting (const char str[], byte value) {
+  char chr;
   byte val;
 
   // Print prompt.
@@ -9968,7 +10389,18 @@ byte Read_swflow_setting (const char str[], byte value) {
   Space_to_column (COLUMN_RESPONSE);
 
   // Read response.
-  char chr = Read_setup_character_from_set ("nNxX\r");
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("nNxX\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if ((chr == 'n') || (chr == 'N')) {
     val = SWFLOW_NONE;
   } else if ((chr == 'x') || (chr == 'X')) {
@@ -9989,6 +10421,7 @@ byte Read_swflow_setting (const char str[], byte value) {
 
 // Read a hardware flow control setting.
 byte Read_hwflow_setting (const char str[], byte value) {
+  char chr;
 
   // Print prompt.
   (void)Print_string ("  ");  (void)Print_string (str);
@@ -10001,13 +10434,22 @@ byte Read_hwflow_setting (const char str[], byte value) {
   }
   Space_to_column (COLUMN_RESPONSE);
 
-  // Read and print response.
-  char chr = Read_setup_character_from_set ("nNrR\r");
+  // Read response.
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("nNrR\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
 
+  // Process response.
   if ((chr == 'n') || (chr == 'N')) {
     (void)Print_string ("none\r");
     return HWFLOW_NONE;
-
   } else if ((chr == 'r') || (chr == 'R')) {
     (void)Print_string ("rt");
     chr = Read_setup_character_from_set ("sSrR");
@@ -10018,7 +10460,6 @@ byte Read_hwflow_setting (const char str[], byte value) {
       (void)Print_string ("r_cts\r");
       return HWFLOW_RTR_CTS;
     }
-
   } else /* chr == '\r' */ {
     if (value == HWFLOW_NONE) {
       (void)Print_string ("none\r");
@@ -10033,6 +10474,7 @@ byte Read_hwflow_setting (const char str[], byte value) {
 
 // Read an end-of-line setting.
 byte Read_eol_setting (const char str[], byte value) {
+  char chr;
 
   // Print prompt.
   (void)Print_string ("  ");  (void)Print_string (str);
@@ -10047,9 +10489,19 @@ byte Read_eol_setting (const char str[], byte value) {
   }
   Space_to_column (COLUMN_RESPONSE);
 
-  // Read and print response.
-  char chr = Read_setup_character_from_set ("cClL\r");
+  // Read response.
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("cClL\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
 
+  // Process response.
   if ((chr == 'c') || (chr == 'C')) {
     (void)Print_string ("cr");
     chr = Read_setup_character_from_set ("lL\r");
@@ -10088,6 +10540,7 @@ byte Read_eol_setting (const char str[], byte value) {
 
 // Read an escape sequence setting.
 byte Read_escapesequence_setting (const char str[], byte value) {
+  char chr;
   byte val;
 
   // Print prompt.
@@ -10100,7 +10553,18 @@ byte Read_escapesequence_setting (const char str[], byte value) {
   Space_to_column (COLUMN_RESPONSE);
 
   // Read response.
-  char chr = Read_setup_character_from_set ("nNiI\r");
+  while (TRUE) {
+    chr = Read_setup_character_from_set ("nNiI\x90\x91\r");
+    if (chr == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (chr == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
+
+  // Process response.
   if ((chr == 'n') || (chr == 'N')) {
     val = ESCAPE_NONE;
   } else if ((chr == 'i') || (chr == 'I')) {
@@ -10122,7 +10586,7 @@ byte Read_escapesequence_setting (const char str[], byte value) {
 // Read an integer setting.
 byte Read_integer_setting (const char str[], byte value, byte min, byte max) {
 
-  while (true) {
+  while (TRUE) {
 
     // Print prompt.
     (void)Print_string ("  ");  (void)Print_string (str);
@@ -10149,15 +10613,15 @@ void Developer_functions (void) {
   while (TRUE) {
     char cmd = Read_developer_function ();
     if (cmd == 'c') {
-      Check_print_timing ();
+      Check_communication ();
     } else if (cmd == 'k') {
       Measure_keyboard_timing ();
+    } else if (cmd == 'm') {
+      Measure_print_speed ();
     } else if (cmd == 'p') {
       Measure_printer_timing ();
     } else if (cmd == 's') {
       Measure_column_scanning ();
-    } else if (cmd == 't') {
-      Change_typewriter_settings ();
     } else /* cmd == 'e' */ {
       break;
     }
@@ -10166,8 +10630,18 @@ void Developer_functions (void) {
   (void)Print_element (&WW_PRINT_CRtn);
 }
 
-// Check print timing.
-void Check_print_timing (void) {
+// Check communication.
+void Check_communication (void) {
+  (void)Print_string ("\r    Not implemented yet.\r\r");
+}
+
+// Measure keyboard timing.
+void Measure_keyboard_timing (void) {
+  (void)Print_string ("\r    Not implemented yet.\r\r");
+}
+
+// Measure print speed.
+void Measure_print_speed (void) {
   unsigned long start;
   unsigned long time;
   int cps;
@@ -10183,9 +10657,7 @@ void Check_print_timing (void) {
   Wait_print_buffer_empty (1000);
   cps = (int)((10000UL * NUM_TEST_PRINT_STRING + time / 2UL) / time);
   (void)Print_string ("speed: ");
-  (void)Print_integer (cps / 10, 0);
-  (void)Print_string (".");
-  (void)Print_integer (cps % 10, 0);
+  (void)Print_scaled_integer (cps, 1, 0);
   (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (1000);
 
@@ -10202,18 +10674,11 @@ void Check_print_timing (void) {
   Wait_print_buffer_empty (1000);
   cps = (int)((100000UL * length + 2 + time / 2UL) / time);
   (void)Print_string ("speed: ");
-  (void)Print_integer (cps / 10, 0);
-  (void)Print_string (".");
-  (void)Print_integer (cps % 10, 0);
+  (void)Print_scaled_integer (cps, 1, 0);
   (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (1000);
 
   (void)Print_element (&WW_PRINT_CRtn);
-}
-
-// Measure keyboard timing.
-void Measure_keyboard_timing (void) {
-  (void)Print_string ("\r    Not implemented yet.\r\r");
 }
 
 // Measure printer timing.
@@ -10225,7 +10690,6 @@ void Measure_printer_timing (void) {
   unsigned long time;
   unsigned long btime;
 
-/* DJB - Only measure spin timing this time.
   // Measure typewriter buffer size.
   (void)Print_element (&WW_PRINT_CRtn);
   delay (1000);
@@ -10251,7 +10715,6 @@ void Measure_printer_timing (void) {
   Measure_shm_timing ("TIME_HIT_MOVE", NULL, &WW_PRINT_a, &WW_PRINT_a,
                       TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3,
                       TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3, length);
-*/
   Measure_shm_timing ("TIME_SPIN(12)_HIT_MOVE", NULL, &WW_PRINT_e, &WW_PRINT_z,
                       TIME_PRESS_NOSHIFT_7 + TIME_RELEASE_NOSHIFT_7,
                       TIME_PRESS_NOSHIFT_3 + TIME_RELEASE_NOSHIFT_3, length);
@@ -10265,7 +10728,6 @@ void Measure_printer_timing (void) {
                       TIME_PRESS_NOSHIFT_9 + TIME_RELEASE_NOSHIFT_9,
                       TIME_PRESS_NOSHIFT_10 + TIME_RELEASE_NOSHIFT_10, length);
 
-/* DJB - Only measure spin timing this time.
   // Measure baseline time.
   btime = Measure_tab_return_timing ("TIME_BASE", 0, FALSE, 0UL, &bcnt);
 
@@ -10335,7 +10797,7 @@ void Measure_printer_timing (void) {
   // Measure beep timing.
   time = Measure_print_timing (NULL, &WW_PRINT_BEEP, &WW_PRINT_BEEP, 0, 0, 0, length, FALSE, FALSE, &cnt, &scan);
   (void)Print_string ("TIME_BEEP: ");
-  (void)Print_integer (max((int)(time / cnt), (int)(scan / buffer_size)), 0);
+  (void)Print_integer (max ((int)(time / cnt), (int)(scan / buffer_size)), 0);
   (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (2000);
 
@@ -10343,10 +10805,9 @@ void Measure_printer_timing (void) {
   time = Measure_print_timing (NULL, &WW_PRINT_TSet, &WW_PRINT_TClr, 0, 0, 0, length, FALSE, FALSE, &cnt, &scan);
   (void)Print_element (&WW_PRINT_TClr);
   (void)Print_string ("TIME_JIGGLE: ");
-  (void)Print_integer (max((int)(time / cnt), (int)(scan / buffer_size)), 0);
+  (void)Print_integer (max ((int)(time / cnt), (int)(scan / buffer_size)), 0);
   (void)Print_element (&WW_PRINT_CRtn);
   Wait_print_buffer_empty (2000);
-*/
 
 /* DJB - Not ready for release yet.
   // Check ASCII Period Graphic characters.
@@ -10373,10 +10834,8 @@ void Measure_printer_timing (void) {
   Print_composite ("CHECK_IBM_INVALID", &IBM_PRINT_INVALID, length);
 */
 
-/* DJB - Only measure spin timing this time.
   // Restore tabs and margins.
   Set_margins_tabs (FALSE);
-*/
 
   (void)Print_element (&WW_PRINT_CRtn);
 }
@@ -10508,38 +10967,42 @@ void Measure_column_scanning (void) {
   (void)Print_element (&WW_PRINT_CRtn);
 }
 
-// Change typewriter settings.
-void Change_typewriter_settings (void) {
-  (void)Print_string ("\r    Not implemented yet.\r\r");
-}
-
 // Read a developer function character.
 char Read_developer_function (void) {
   char cmd;
 
   // Print function prompt.
-  (void)Print_string ("  Function [check/keyboard/printer/scanning/typewriter/EXIT]: ");
+  (void)Print_string ("  Function [communication/keyboard/measure/printer/scanning/EXIT]: ");
   Space_to_column (COLUMN_FUNCTION);
 
   // Read a command character.
-  cmd = Read_setup_character_from_set ("cCkKpPtSsTeE\r");
+  while (TRUE) {
+    cmd = Read_setup_character_from_set ("cCkKmMpPsSeE\x90\x91\r");
+    if (cmd == '\x90') {
+      (void)Print_element (&WW_PRINT_UPARROW);
+    } else if (cmd == '\x91') {
+      (void)Print_element (&WW_PRINT_DOWNARROW);
+    } else {
+      break;
+    }
+  }
 
   // Validate and return setup command.
   if ((cmd == 'c') || (cmd == 'C')) {
-    (void)Print_string ("check\r");
+    (void)Print_string ("communication\r");
     return 'c';
   } else if ((cmd == 'k') || (cmd == 'K')) {
     (void)Print_string ("keyboard\r");
     return 'k';
+  } else if ((cmd == 'm') || (cmd == 'M')) {
+    (void)Print_string ("measure\r");
+    return 'm';
   } else if ((cmd == 'p') || (cmd == 'P')) {
     (void)Print_string ("printer\r");
     return 'p';
   } else if ((cmd == 's') || (cmd == 'S')) {
     (void)Print_string ("scanning\r");
     return 's';
-  } else if ((cmd == 't') || (cmd == 'T')) {
-    (void)Print_string ("typewriter\r");
-    return 't';
   } else /* (cmd == 'e') || (cmd == 'E') || (cmd == '\r') */ {
     (void)Print_string ("exit\r");
     return 'e';
@@ -10772,9 +11235,7 @@ unsigned long Measure_print_timing (const struct print_info *str1, const struct 
     if ((scan != 0) || force) {
       (void)Print_string (", ");
       cps = (int)((10000000UL * cnt + time / 2UL) / time);
-      (void)Print_integer (cps / 10, 0);
-      (void)Print_string (".");
-      (void)Print_integer (cps % 10, 0);
+      (void)Print_scaled_integer (cps, 1, 0);
     }
     (void)Print_element (&WW_PRINT_CRtn);
     Wait_print_buffer_empty (3000);
@@ -10933,6 +11394,143 @@ void Print_errors_warnings (void) {
     (void)Print_string ("  No warnings.\r");
   }
   (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (1000);
+}
+
+// Change typewriter settings.
+void Change_typewriter_settings (void) {
+  char cmd;
+  int val;
+  boolean first = TRUE;
+
+  // Print typewriter legend.
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_string (TYPEWRITER_LEGEND);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+  (void)Print_element (&WW_PRINT_CRtn);
+
+  // Read and process typewriter settings.
+  while (TRUE) {
+
+    // Print prompt.
+    (void)Print_string (TYPEWRITER_PROMPT);
+
+    // Read response.
+    while (TRUE) {
+      cmd = Read_setup_character_from_set ("1234567\x90\x91qQ\r");
+      if (cmd == '\x90') {
+        (void)Print_element (&WW_PRINT_UPARROW);
+      } else if (cmd == '\x91') {
+        (void)Print_element (&WW_PRINT_DOWNARROW);
+      } else {
+        break;
+      }
+    }
+
+    // Process response.
+    switch (cmd) {
+
+      case '1':     // Spell check.
+        (void)Print_element (&WW_PRINT_Spell);
+        (void)Print_string (TYPEWRITER_SPELL_CHECK);
+        (void)Print_element (&WW_PRINT_CRtn);
+        break;
+
+      case '2':     // Line spacing.
+        (void)Print_element (&WW_PRINT_LineSpace);
+        (void)Print_string (TYPEWRITER_LINE_SPACING);
+        (void)Print_element (&WW_PRINT_CRtn);
+        break;
+
+      case '3':     // Powerwise.
+        (void)Print_string (TYPEWRITER_POWERWISE);
+        val = max (min (Read_integer (0), 90), 0);
+        if (val < 10) {
+          WW_STR_POWERWISE[4] = WW_Code;
+        } else {
+          WW_STR_POWERWISE[4] = DIGIT_CHARACTERS[val / 10];
+        }
+        WW_STR_POWERWISE[7] = DIGIT_CHARACTERS[val % 10];
+        (void)Print_element (&WW_PRINT_POWERWISE);
+        (void)Print_element (&WW_PRINT_CRtn);
+        break;
+
+      case '4':     // A Rtn.
+        (void)Print_element (&WW_PRINT_ARtn);
+        (void)Print_string (TYPEWRITER_ARTN);
+        (void)Print_element (&WW_PRINT_CRtn);
+        break;
+
+      case '5':     // Bold.
+        (void)Print_element (&WW_PRINT_Bold);
+        (void)Print_string (TYPEWRITER_BOLD);
+        (void)Print_element (&WW_PRINT_CRtn);
+        break;
+
+      case '6':     // Change margins & tabs.
+        if (first) {
+          first = FALSE;
+          (void)Print_string (TYPEWRITER_CHANGE_MARGINS_TABS);
+          (void)Print_element (&WW_PRINT_CRtn);
+          (void)Print_element (&WW_PRINT_CRtn);
+          (void)Print_element (&WW_PRINT_CRtn);
+          (void)Print_element (&WW_PRINT_CRtn);
+        } else {
+          (void)Print_string (TYPEWRITER_CHANGE_MARGINS_TABSX);
+        }
+        (void)Print_margins_tabs (TRUE);
+        in_margin_tab_setting = TRUE;
+        while (TRUE) {
+          cmd = Read_setup_character_from_set ("\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x90\x91\r");
+          if      (cmd == 0x80)   (void)Print_element (&WW_PRINT_LEFTARROW);
+          else if (cmd == 0x81)   (void)Print_element (&WW_PRINT_RIGHTARROW);
+          else if (cmd == 0x82)   (void)Print_element (&WW_PRINT_Tab);
+          else if (cmd == 0x83)   (void)Print_element (&WW_PRINT_CRtn);
+          else if (cmd == 0x84)   (void)Print_element (&WW_PRINT_MarRelX);
+          else if (cmd == 0x85) {if (current_column >= 1) 
+                                 {(void)Print_element (&WW_PRINT_LMar);    (void)Print_element (&WW_PRINT_L);}}
+          else if (cmd == 0x86)  {(void)Print_element (&WW_PRINT_RMar);    (void)Print_element (&WW_PRINT_R);}
+          else if (cmd == 0x87) {if (tabs[current_column] == SETTING_FALSE)
+                                 {(void)Print_element (&WW_PRINT_TSet);    (void)Print_element (&WW_PRINT_PLUS);}
+                                 else
+                                 {(void)Print_element (&WW_PRINT_T);}}
+          else if (cmd == 0x88) {if (tabs[current_column] == SETTING_TRUE)
+                                 {(void)Print_element (&WW_PRINT_TClr);    (void)Print_element (&WW_PRINT_HYPHEN);}}
+          else if (cmd == 0x89)  {(void)Print_element (&WW_PRINT_TClrAll); (void)Print_element (&WW_PRINT_EQUAL);}
+          else if (cmd == 0x90)   (void)Print_element (&WW_PRINT_UPARROW);
+          else if (cmd == 0x91)   (void)Print_element (&WW_PRINT_DOWNARROW);
+          else /* cmd == '\r' */ {(void)Print_element (&WW_PRINT_CRtn);    break;}
+        }
+        in_margin_tab_setting = FALSE;
+        (void)Print_margins_tabs (FALSE);
+        (void)Print_element (&WW_PRINT_CRtn);
+        break;
+
+      case '7':     // Restore margins & tabs.
+        (void)Print_string (TYPEWRITER_RESTORE_MARGINS_TABS);
+        (void)Print_element (&WW_PRINT_CRtn);
+        Set_margins_tabs (TRUE);
+        (void)Print_margins_tabs (TRUE);
+        (void)Print_element (&WW_PRINT_CRtn);
+        break;
+
+      case 'q':     // Quit.
+      case 'Q':
+      case '\r':
+        (void)Print_string (TYPEWRITER_QUIT);
+        (void)Print_element (&WW_PRINT_CRtn);
+        (void)Print_element (&WW_PRINT_CRtn);
+        return;
+
+      default:
+        break;
+    }
+  }
 }
 
 // Read a setup character.
@@ -10966,6 +11564,17 @@ void Space_to_column (int col) {
       (void)Print_element (&WW_PRINT_SPACE);
     }
   }
+}
+
+// Return to column 1.
+void Return_column_1 (void) {
+  (void)Print_element (&WW_PRINT_CRtn);
+  Wait_print_buffer_empty (100);
+  (void)Print_element (&WW_PRINT_MarRelX);  // Special case that always prints.
+  for (int i = 0; i < 20; ++i) (void)Print_element (&WW_PRINT_Backspace);
+  for (int i = 0; i < offset; ++i) (void)Print_element (&WW_PRINT_SPACE);
+  Wait_print_buffer_empty (100);
+  current_column = 1;
 }
 
 // Open serial communications port.
